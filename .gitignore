@@ -1,0 +1,20 @@
+*
+
+!.gitignore
+!*/
+!*.cs
+
+Aerial Explosion Tutorial/*
+Aerial_Explosions/*
+FFR/CamToTexture/*
+Udon/*
+UdonSharp/*
+VRCSDK/*
+GotoUdon/*
+CyanEmu/*
+Editor/*
+FFR/NPC/*
+Standard Assets/*
+# !*.controller
+# !*.anim
+# !*.mat
