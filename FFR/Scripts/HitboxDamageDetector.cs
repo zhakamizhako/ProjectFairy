@@ -21,7 +21,7 @@ public class HitboxDamageDetector : UdonSharpBehaviour {
     public GameObject OwnGun;
     void OnParticleCollision (GameObject other) {
         Debug.Log ("Hit");
-        if (hbcontroller != null) {
+        if (hbcontroller != null && !hbcontroller.EngineControl.dead) {
             if (hbcontroller.EngineControl.localPlayer == null) {
                 if (other != OwnGun)
                     callDamage ();

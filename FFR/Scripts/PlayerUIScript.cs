@@ -4,7 +4,8 @@ using UnityEngine.UI;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class PlayerUIScript : UdonSharpBehaviour {
+public class PlayerUIScript : UdonSharpBehaviour
+{
     public Text Logs;
     public Animator UIAnimator;
     public Animator MusicUIAnimator;
@@ -35,6 +36,7 @@ public class PlayerUIScript : UdonSharpBehaviour {
     private float startVRDistance2;
     private float startVRSize;
     private float startVRSize2;
+    private float startIconSize;
     public Text textObject; //This is where all the texts are drawn. Maybe stick it with a player's Head.
     public Text textObjectVR; //Automatically disabled if on VR
     public Text ChapterTitleText;
@@ -42,8 +44,8 @@ public class PlayerUIScript : UdonSharpBehaviour {
     public Transform parentHolderTexts;
     private Vector3 startsizeTextVR;
     private Vector3 startsizeTextDesktop;
-    private float musicFade=2;
-    public float musiFadeTimer =0;
+    private float musicFade = 2;
+    public float musiFadeTimer = 0;
     private bool isPlayingMusic = false;
     private bool isSwitchingMusic = false;
     private bool isStoppingMusic = false;
@@ -55,123 +57,245 @@ public class PlayerUIScript : UdonSharpBehaviour {
     public Animator MusicAniVR;
     public Slider MusicVolume;
     public Text MusicVolumeText;
-
+    private string tempMusicText;
     public Slider IconSlider;
     public Text IconSliderText;
     public float IconSize = 0f;
+    private bool triggerEmpty = false;
+    // public float triggerScriptTimeout = 15f;
+
+
     public MissileTrackerAndResponse sampleThing;
 
-    void Start () {
-        Debug.Log ("UI Script started");
+    void Start()
+    {
+        Debug.Log("UI Script started");
         localPlayer = Networking.LocalPlayer;
-        if (VRSizeSlider != null) {
+        if (VRSizeSlider != null)
+        {
             startVRSize = VRSizeSlider.value;
         }
-        if (VRSizeSlider2 != null) {
+        if (VRSizeSlider2 != null)
+        {
             startVRSize2 = VRSizeSlider2.value;
         }
-        if (VRDistanceSlider != null) {
+        if (VRDistanceSlider != null)
+        {
             startVRDistance = VRDistanceSlider.value;
         }
-        if (VRDistanceSlider2 != null) {
+        if (VRDistanceSlider2 != null)
+        {
             startVRDistance2 = VRDistanceSlider2.value;
         }
-        if (textObject != null) {
+        if (textObject != null)
+        {
             startsizeTextDesktop = textObject.transform.localScale;
         }
-        if (textObjectVR != null) {
+        if (textObjectVR != null)
+        {
             startsizeTextVR = textObjectVR.transform.localScale;
         }
-        if (ChapterTitleText!=null){
+        if (ChapterTitleText != null)
+        {
             ChapterTitleText.text = "";
         }
-        if (ChapterTitleTextVr=null){
+        if (ChapterTitleTextVr = null)
+        {
             ChapterTitleTextVr.text = "";
         }
-        if(IconSliderText!=null){
+        if (IconSliderText != null)
+        {
             IconSliderText.text = "";
         }
-        Assert (textObject != null, "Start: TextObject MUST NOT BE null");
-        Assert (textObjectVR != null, "Start: textobjectvr MUST NOT BE null");
-        Assert (parentHolderTexts != null, "Start: parentholder MUST NOT BE null");
+        if(IconSlider!=null){
+            startIconSize = IconSize;
+        }
+        Assert(textObject != null, "Start: TextObject MUST NOT BE null");
+        Assert(textObjectVR != null, "Start: textobjectvr MUST NOT BE null");
+        Assert(parentHolderTexts != null, "Start: parentholder MUST NOT BE null");
     }
 
-    public void ResetDefaults () {
+    public void ResetDefaults()
+    {
         VRSizeSlider.value = startVRSize;
         VRSizeSlider2.value = startVRSize2;
         VRDistanceSlider.value = startVRDistance;
         VRDistanceSlider2.value = startVRDistance2;
+        IconSize = startIconSize;
     }
 
-    void Update () {
-        if (VRDistanceSlider != null && vrDistanceText != null) {
+    void Update()
+    {
+        if (VRDistanceSlider != null && vrDistanceText != null && vrDistance != VRDistanceSlider.value)
+        {
             vrDistance = VRDistanceSlider.value;
-            vrDistanceText.text = vrDistance.ToString ("F3");
+            vrDistanceText.text = vrDistance.ToString("F3");
         }
-        if (VRDistanceSlider2 != null && vrDistanceText2 != null) {
+        if (VRDistanceSlider2 != null && vrDistanceText2 != null && vrDistance2 != VRDistanceSlider2.value)
+        {
             vrDistance2 = VRDistanceSlider2.value;
-            vrDistanceText2.text = vrDistance2.ToString ("F3");
+            vrDistanceText2.text = vrDistance2.ToString("F3");
         }
-        if (VRSizeSlider != null && vrSizeText != null) {
+        if (VRSizeSlider != null && vrSizeText != null && vrSize != VRSizeSlider.value)
+        {
             vrSize = VRSizeSlider.value;
-            vrSizeText.text = vrSize.ToString ("F3");
+            vrSizeText.text = vrSize.ToString("F3");
         }
-        if (VRSizeSlider2 != null && vrSizeText2 != null) {
+        if (VRSizeSlider2 != null && vrSizeText2 != null && vrSize2 != VRSizeSlider2.value)
+        {
             vrSize2 = VRSizeSlider2.value;
-            vrSizeText2.text = vrSize2.ToString ("F3");
+            vrSizeText2.text = vrSize2.ToString("F3");
         }
-        if(IconSlider!=null && IconSliderText!=null){
+        if (IconSlider != null && IconSliderText != null && IconSize != IconSlider.value)
+        {
             IconSize = IconSlider.value;
             IconSliderText.text = IconSize.ToString("F3");
         }
-        if (PreviewToggle != null && PreviewHUD != null) {
+        if (PreviewToggle != null && PreviewHUD != null)
+        {
             preview = PreviewToggle.isOn;
-            PreviewHUD.SetActive (preview);
-            if (PreviewHUD2 != null) {
-                PreviewHUD2.SetActive (preview);
-            }
-            if(sampleThing!=null){
+            if (sampleThing != null)
+            {
                 sampleThing.ShowTargets = preview;
             }
-            if (preview) {
+
+            if (preview)
+            {
                 textObjectVR.text = "<<MESSAGE>>\nPreview Message";
                 textObject.text = "<<MESSAGE>>\nPreview Message";
-            } else {
-                if (TriggerScripts != null && TriggerScripts.Length > 0) {
+                PreviewHUD.SetActive(true);
+                if (PreviewHUD2 != null)
+                {
+                    PreviewHUD2.SetActive(true);
+                }
+            }
+            else
+            {
+                if (TriggerScripts != null && TriggerScripts.Length > 0 && !triggerEmpty)
+                {
                     //do nothing
-                } else {
+                }
+                else if (!triggerEmpty)
+                {
                     //if none, cleanup.
                     textObjectVR.text = "";
                     textObject.text = "";
+                    triggerEmpty = true;
+                }
+                if (PreviewHUD.activeSelf)
+                {
+                    PreviewHUD.SetActive(false);
+                }
+                if (PreviewHUD2 != null && PreviewHUD2.activeSelf)
+                {
+                    PreviewHUD2.SetActive(false);
                 }
             }
         }
-        if (localPlayer != null) {
-            if (localPlayer.IsUserInVR ()) {
-                textObject.gameObject.SetActive (false);
-                textObjectVR.gameObject.SetActive (true);
-            } else {
-                textObject.gameObject.SetActive (true);
-                textObjectVR.gameObject.SetActive (false);
+
+        if (parentHolderTexts != null && textObject != null && textObjectVR != null && textObject != null && TriggerScripts.Length > 0)
+        {
+            triggerEmpty = false;
+            if (localPlayer != null)
+            {
+                if (localPlayer.IsUserInVR())
+                {
+                    if (textObject.gameObject.activeSelf)
+                        textObject.gameObject.SetActive(false);
+                    if (!textObjectVR.gameObject.activeSelf)
+                        textObjectVR.gameObject.SetActive(true);
+                }
+                else
+                {
+                    if (!textObject.gameObject.activeSelf)
+                        textObject.gameObject.SetActive(true);
+                    if (textObjectVR.gameObject.activeSelf)
+                        textObjectVR.gameObject.SetActive(false);
+                }
             }
-        }
-        if (parentHolderTexts != null && textObject != null && textObjectVR != null && textObject != null) {
-            parentHolderTexts.position = localPlayer!=null ? localPlayer.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero;
-            parentHolderTexts.rotation = localPlayer!=null ? localPlayer.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
+            parentHolderTexts.position = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero;
+            parentHolderTexts.rotation = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
             parentHolderTexts.transform.position = parentHolderTexts.position;
             parentHolderTexts.transform.position += textObjectVR.transform.forward * vrDistance;
-            parentHolderTexts.transform.rotation = localPlayer!=null ? localPlayer.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).rotation :Quaternion.Euler(Vector3.zero);
+            parentHolderTexts.transform.rotation = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
             parentHolderTexts.transform.localScale = startsizeTextVR * vrSize;
             // textObject.transform.position = parentHolderTexts.position;
             // textObject.transform.position += textObject.transform.forward * vrDistance;
             // textObject.transform.localScale = startsizeTextDesktop * vrSize;
         }
-        if(CurrentPlayingMusic!=null && MusicVolume!=null && MusicVolumeText!=null){
-            if(isSwitchingMusic){
-                if(musiFadeTimer < musicFade){
+        else if (TriggerScripts == null || TriggerScripts.Length < 1)
+        { //disable to cleanup gc?
+            if (textObject.gameObject.activeSelf) textObject.gameObject.SetActive(false);
+            if (textObjectVR.gameObject.activeSelf) textObjectVR.gameObject.SetActive(false);
+            triggerEmpty = true;
+        }
+    }
+
+    public void ReceiveMusic(AudioSource Audio, string Title)
+    {
+        if (Audio != null)
+        {
+            QueueAudio = Audio;
+            isSwitchingMusic = true;
+            tempMusicText = Title;
+        }
+    }
+
+    public void StopMusic()
+    {
+        if (CurrentPlayingMusic != null)
+        {
+            CurrentPlayingMusic.Stop();
+        }
+    }
+
+    public void ReceiveTrigger(TriggerScript x)
+    {
+        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length + 1];
+        TriggerScripts.CopyTo(temp, 0);
+        temp[temp.Length - 1] = x;
+        TriggerScripts = temp;
+    }
+
+    public void RemoveTrigger(TriggerScript x)
+    {
+        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length - 1];
+        int b = 0;
+        for (int y = 0; y < TriggerScripts.Length; y++)
+        {
+            if (TriggerScripts[y] != x)
+            {
+                temp[b] = TriggerScripts[y];
+                b = b + 1;
+            }
+        }
+        TriggerScripts = temp;
+    }
+
+    void LateUpdate()
+    {
+        if (timerStarted && timer < TimeToFade)
+        {
+            UIAnimator.SetFloat("fadeTime", (timer - TimeToFade) * TimeToFade / 100f);
+            timer = timer + Time.deltaTime;
+        }
+        else if (timerStarted && timer > TimeToFade)
+        {
+            timerStarted = false;
+            timer = 0;
+        }
+
+        if (CurrentPlayingMusic != null && MusicVolume != null && MusicVolumeText != null)
+        {
+            if (isSwitchingMusic)
+            {
+                if (musiFadeTimer < musicFade)
+                {
                     musiFadeTimer = musiFadeTimer + Time.deltaTime;
                     CurrentPlayingMusic.volume = CurrentPlayingMusic.volume - musiFadeTimer;
-                }else{
+                }
+                else
+                {
                     musiFadeTimer = 0;
                     CurrentPlayingMusic.Stop();
                     CurrentPlayingMusic = QueueAudio;
@@ -181,61 +305,24 @@ public class PlayerUIScript : UdonSharpBehaviour {
                     CurrentPlayingMusic.volume = MusicVolume.value;
                 }
             }
-            if(isStoppingMusic){
+            if (isStoppingMusic)
+            {
 
             }
-            if(showTitle){
+            if (showTitle)
+            {
 
             }
             // CurrentPlayingMusic.volume = MusicVolume.value;
             // MusicVolumeText.text = MusicVolume.value.ToString();
         }
-        
-
     }
-
-    public void ReceiveMusic(AudioSource Audio, string Title){
-        if(Audio !=null){
-            QueueAudio = Audio;
-            isSwitchingMusic = true;
-        }
-    }
-
-    public void StopMusic(){
-
-    }
-
-    public void ReceiveTrigger (TriggerScript x) {
-        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length + 1];
-        TriggerScripts.CopyTo (temp, 0);
-        temp[temp.Length - 1] = x;
-        TriggerScripts = temp;
-    }
-
-    public void RemoveTrigger (TriggerScript x) {
-        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length - 1];
-        int b = 0;
-        for (int y = 0; y < TriggerScripts.Length; y++) {
-            if (TriggerScripts[y] != x) {
-                temp[b] = TriggerScripts[y];
-                b = b + 1;
-            }
-        }
-        TriggerScripts = temp;
-    }
-
-    void LateUpdate () {
-        if (timerStarted && timer < TimeToFade) {
-            UIAnimator.SetFloat ("fadeTime", (timer - TimeToFade) * TimeToFade / 100f);
-            timer = timer + Time.deltaTime;
-        } else {
-            timerStarted = false;
-            timer = 0;
-        }
-    }
-    public override void OnPlayerJoined (VRCPlayerApi player) {
-        for (int i = 0; i < allPlayers.Length; i++) {
-            if (allPlayers[i] == null) {
+    public override void OnPlayerJoined(VRCPlayerApi player)
+    {
+        for (int i = 0; i < allPlayers.Length; i++)
+        {
+            if (allPlayers[i] == null)
+            {
                 allPlayers[i] = player;
                 break;
             }
@@ -244,9 +331,12 @@ public class PlayerUIScript : UdonSharpBehaviour {
         timerStarted = true;
         timer = 0;
     }
-    public override void OnPlayerLeft (VRCPlayerApi player) {
-        for (int i = 0; i < allPlayers.Length; i++) {
-            if (allPlayers[i] == player) {
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        for (int i = 0; i < allPlayers.Length; i++)
+        {
+            if (allPlayers[i] == player)
+            {
                 allPlayers[i] = null;
                 break;
             }
@@ -256,9 +346,11 @@ public class PlayerUIScript : UdonSharpBehaviour {
         timer = 0;
     }
 
-    private void Assert (bool condition, string message) {
-        if (!condition) {
-            Debug.LogError ("Assertion failed : '" + GetType () + " : " + message + "'", this);
+    private void Assert(bool condition, string message)
+    {
+        if (!condition)
+        {
+            Debug.LogError("Assertion failed : '" + GetType() + " : " + message + "'", this);
         }
     }
 }

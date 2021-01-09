@@ -33,8 +33,9 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour {
     public float rotationSpeed = 1.5f;
     [Tooltip ("Whether or not the camera lerps or moves instantly")]
     public bool movementSmoothing = false;
-    public GameObject VRDialog;
-    public GameObject DesktopDialog;
+    public GameObject PostProcessingGlobal;
+    // public GameObject VRDialog;
+    // public GameObject DesktopDialog;
     public bool enabledCam = false;
     public bool TabShown = false;
 
@@ -45,16 +46,16 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour {
         } else {
             if (_playerLocal.IsUserInVR ()) _isVr = true;
 
-            if (_isVr) {
-                if (DesktopDialog != null) {
-                    DesktopDialog.SetActive (false);
-                }
-            }
-            if (!_isVr) {
-                if (VRDialog != null) {
-                    VRDialog.SetActive (false);
-                }
-            }
+            // if (_isVr) {
+            //     if (DesktopDialog != null) {
+            //         DesktopDialog.SetActive (false);
+            //     }
+            // }
+            // if (!_isVr) {
+            //     if (VRDialog != null) {
+            //         VRDialog.SetActive (false);
+            //     }
+            // }
         }
 
         for (var i = 0; i < transform.childCount; i++) {
@@ -85,6 +86,7 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour {
             ThirdCam.transform.position = cameraTarget[_mode].position;
             ThirdCam.transform.rotation = cameraTarget[_mode].rotation;
             enabledCam = ThirdCam.enabled;
+            PostProcessingGlobal.SetActive(!enabledCam);
         }
         if (Input.GetKeyDown (KeyCode.Tab)) {
             menuItems[0].SetActive (!menuItems[0].activeInHierarchy);

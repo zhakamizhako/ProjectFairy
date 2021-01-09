@@ -18,6 +18,10 @@ public class AIObject : UdonSharpBehaviour
     public TriggerScript onHalfHealth;
     public TriggerScript onHalfTurrets;
     public TriggerScript onDeadTurrets;
+    public TriggerScript EngageTrigger;
+    public TriggerScript[] EngageTriggers;
+    public TriggerScript[] onDestroys;
+
     public Animator AIObjectAnimator;
     public MissileTrackerAndResponse TrackerObject;
     [Header("Waypoint Settings")]
@@ -35,7 +39,7 @@ public class AIObject : UdonSharpBehaviour
     [UdonSynced(UdonSyncMode.None)] public bool disabled = false;
     public bool dead = false;
     public bool damageable = false;
-    [System.NonSerializedAttribute] [HideInInspector] [UdonSynced(UdonSyncMode.None)] public string TargetString = "";
+    [UdonSynced(UdonSyncMode.None)] public string TargetString = "";
     private float timerDead = 0;
     public bool revive = false;
     public LayerMask TargetingLayermask;
@@ -51,7 +55,9 @@ public class AIObject : UdonSharpBehaviour
     //Air AI Behaviour
     private float startmass = 0;
     public float deadMass = 0;
-
+    public bool disableAfterDead = false;
+    private float disableTimer = 0;
+    public float disableTime = 15f;
     public bool shouldAttack = false;
     private bool shouldEvade = false;
     private float attackRange = 1000f;
@@ -82,9 +88,9 @@ public class AIObject : UdonSharpBehaviour
     //flare if missile'd
     //flare cooldown
     //Add weird behaviours for a 'heavy' aircraft. Possibly the same shit + turrets.
-    [UdonSynced(UdonSyncMode.None)] public Vector3 posSync;
-    [UdonSynced(UdonSyncMode.None)] public Quaternion rotationSync;
-    [UdonSynced(UdonSyncMode.None)] public Vector3 veloSync;
+    [UdonSynced(UdonSyncMode.Smooth)] public Vector3 posSync;
+    [UdonSynced(UdonSyncMode.Smooth)] public Quaternion rotationSync;
+    [UdonSynced(UdonSyncMode.Smooth)] public Vector3 veloSync;
     private Vector3 rotLerp = new Vector3(0, 0, 0);
     // private float b = 0f;
     public float pingPosEvery = 15f;
@@ -100,7 +106,7 @@ public class AIObject : UdonSharpBehaviour
     public AudioSource[] deadSounds;
     public int[] targetIndices;
     public float targetChangeTime = 5;
-    private float targetChangeTimer = 0;
+    public float targetChangeTimer = 0;
     public bool isSingleTargetOnly = false;
     bool notargetsCheck = false;
     bool isTargetableCheck = false;
@@ -125,6 +131,7 @@ public class AIObject : UdonSharpBehaviour
     [Header("Enable Sync Object Position in Udon when disabling shouldPing and enable Move in master.")]
     public bool shouldOnlyMoveInMaster = false;
     public bool shouldPing = true;
+    public bool useSmoothingSync = false;
     public bool shouldFollowLeft = false;
     public bool shouldFollowRight = false;
     public float formDistanceSlowdown = 100f;
@@ -136,10 +143,32 @@ public class AIObject : UdonSharpBehaviour
     public bool debug_OUTDISTANCESLOWDOWN = false;
     public bool debug_WITHINTHRESHORD = false;
 
-    private bool updated = true;
+    public bool updated = true;
     private int targetUpdateIndex = 0;
     private int targetUpdateIndex2 = 0;
     public RaycastHit[] TargetDetectionList;
+    private ConstantForce AiConstantForce;
+    private bool turretStandby = false;
+    public bool disableTurretsOnStandby = true;
+
+    //Cost saving measure in order to save for other turrets.
+    public GameObject MissileFab;
+    public Transform[] MissileSpawnArea;
+
+    public float distanceTooClose = 100f;
+    public float distanceTooCloseGround = 800f;
+    public float distanceExit = 800f;
+    public Transform GroundOffset;
+    public bool tooClose = false;
+    public bool cleanupFollowObjectWhenDead = true;
+
+    private bool ranTriggerHalf = false;
+    private bool ranTriggerDead = false;
+    private bool ranTriggerDeadTurrets = false;
+
+    private int aliveTurretsPrivate = 0;
+    private int turretindex = 0;
+    private bool turretCheck = false;
 
     // private bool initShouldAttack = false;
 
@@ -151,6 +180,7 @@ public class AIObject : UdonSharpBehaviour
         initDamagable = damageable;
         initDisabled = disabled;
         initEnableMainTurrets = enableMainTurrets;
+        aliveTurretsPrivate = TurretScripts != null ? TurretScripts.Length : 0;
         // initShouldAttack = shouldAttack;
 
 
@@ -171,6 +201,10 @@ public class AIObject : UdonSharpBehaviour
         updateTimer = Random.Range(0, updateTendency);
         updateMovementTimer = Random.Range(0, updateMovementTendency);
         currentmoveSpeed = movementSpeed;
+        if (AIRigidBody != null)
+        {
+            AiConstantForce = AIRigidBody.GetComponent<ConstantForce>();
+        }
     }
 
     public void removeTargets()
@@ -207,9 +241,15 @@ public class AIObject : UdonSharpBehaviour
         revive = true;
     }
 
+    public void DestroyAI()
+    {
+        if (Networking.IsOwner(gameObject) || Networking.LocalPlayer == null)
+            Health = 0;
+    }
+
     void OnParticleCollision(GameObject other)
     {
-        Debug.Log("Damage call?");
+        // Debug.Log("Damage call?");
         if (localPlayer == null)
         {
             hitDamage();
@@ -221,51 +261,59 @@ public class AIObject : UdonSharpBehaviour
     }
     void FixedUpdate()
     {
-        //??
+        if (!dead)
+        {
+            if (updateMovementTimer > updateMovementTendency)
+            {
+                MovementLogic();
+                updateMovementTimer = 0;
+            }
+            else
+            {
+                updateMovementTimer = updateMovementTimer + Time.deltaTime;
+            }
+        }
     }
     void LateUpdate()
     {
         LateUpdateLogic();
-        // if (updateTimer > updateTendency)
-        // {
-        //     updateTimer = 0;
-        //     if ((Networking.IsOwner(gameObject) || localPlayer == null) && disabled == false && dead == false)
-        //     {
-        //         if (TargetDetector != null)
-        //         {
-        //             TargetDetectionList = Physics.SphereCastAll(TargetDetector.position, radius, TargetDetector.forward, 5000, TargetingLayermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
-        //             if (TargetDetectionList.Length > 0)
-        //             {
-        //                 debugTargets = new GameObject[0];
-        //                 targetIndices = new int[0];
-        //                 for (int x = 0; x < hit.Length; x++)
-        //                 {
-        //                     for (int mm = 0; mm < PredefinedTargets.Targets.Length; mm++)
-        //                     {
-        //                         if ((hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null && hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>().AI != null && hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>().AI.Health > 0 && PredefinedTargets.Targets[mm] == hit[x].collider.gameObject) ||
-        //                             (hit[x].collider.gameObject.GetComponent<HitDetector>() != null && hit[x].collider.gameObject.GetComponent<HitDetector>().Tracker != null && hit[x].collider.gameObject.GetComponent<HitDetector>().Tracker.gameObject == PredefinedTargets.Targets[mm] && hit[x].collider.gameObject.GetComponent<HitDetector>().EngineControl != null && hit[x].collider.gameObject.GetComponent<HitDetector>().EngineControl.Health > 0))
-        //                         {
-        //                             GameObject[] temp = new GameObject[debugTargets.Length + 1];
-        //                             int[] tempTargetIndices = new int[debugTargets.Length + 1];
-        //                             debugTargets.CopyTo(temp, 0);
-        //                             targetIndices.CopyTo(tempTargetIndices, 0);
-        //                             temp[temp.Length - 1] = hit[x].collider.gameObject;
-        //                             tempTargetIndices[temp.Length - 1] = mm;
-        //                             targetIndices = tempTargetIndices;
-        //                             debugTargets = temp;
-        //                         }
-        //                     }
-        //                     // Debug.DrawLine (TargetDetector.position, TargetDetector.position + TargetDetector.forward * hit[x].distance);
-        //                 }
-        //             }
-        //         }
-        //     }
-        // }
-        // else
-        // {
-        //     updateTimer = updateTimer + Time.deltaTime;
-        // }
+        if (disableTurretsOnStandby) checkStandby();
+    }
 
+    void checkStandby()
+    {
+        if (TargetString == null || TargetString == "")
+        {
+            if (!turretStandby)
+            {
+                if (TurretScripts != null && TurretScripts.Length > 0)
+                    foreach (AITurretScript x in TurretScripts)
+                    {
+                        x.gameObject.SetActive(false);
+                    }
+                if (MainTurrets != null && MainTurrets.Length > 0)
+                    foreach (AITurretScript x in MainTurrets)
+                    {
+                        x.gameObject.SetActive(false);
+                    }
+                turretStandby = true;
+            }
+        }
+        else
+        {
+            if (turretStandby)
+            {
+                foreach (AITurretScript x in TurretScripts)
+                {
+                    x.gameObject.SetActive(true);
+                }
+                foreach (AITurretScript x in MainTurrets)
+                {
+                    x.gameObject.SetActive(true);
+                }
+                turretStandby = false;
+            }
+        }
     }
 
 
@@ -291,8 +339,8 @@ public class AIObject : UdonSharpBehaviour
                 if (updateTimer < updateTendency) { updateTimer = updateTimer + Time.deltaTime; }
                 if (TargetDetectionList != null && TargetDetectionList.Length > 0 && targetUpdateIndex < TargetDetectionList.Length)
                 {
-                    if ((TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>().AI != null && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>().AI.Health > 0 && PredefinedTargets.Targets[targetUpdateIndex2] == TargetDetectionList[targetUpdateIndex].collider.gameObject) ||
-                        (TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<HitDetector>() != null && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<HitDetector>().Tracker != null && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<HitDetector>().Tracker.gameObject == PredefinedTargets.Targets[targetUpdateIndex2] && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<HitDetector>().EngineControl != null && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<HitDetector>().EngineControl.Health > 0))
+                    MissileTrackerAndResponse currentSelection = TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null ? TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() : null;
+                    if (currentSelection != null && ((currentSelection.AI != null && currentSelection.AI.Health > 0) || (currentSelection.AITurret != null && currentSelection.AITurret.Health > 0) || (currentSelection.EngineController != null && currentSelection.EngineController.Health > 0)) && currentSelection == PredefinedTargets.Targets[targetUpdateIndex2])
                     {
                         GameObject[] temp = new GameObject[debugTargets.Length + 1];
                         int[] tempTargetIndices = new int[debugTargets.Length + 1];
@@ -351,6 +399,7 @@ public class AIObject : UdonSharpBehaviour
             {
                 float finalMovementSpeed = currentmoveSpeed;
 
+                // Chase Target Logic
                 if (shouldAttack && !dontchaseTarget && debugTargets.Length > 0)
                 { //Attack Logic
                     shouldFollowLeft = false;
@@ -374,60 +423,25 @@ public class AIObject : UdonSharpBehaviour
                         V = Vector3.zero;
                         targetPos = debugTargets[0].gameObject.transform.position;
                     }
-                    finalVectors = FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, targetPos, V);
+                    if ((AIClass.transform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) < distanceTooCloseGround) || Vector3.Distance(AIClass.transform.position, targetPos) < distanceTooClose)
+                    {
+                        tooClose = true;
+                    }
+                    else if (tooClose && ((AIClass.transform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) > distanceExit) || Vector3.Distance(AIClass.transform.position, targetPos) > distanceExit))
+                    {
+                        tooClose = false;
+                    }
+
+
+                    finalVectors = !tooClose ? FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, targetPos, V) : FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, new Vector3(AIClass.gameObject.transform.position.x, 10000f, AIClass.gameObject.transform.position.z), AIRigidBody.velocity);
                     moveLogc(finalVectors, finalVectors);
-
-                    // var bb = Vector3.Angle (gameObject.transform.forward, (targetPos - gameObject.transform.position));
-                    // // if (!isTurning && bb > 1) {
-                    // Vector3 perp = Vector3.Cross (gameObject.transform.forward, targetPos);
-                    // float dir = Vector3.Dot (perp, targetPos);
-                    // if (dir > 0) {
-                    //     // b = -b;
-                    //     dirB = 1;
-                    // } else if (dir < 0) {
-                    //     // b = b;
-                    //     dirB = -1;
-                    // }
-                    // rotLerp = Vector3.Lerp (rotLerp, new Vector3 (gameObject.transform.localRotation.eulerAngles.x, gameObject.transform.localRotation.eulerAngles.y, (bb) * dirB), rollRate * Time.deltaTime);
-
-                    // gameObject.transform.localRotation = Quaternion.Euler (gameObject.transform.localRotation.eulerAngles.x, gameObject.transform.localRotation.eulerAngles.y, rotLerp.z);
-
-                    // var ObjectToTargetVector = finalVectors - AIClass.transform.position;
-                    // var AIForward = AIClass.transform.forward;
-                    // var targetDirection = ObjectToTargetVector.normalized;
-                    // var rotationAxis = Vector3.Cross (AIForward, targetDirection);
-                    // var deltaAngle = Vector3.Angle (AIForward, targetDirection);
-
-                    // AIClass.transform.Rotate (rotationAxis, Mathf.Min (RotSpeed * Time.deltaTime, deltaAngle), Space.World);
                 }
+
                 if ((!shouldAttack || (shouldAttack && dontchaseTarget)) && Waypoints != null && Waypoints.Length > 0 && FollowObject == null)
                 { // Waypoint Logic
                     shouldFollowLeft = false;
                     shouldFollowRight = false;
                     moveLogc(Waypoints[currentWaypointIndex].gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position);
-                    // var bb = Vector3.Angle (gameObject.transform.forward, (Waypoints[currentWaypointIndex].gameObject.transform.position - gameObject.transform.position));
-                    // // if (!isTurning && bb > 1) {
-                    // Vector3 perp = Vector3.Cross (gameObject.transform.forward, Waypoints[currentWaypointIndex].gameObject.transform.position);
-                    // float dir = Vector3.Dot (perp, Waypoints[currentWaypointIndex].gameObject.transform.up);
-                    // if (dir > 0.0) {
-                    //     // b = -b;
-                    //     dirB = 1;
-                    // } else if (dir < 0) {
-                    //     // b = b;
-                    //     dirB = -1;
-                    // }
-
-                    // rotLerp = Vector3.Lerp (rotLerp, new Vector3 (gameObject.transform.localRotation.eulerAngles.x, gameObject.transform.localRotation.eulerAngles.y, (bb) * dirB), rollRate * Time.deltaTime);
-
-                    // gameObject.transform.localRotation = Quaternion.Euler (gameObject.transform.localRotation.eulerAngles.x, gameObject.transform.localRotation.eulerAngles.y, rotLerp.z);
-                    // var ObjectToTargetVector = Waypoints[currentWaypointIndex].gameObject.transform.position - gameObject.transform.position;
-                    // var AIForward = gameObject.transform.forward;
-                    // var targetDirection = ObjectToTargetVector.normalized;
-                    // var rotationAxis = Vector3.Cross (AIForward, targetDirection);
-                    // var deltaAngle = Vector3.Angle (AIForward, targetDirection);
-
-                    // gameObject.transform.Rotate (rotationAxis, Mathf.Min (RotSpeed * Time.deltaTime, deltaAngle), Space.World);
-
                     if (shouldGoNextWaypoint)
                     { // if false, circle around the waypoint. 
                         if (Vector3.Distance(gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position) < distanceToChangeWaypoint)
@@ -476,20 +490,25 @@ public class AIObject : UdonSharpBehaviour
                         finalMovementSpeed = followLogic(FollowObject.EngineController.VehicleRigidbody, FollowObject);
                     }
                     currentmoveSpeed = finalMovementSpeed;
+
+                    if (cleanupFollowObjectWhenDead && (FollowObject.AI != null && FollowObject.AI.Health < 1) || (FollowObject.EngineController != null && (FollowObject.EngineController.dead || FollowObject.EngineController.Health < 0)))
+                    {
+                        FollowObject = null;
+                    }
                 }
 
                 //Finally, Move the object
 
                 if (shouldOnlyMoveInMaster && Networking.IsOwner(gameObject))
                 { // Finally
-                    AIRigidBody.GetComponent<ConstantForce>().relativeForce = new Vector3(0, 0, finalMovementSpeed);
+                    AiConstantForce.relativeForce = new Vector3(0, 0, finalMovementSpeed);
                 }
                 else if (!shouldOnlyMoveInMaster)
                 {
-                    AIRigidBody.GetComponent<ConstantForce>().relativeForce = new Vector3(0, 0, finalMovementSpeed);
+                    AiConstantForce.relativeForce = new Vector3(0, 0, finalMovementSpeed);
                 }
 
-                if (shouldPing)
+                if (shouldPing && !useSmoothingSync)
                 { // Ping Object's Location
                     posSync = gameObject.transform.position;
                     rotationSync = gameObject.transform.rotation;
@@ -508,6 +527,12 @@ public class AIObject : UdonSharpBehaviour
                         }
                     }
 
+                }
+                if (useSmoothingSync && shouldPing)
+                {
+                    posSync = gameObject.transform.position;
+                    rotationSync = gameObject.transform.rotation;
+                    veloSync = AIRigidBody.velocity;
                 }
 
             }
@@ -609,6 +634,7 @@ public class AIObject : UdonSharpBehaviour
         {
             crash();
         }
+        Debug.LogError("COLLIDE");
     }
 
     void Update()
@@ -617,18 +643,6 @@ public class AIObject : UdonSharpBehaviour
         {
             if (!dead)
             {
-
-                //MovementLogic
-                if (updateMovementTimer > updateMovementTendency)
-                {
-                    MovementLogic();
-                    updateMovementTimer = 0;
-                }
-                else
-                {
-                    updateMovementTimer = updateMovementTimer + Time.deltaTime;
-                }
-
                 if (Health <= 0)
                 {
                     dead = true;
@@ -652,7 +666,7 @@ public class AIObject : UdonSharpBehaviour
                 if (Networking.IsOwner(gameObject) || localPlayer == null)
                 {
 
-                    if (type == "air")
+                    if (type == "air" || type == "static")
                     {
                         if (debugTargets != null && debugTargets.Length == 0)
                         {
@@ -667,391 +681,417 @@ public class AIObject : UdonSharpBehaviour
                         }
                     }
 
-                    if (type == "static" || type == "ship" || type == "heavyair" || type == "air")
+                    if (TurretScripts != null && TurretScripts.Length > 0 || MainTurrets != null && MainTurrets.Length > 0)
                     {
-                        if (TurretScripts != null && TurretScripts.Length > 0)
+                        if (type == "static" || type == "ship" || type == "heavyair" || type == "air")
                         {
-                            int aliveTurrets = 0;
-                            foreach (AITurretScript g in TurretScripts)
+                            if (TurretScripts != null && TurretScripts.Length > 0)
                             {
-                                if (!g.dead) { aliveTurrets = aliveTurrets + 1; }
-                            }
-                            if (aliveTurrets < enableMainTurretsOn + 1)
-                            {
-                                enableMainTurrets = true;
-                                if (onDeadTurrets != null)
+                                if (!turretCheck)
                                 {
-                                    onDeadTurrets.run = true;
-                                }
-                            }
-
-                            if (aliveTurrets < enableMainTurretsOn + 1)
-                            {
-                                if (setDamagableOnOutOfTurrets)
-                                {
-                                    damageable = true;
-                                }
-                                if (setTargetableOnOutOfTurrets && TrackerObject != null)
-                                {
-                                    if (isTargetableCheck == false)
+                                    if (!TurretScripts[turretindex].dead)
                                     {
-                                        TrackerObject.isTargetable = true;
-                                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "setTargetableAI");
+                                        aliveTurretsPrivate = aliveTurretsPrivate + 1;
+                                        if (turretindex + 1 < TurretScripts.Length)
+                                        {
+                                            turretindex = turretindex + 1;
+                                        }else if(turretindex + 1 > TurretScripts.Length){
+                                            turretCheck = true;
+                                        }
                                     }
-                                }
-                            }
-                            if (aliveTurrets < (TurretScripts.Length / 2))
-                            {
-                                if (onHalfTurrets != null)
-                                {
-                                    onHalfTurrets.run = true;
-                                }
-                            }
-                        }
-                        if (!updated)
-                        {
-
-                            if (debugTargets != null && debugTargets.Length > 0)
-                            {
-                                notargetsCheck = false;
-                                if (targetChangeTimer < targetChangeTime)
-                                {
-                                    targetChangeTimer = targetChangeTimer + Time.deltaTime;
                                 }
                                 else
                                 {
-                                    TargetString = "";
-                                    for (int c = 0; c < TurretScripts.Length; c++)
+                                    if (aliveTurretsPrivate < enableMainTurretsOn + 1)
                                     {
-                                        var skip = false;
-                                        // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
-                                        if (!TurretScripts[c].canTarget)
+                                        enableMainTurrets = true;
+                                        if (onDeadTurrets != null)
                                         {
-                                            skip = true;
-                                        }
-                                        if (!skip)
-                                        {
-                                            int m = 0;
-                                            if (!isSingleTargetOnly)
-                                            {
-                                                m = Random.Range(0, targetIndices.Length);
-                                            }
-                                            else
-                                            {
-                                                m = 0;
-                                            }
-                                            TargetString = TargetString + TurretScripts[c].idTurret + "=" + targetIndices[m] + ";";
-                                        }
-                                        // TurretScripts[c].currentTargetIndex = targetIndices[m];
-                                        // if (
-                                        //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
-                                        //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
-                                        //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
-                                        // ) {
-                                        //     Transform[] childrena = TurretScripts[c].transform.GetComponentsInChildren<Transform>();
-                                        //     foreach (Transform child in childrena) {
-                                        //         Networking.SetOwner (Networking.GetOwner (gameObject), child.gameObject);
-                                        //     }
-                                        // //     Networking.SetOwner (Networking.GetOwner (TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), TurretScripts[c].gameObject);
-                                        // }
-                                    }
-                                    if (enableMainTurrets)
-                                    {
-                                        for (int c = 0; c < MainTurrets.Length; c++)
-                                        {
-                                            var skip = false;
-
-                                            if (!MainTurrets[c].canTarget)
-                                            {
-                                                skip = true;
-                                            }
-                                            if (!skip)
-                                            {
-                                                int m = 0;
-                                                if (!isSingleTargetOnly)
-                                                {
-                                                    m = Random.Range(0, targetIndices.Length);
-                                                }
-                                                else
-                                                {
-                                                    m = 0;
-                                                }
-                                                TargetString = TargetString + MainTurrets[c].idTurret + "=" + targetIndices[m] + ";";
-                                            }
-                                            // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
-                                            // MainTurrets[c].currentTargetIndex = targetIndices[m];
-
-                                            // if (
-                                            //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
-                                            //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
-                                            //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
-                                            // ) {
-                                            //     // Transform[] children = MainTurrets[c].transform.GetComponentsInChildren<Transform>();
-                                            //     // foreach (Transform child in children) {
-                                            //     // Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), child.gameObject);    
-                                            //     // }
-                                            //     Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), MainTurrets[c].gameObject);
-                                            // }
+                                            onDeadTurrets.run = true;
                                         }
                                     }
 
-                                    targetChangeTimer = 0;
+                                    if ((aliveTurretsPrivate < enableMainTurretsOn + 1) || (aliveTurretsPrivate < TurretScripts.Length + 1))
+                                    {
+                                        if (setDamagableOnOutOfTurrets)
+                                        {
+                                            damageable = true;
+                                        }
+                                        if (setTargetableOnOutOfTurrets && TrackerObject != null)
+                                        {
+                                            if (isTargetableCheck == false)
+                                            {
+                                                TrackerObject.isTargetable = true;
+                                                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "setTargetableAI");
+                                            }
+                                        }
+                                    }
+                                    if (aliveTurretsPrivate < (TurretScripts.Length / 2))
+                                    {
+                                        if (onHalfTurrets != null)
+                                        {
+                                            onHalfTurrets.run = true;
+                                        }
+                                    }
+                                    turretCheck = false;
                                 }
                             }
-                            else
-                            {
-                                if (notargetsCheck == false)
+                            if (updated)
                                 {
-                                    if (localPlayer == null)
+
+                                    if (debugTargets != null && debugTargets.Length > 0)
                                     {
-                                        removeTargets();
+                                        notargetsCheck = false;
+                                        if (targetChangeTimer < targetChangeTime)
+                                        {
+                                            targetChangeTimer = targetChangeTimer + Time.deltaTime;
+                                        }
+                                        else
+                                        {
+                                            TargetString = "";
+                                            for (int c = 0; c < TurretScripts.Length; c++)
+                                            {
+                                                var skip = false;
+                                                // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
+                                                if (!TurretScripts[c].canTarget)
+                                                {
+                                                    skip = true;
+                                                }
+                                                if (!skip)
+                                                {
+                                                    int m = 0;
+                                                    if (!isSingleTargetOnly)
+                                                    {
+                                                        m = Random.Range(0, targetIndices.Length);
+                                                    }
+                                                    else
+                                                    {
+                                                        m = 0;
+                                                    }
+                                                    TargetString = TargetString + TurretScripts[c].idTurret + "=" + targetIndices[m] + ";";
+                                                }
+                                                // TurretScripts[c].currentTargetIndex = targetIndices[m];
+                                                // if (
+                                                //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
+                                                //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
+                                                //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
+                                                // ) {
+                                                //     Transform[] childrena = TurretScripts[c].transform.GetComponentsInChildren<Transform>();
+                                                //     foreach (Transform child in childrena) {
+                                                //         Networking.SetOwner (Networking.GetOwner (gameObject), child.gameObject);
+                                                //     }
+                                                // //     Networking.SetOwner (Networking.GetOwner (TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), TurretScripts[c].gameObject);
+                                                // }
+                                            }
+                                            if (enableMainTurrets)
+                                            {
+                                                for (int c = 0; c < MainTurrets.Length; c++)
+                                                {
+                                                    var skip = false;
+
+                                                    if (!MainTurrets[c].canTarget)
+                                                    {
+                                                        skip = true;
+                                                    }
+                                                    if (!skip)
+                                                    {
+                                                        int m = 0;
+                                                        if (!isSingleTargetOnly)
+                                                        {
+                                                            m = Random.Range(0, targetIndices.Length);
+                                                        }
+                                                        else
+                                                        {
+                                                            m = 0;
+                                                        }
+                                                        TargetString = TargetString + MainTurrets[c].idTurret + "=" + targetIndices[m] + ";";
+                                                    }
+                                                    // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
+                                                    // MainTurrets[c].currentTargetIndex = targetIndices[m];
+
+                                                    // if (
+                                                    //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
+                                                    //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
+                                                    //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
+                                                    // ) {
+                                                    //     // Transform[] children = MainTurrets[c].transform.GetComponentsInChildren<Transform>();
+                                                    //     // foreach (Transform child in children) {
+                                                    //     // Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), child.gameObject);    
+                                                    //     // }
+                                                    //     Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), MainTurrets[c].gameObject);
+                                                    // }
+                                                }
+                                            }
+
+                                            targetChangeTimer = 0;
+                                        }
                                     }
-                                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "removeTargets");
-                                    notargetsCheck = true;
+                                    else
+                                    {
+                                        if (notargetsCheck == false)
+                                        {
+                                            if (localPlayer == null)
+                                            {
+                                                removeTargets();
+                                            }
+                                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "removeTargets");
+                                            notargetsCheck = true;
+                                        }
+                                    }
                                 }
+
                             }
                         }
-
                     }
                 }
             }
-        }
 
-        if (revive)
-        {
-            Health = fullHealth;
-            damageable = initDamagable;
-            disabled = initDisabled;
-            enableMainTurrets = initEnableMainTurrets;
-            if (deadParticle != null && deadParticle.activeSelf) { deadParticle.SetActive(false); }
-            isTargetableCheck = false;
-            if (TrackerObject != null)
+            if (revive)
             {
-                TrackerObject.isRendered = initRendered;
-                TrackerObject.isTargetable = initTargetable;
-            }
-            if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("alive"); }
-            if (TurretScripts.Length > 0)
-            {
-                foreach (AITurretScript g in TurretScripts)
-                {
-                    g.revive = true;
-                }
-            }
-            if (MainTurrets.Length > 0)
-            {
-                foreach (AITurretScript g in MainTurrets)
-                {
-                    g.revive = true;
-                }
-            }
-            if (onDestroy != null)
-            {
-                onDestroy.ran = false;
-                // onDestroy.ranSync = false;
-                onDestroy.stopped = false;
-                onDestroy.currentX = 0;
-                for (int x = 0; x < onDestroy.isRunning.Length; x++)
-                {
-                    onDestroy.isRunning[x] = false;
-                }
-            }
-            if (onHalfHealth != null)
-            {
-                onHalfHealth.ran = false;
-                // onHalfHealth.ranSync = false;
-                onHalfHealth.stopped = false;
-                onHalfHealth.currentX = 0;
-                for (int x = 0; x < onHalfHealth.isRunning.Length; x++)
-                {
-                    onHalfHealth.isRunning[x] = false;
-                }
-            }
-            if (onHalfTurrets != null)
-            {
-                onHalfTurrets.ran = false;
-                // onHalfTurrets.ranSync = false;
-                onHalfTurrets.stopped = false;
-                onHalfTurrets.currentX = 0;
-                for (int x = 0; x < onHalfTurrets.isRunning.Length; x++)
-                {
-                    onHalfTurrets.isRunning[x] = false;
-                }
-            }
-            if (onDeadTurrets != null)
-            {
-                onDeadTurrets.ran = false;
-                // onDeadTurrets.ranSync = false;
-                onDeadTurrets.stopped = false;
-                onDeadTurrets.currentX = 0;
-                for (int x = 0; x < onDeadTurrets.isRunning.Length; x++)
-                {
-                    onDeadTurrets.isRunning[x] = false;
-                }
-            }
-            if (type == "air" || type == "heavyair")
-            {
-                AIRigidBody.mass = startmass;
-                AIRigidBody.useGravity = false;
-            }
-            revive = false;
-            dead = false;
-            deadplay = false;
-        }
-        if (dead)
-        {
-            if (type == "air" || type == "heavyair")
-            {
-                deadLogic();
-            }
-            if (Health > 0)
-            { // in case.
-                dead = false;
-            }
-            if (!hasCrashed)
-            {
-
-            }
-            if (isRespawnable)
-            {
-                if (RespawnTimer < RespawnTime)
-                {
-                    RespawnTimer = RespawnTimer + Time.deltaTime;
-                }
-                else
-                {
-                    // dead = false;
-                    if (RespawnArea != null)
-                    {
-                        AIClass.transform.position = RespawnArea.position;
-                        AIClass.transform.rotation = RespawnArea.rotation;
-                        currentWaypointIndex = 0;
-                        if (AIRigidBody != null)
-                        {
-                            AIRigidBody.velocity = Vector3.zero;
-                        }
-                        RespawnTimer = 0;
-                    }
-                    if (Networking.LocalPlayer == null) { revive = true; }
-                    // revive = true;
-                    if (Networking.IsOwner(gameObject))
-                    {
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "reviveAI");
-                    }
-                }
-            }
-            if (timerDead < disappearTrackerOn)
-            {
-                // if (Networking.IsOwner (gameObject))
-                timerDead = timerDead + Time.deltaTime;
-            }
-            else
-            {
+                Health = fullHealth;
+                damageable = initDamagable;
+                disabled = initDisabled;
+                enableMainTurrets = initEnableMainTurrets;
+                if (deadParticle != null && deadParticle.activeSelf) { deadParticle.SetActive(false); }
+                isTargetableCheck = false;
                 if (TrackerObject != null)
                 {
-                    TrackerObject.isTargetable = false;
-                    TrackerObject.isRendered = false;
+                    TrackerObject.isRendered = initRendered;
+                    TrackerObject.isTargetable = initTargetable;
                 }
-            }
-            if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("dead"); }
-            if (onDestroy != null)
-            {
-                onDestroy.run = true;
-            }
-            if (!deadplay)
-            {
-                if (Networking.IsOwner(gameObject))
+                if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("alive"); }
+                if (TurretScripts.Length > 0)
                 {
                     foreach (AITurretScript g in TurretScripts)
                     {
-                        g.currentTargetIndex = -1;
-                        g.Target = null;
-                        g.Health = 0;
+                        g.revive = true;
                     }
+                }
+                if (MainTurrets.Length > 0)
+                {
                     foreach (AITurretScript g in MainTurrets)
                     {
-                        g.currentTargetIndex = -1;
-                        g.Target = null;
-                        g.Health = 0;
+                        g.revive = true;
                     }
-                    TargetString = null;
                 }
-                if (deadSounds != null && deadSounds.Length > 0)
+                if (onDestroy != null)
                 {
-                    int random = Random.Range(0, deadSounds.Length);
-                    deadSounds[random].Play();
+                    onDestroy.ran = false;
+                    // onDestroy.ranSync = false;
+                    onDestroy.stopped = false;
+                    onDestroy.currentX = 0;
+                    for (int x = 0; x < onDestroy.isRunning.Length; x++)
+                    {
+                        onDestroy.isRunning[x] = false;
+                    }
                 }
-                // if (Networking.IsOwner (gameObject))
-                deadplay = true;
+                if (onHalfHealth != null)
+                {
+                    onHalfHealth.ran = false;
+                    // onHalfHealth.ranSync = false;
+                    onHalfHealth.stopped = false;
+                    onHalfHealth.currentX = 0;
+                    for (int x = 0; x < onHalfHealth.isRunning.Length; x++)
+                    {
+                        onHalfHealth.isRunning[x] = false;
+                    }
+                }
+                if (onHalfTurrets != null)
+                {
+                    onHalfTurrets.ran = false;
+                    // onHalfTurrets.ranSync = false;
+                    onHalfTurrets.stopped = false;
+                    onHalfTurrets.currentX = 0;
+                    for (int x = 0; x < onHalfTurrets.isRunning.Length; x++)
+                    {
+                        onHalfTurrets.isRunning[x] = false;
+                    }
+                }
+                if (onDeadTurrets != null)
+                {
+                    onDeadTurrets.ran = false;
+                    // onDeadTurrets.ranSync = false;
+                    onDeadTurrets.stopped = false;
+                    onDeadTurrets.currentX = 0;
+                    for (int x = 0; x < onDeadTurrets.isRunning.Length; x++)
+                    {
+                        onDeadTurrets.isRunning[x] = false;
+                    }
+                }
+                if (type == "air" || type == "heavyair")
+                {
+                    AIRigidBody.mass = startmass;
+                    AIRigidBody.useGravity = false;
+                }
+                revive = false;
+                dead = false;
+                deadplay = false;
             }
-        }
-
-    }
-
-    //Tools
-    public Vector3 FirstOrderIntercept(
-        Vector3 shooterPosition,
-        Vector3 shooterVelocity,
-        float shotSpeed,
-        Vector3 targetPosition,
-        Vector3 targetVelocity)
-    {
-        Vector3 targetRelativePosition = targetPosition - shooterPosition;
-        Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
-        float t = FirstOrderInterceptTime(
-            shotSpeed,
-            targetRelativePosition,
-            targetRelativeVelocity
-        );
-        return targetPosition + t * (targetRelativeVelocity);
-    }
-
-    public float FirstOrderInterceptTime(
-        float shotSpeed,
-        Vector3 targetRelativePosition,
-        Vector3 targetRelativeVelocity)
-    {
-        float velocitySquared = targetRelativeVelocity.sqrMagnitude;
-        if (velocitySquared < 0.001f)
-            return 0f;
-
-        float a = velocitySquared - shotSpeed * shotSpeed;
-
-        //handle similar velocities
-        if (Mathf.Abs(a) < 0.001f)
-        {
-            float t = -targetRelativePosition.sqrMagnitude /
-                (
-                    2f * Vector3.Dot(
-                        targetRelativeVelocity,
-                        targetRelativePosition
-                    )
-                );
-            return Mathf.Max(t, 0f); //don't shoot back in time
-        }
-
-        float b = 2f * Vector3.Dot(targetRelativeVelocity, targetRelativePosition);
-        float c = targetRelativePosition.sqrMagnitude;
-        float determinant = b * b - 4f * a * c;
-
-        if (determinant > 0f)
-        { //determinant > 0; two intercept paths (most common)
-            float t1 = (-b + Mathf.Sqrt(determinant)) / (2f * a),
-                t2 = (-b - Mathf.Sqrt(determinant)) / (2f * a);
-            if (t1 > 0f)
+            if (dead)
             {
-                if (t2 > 0f)
-                    return Mathf.Min(t1, t2); //both are positive
-                else
-                    return t1; //only t1 is positive
-            }
-            else
-                return Mathf.Max(t2, 0f); //don't shoot back in time
-        }
-        else if (determinant < 0f) //determinant < 0; no intercept path
-            return 0f;
-        else //determinant = 0; one intercept path, pretty much never happens
-            return Mathf.Max(-b / (2f * a), 0f); //don't shoot back in time
-    }
+                if (type == "air" || type == "heavyair")
+                {
+                    deadLogic();
+                }
+                if (Health > 0)
+                { // in case.
+                    dead = false;
+                }
+                if (!hasCrashed)
+                {
 
-}
+                }
+                if (disableAfterDead)
+                {
+                    if (disableTimer > disableTime)
+                    {
+                        gameObject.SetActive(false);
+                    }
+                    else
+                    {
+                        disableTimer += Time.deltaTime;
+                    }
+                }
+                if (isRespawnable)
+                {
+                    if (RespawnTimer < RespawnTime)
+                    {
+                        RespawnTimer = RespawnTimer + Time.deltaTime;
+                    }
+                    else
+                    {
+                        // dead = false;
+                        if (RespawnArea != null)
+                        {
+                            AIClass.transform.position = RespawnArea.position;
+                            AIClass.transform.rotation = RespawnArea.rotation;
+                            currentWaypointIndex = 0;
+                            if (AIRigidBody != null)
+                            {
+                                AIRigidBody.velocity = Vector3.zero;
+                            }
+                            RespawnTimer = 0;
+                        }
+                        if (Networking.LocalPlayer == null) { revive = true; }
+                        // revive = true;
+                        if (Networking.IsOwner(gameObject))
+                        {
+                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "reviveAI");
+                        }
+                    }
+                }
+                if (timerDead < disappearTrackerOn)
+                {
+                    // if (Networking.IsOwner (gameObject))
+                    timerDead = timerDead + Time.deltaTime;
+                }
+                else
+                {
+                    if (TrackerObject != null)
+                    {
+                        TrackerObject.isTargetable = false;
+                        TrackerObject.isRendered = false;
+                    }
+                }
+                if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("dead"); }
+                if (onDestroy != null)
+                {
+                    onDestroy.run = true;
+                }
+                if (!deadplay)
+                {
+                    if (Networking.IsOwner(gameObject))
+                    {
+                        foreach (AITurretScript g in TurretScripts)
+                        {
+                            g.currentTargetIndex = -1;
+                            g.Target = null;
+                            g.Health = 0;
+                        }
+                        foreach (AITurretScript g in MainTurrets)
+                        {
+                            g.currentTargetIndex = -1;
+                            g.Target = null;
+                            g.Health = 0;
+                        }
+                        TargetString = null;
+                    }
+                    if (deadSounds != null && deadSounds.Length > 0)
+                    {
+                        int random = Random.Range(0, deadSounds.Length);
+                        deadSounds[random].Play();
+                    }
+                    // if (Networking.IsOwner (gameObject))
+                    deadplay = true;
+                }
+            }
+
+        }
+
+        //Tools
+        public Vector3 FirstOrderIntercept(
+            Vector3 shooterPosition,
+            Vector3 shooterVelocity,
+            float shotSpeed,
+            Vector3 targetPosition,
+            Vector3 targetVelocity)
+        {
+            Vector3 targetRelativePosition = targetPosition - shooterPosition;
+            Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
+            float t = FirstOrderInterceptTime(
+                shotSpeed,
+                targetRelativePosition,
+                targetRelativeVelocity
+            );
+            return targetPosition + t * (targetRelativeVelocity);
+        }
+
+        public float FirstOrderInterceptTime(
+            float shotSpeed,
+            Vector3 targetRelativePosition,
+            Vector3 targetRelativeVelocity)
+        {
+            float velocitySquared = targetRelativeVelocity.sqrMagnitude;
+            if (velocitySquared < 0.001f)
+                return 0f;
+
+            float a = velocitySquared - shotSpeed * shotSpeed;
+
+            //handle similar velocities
+            if (Mathf.Abs(a) < 0.001f)
+            {
+                float t = -targetRelativePosition.sqrMagnitude /
+                    (
+                        2f * Vector3.Dot(
+                            targetRelativeVelocity,
+                            targetRelativePosition
+                        )
+                    );
+                return Mathf.Max(t, 0f); //don't shoot back in time
+            }
+
+            float b = 2f * Vector3.Dot(targetRelativeVelocity, targetRelativePosition);
+            float c = targetRelativePosition.sqrMagnitude;
+            float determinant = b * b - 4f * a * c;
+
+            if (determinant > 0f)
+            { //determinant > 0; two intercept paths (most common)
+                float t1 = (-b + Mathf.Sqrt(determinant)) / (2f * a),
+                    t2 = (-b - Mathf.Sqrt(determinant)) / (2f * a);
+                if (t1 > 0f)
+                {
+                    if (t2 > 0f)
+                        return Mathf.Min(t1, t2); //both are positive
+                    else
+                        return t1; //only t1 is positive
+                }
+                else
+                    return Mathf.Max(t2, 0f); //don't shoot back in time
+            }
+            else if (determinant < 0f) //determinant < 0; no intercept path
+                return 0f;
+            else //determinant = 0; one intercept path, pretty much never happens
+                return Mathf.Max(-b / (2f * a), 0f); //don't shoot back in time
+        }
+
+    }

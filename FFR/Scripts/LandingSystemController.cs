@@ -24,8 +24,7 @@ public class LandingSystemController : UdonSharpBehaviour
     void Update(){
         if(CAC==null && isSnagged){
             isSnagged = false;
-        }
-        if(CAC!=null && EngineControl.Piloting){
+        }else if(CAC!=null && EngineControl.Piloting){
             if(Input.GetKeyDown(KeyCode.C) && CAC.holdTimer > CAC.holdTime){
                 if(EngineControl.localPlayer==null){ CAC.Launch(); }
                 CAC.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Launch");

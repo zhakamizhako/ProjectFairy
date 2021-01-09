@@ -13,7 +13,6 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public GameObject MainObject;
     public AITurretScript AITurret;
     public AIObject AI;
-
     public EngineController EngineController;
 
     [Header("Tracker Settings")]
@@ -82,8 +81,14 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public PlayerUIScript UIScript;
     public bool isGroundTarget = false;
     public bool isAirTarget = false;
+    public bool ShowDistance = true;
     public bool showX = false;
     public GameObject XIcon;
+    private Renderer IconRenderer;
+    public bool HideIfFar = false;
+    public float farDistance = 20000f;
+    private float currentDistance = 0f;
+
     void Start()
     {
         hasRendered = isRendered;
@@ -103,6 +108,11 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
         }
         ShowTargets = false;
         TargetIconRender.SetActive(false);
+
+        if (TargetIconRender != null)
+        {
+            IconRenderer = TargetIconRender.GetComponent<Renderer>();
+        }
     }
 
     public void receiveTracker(MissileScript misScript)
@@ -160,7 +170,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
         {
             if (Indicators[x] != null)
             {
-                Destroy(Indicators[x]);
+                DestroyImmediate(Indicators[x]);
             }
         }
         TrackList = new MissileScript[0];
@@ -205,8 +215,9 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                         }
                         else
                         {
-                            Destroy(Indicators[x]);
-                            // Debug.Log("DESTROY");
+                            Indicators[x].GetComponent<IndicatorScript>().toDestroy();
+                            // Destroy(Indicators[x]);
+                            Debug.Log("DESTROY");
                         }
                     }
                     // Debug.Log("C");
@@ -375,6 +386,13 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
 
     void Update()
     {
+        if(HideIfFar){
+            currentDistance = Vector3.Distance(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetPosition():Vector3.zero, gameObject.transform.position);
+            if(currentDistance > farDistance){
+                culled = true;
+            }
+        }
+
         if (ShowTargets)
         {
             if (isRendered && !culled)
@@ -413,25 +431,25 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                         if (EngineController.Health > 0 && !EngineController.dead)
                         { //Health
                             words = words + "\nHP:" + EngineController.Health;
-                            if (TargetIconRender.GetComponent<Renderer>().material.color != Color.white && !isSelected)
+                            if (IconRenderer.material.color != Color.white && !isSelected)
                             {
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
+                                IconRenderer.material.SetColor("_Color", Color.white);
                             }
                             else if (isSelected)
                             {
-                                if (TargetIconRender.GetComponent<Renderer>().material.color != Color.yellow)
-                                    TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.yellow);
+                                if (IconRenderer.material.color != Color.yellow)
+                                    IconRenderer.material.SetColor("_Color", Color.yellow);
                             }
                             else if (!isSelected)
                             {
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
+                                IconRenderer.material.SetColor("_Color", Color.white);
                             }
                         }
                         else
                         {
                             words = words + "\nDestroyed";
-                            if (TargetIconRender.GetComponent<Renderer>().material.color != Color.red)
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
+                            if (IconRenderer.material.color != Color.red)
+                                IconRenderer.material.SetColor("_Color", Color.red);
                         }
 
                     }
@@ -441,25 +459,25 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                         if (AITurret.Health > 0 && AITurret.damageable)
                         { //Health
                             words = words + "\nHP:" + AITurret.Health;
-                            if (TargetIconRender.GetComponent<Renderer>().material.color != Color.white && !isSelected)
+                            if (IconRenderer.material.color != Color.white && !isSelected)
                             {
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
+                                IconRenderer.material.SetColor("_Color", Color.white);
                             }
                             else if (isSelected)
                             {
-                                if (TargetIconRender.GetComponent<Renderer>().material.color != Color.yellow)
-                                    TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.yellow);
+                                if (IconRenderer.material.color != Color.yellow)
+                                    IconRenderer.material.SetColor("_Color", Color.yellow);
                             }
                             else if (!isSelected)
                             {
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
+                                IconRenderer.material.SetColor("_Color", Color.white);
                             }
                         }
                         else
                         {
                             words = words + "\nDestroyed";
-                            if (TargetIconRender.GetComponent<Renderer>().material.color != Color.red)
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
+                            if (IconRenderer.material.color != Color.red)
+                                IconRenderer.material.SetColor("_Color", Color.red);
                         }
 
                     }
@@ -468,38 +486,41 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                         if (AI.Health > 0 && AI.damageable)
                         { //Health
                             words = words + "\nHP:" + AI.Health;
-                            if (TargetIconRender.GetComponent<Renderer>().material.color != Color.white && !isSelected)
+                            if (IconRenderer.material.color != Color.white && !isSelected)
                             {
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
+                                IconRenderer.material.SetColor("_Color", Color.white);
                             }
                             else if (isSelected)
                             {
-                                if (TargetIconRender.GetComponent<Renderer>().material.color != Color.yellow)
-                                    TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.yellow);
+                                if (IconRenderer.material.color != Color.yellow)
+                                    IconRenderer.material.SetColor("_Color", Color.yellow);
                             }
                             else if (!isSelected)
                             {
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.white);
+                                IconRenderer.material.SetColor("_Color", Color.white);
                             }
                         }
                         else if (AI.Health <= 0)
                         {
                             words = words + "\nDestroyed";
-                            if (TargetIconRender.GetComponent<Renderer>().material.color != Color.red)
-                                TargetIconRender.GetComponent<Renderer>().material.SetColor("_Color", Color.red);
+                            if (IconRenderer.material.color != Color.red)
+                                IconRenderer.material.SetColor("_Color", Color.red);
                         }
                     }
-                    float distance = 0f;
-                    if (EngineController != null && EngineController.localPlayer != null)
+                    if (ShowDistance)
                     {
-                        distance = Vector3.Distance(EngineController.localPlayer.GetPosition(), TargetIconRender.transform.position);
-                    }
-                    else
-                    {
-                        distance = Vector3.Distance(lookatPos, TargetIconRender.transform.position);
-                    }
+                        float distance = 0f;
+                        if (EngineController != null && EngineController.localPlayer != null)
+                        {
+                            distance = Vector3.Distance(EngineController.localPlayer.GetPosition(), TargetIconRender.transform.position);
+                        }
+                        else
+                        {
+                            distance = Vector3.Distance(lookatPos, TargetIconRender.transform.position);
+                        }
 
-                    words = words + "\n" + Mathf.Round(distance);
+                        words = words + "\n" + Mathf.Round(distance);
+                    }
                     TrackerText.text = words;
 
                 }
@@ -507,14 +528,14 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             }
             else
             {
-                if(TargetIconRender.activeSelf)
-                TargetIconRender.SetActive(false);
+                if (TargetIconRender.activeSelf)
+                    TargetIconRender.SetActive(false);
             }
         }
         else
         {
-            if(TargetIconRender.activeSelf)
-            TargetIconRender.SetActive(false);
+            if (TargetIconRender.activeSelf)
+                TargetIconRender.SetActive(false);
         }
         if (isChasing == true)
         {

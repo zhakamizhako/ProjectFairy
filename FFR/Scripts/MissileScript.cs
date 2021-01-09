@@ -3,7 +3,8 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
-public class MissileScript : UdonSharpBehaviour {
+public class MissileScript : UdonSharpBehaviour
+{
 
     // public GameObject MissileOwner;
     public GameObject Target;
@@ -43,162 +44,223 @@ public class MissileScript : UdonSharpBehaviour {
     public float explodeAt = 50f;
     public bool hasHitIndicator = false;
     public bool indicatorCalled = false;
+    private Rigidbody MissileRigidBody;
+    private ConstantForce MissileConstantForce;
     public float timerLimit = 10; //missile life in case of no targets and went through clips or sky
     // [UdonSynced (UdonSyncMode.None)] public Vector3 targetDirection;
     public GameObject TargetTest;
     public Vector3 TargetScale;
+    private WeaponSelector LaunchedWP;
+    private MissileTrackerAndResponse targetObjectTracker;
 
-    void Start () {
-        if (type == "missile") {
+    void Start()
+    {
+        if (type == "missile")
+        {
             colliderOn = 0.5f;
-        } else if (type == "bomb") {
+        }
+        else if (type == "bomb")
+        {
             colliderOn = 1f;
         }
-        Debug.Log ("MissileScript Initialized");
-        if (Target != null) {
+        MissileRigidBody = MissileClass.GetComponent<Rigidbody>();
+        MissileConstantForce = MissileClass.GetComponent<ConstantForce>();
+        LaunchedWP = LaunchedFrom != null ? LaunchedFrom.GetComponent<WeaponSelector>() : null;
+        // Debug.Log ("MissileScript Initialized");
+        if (Target != null)
+        {
             // Debug.Log ("I Have Target!");
-            if (Target.GetComponent<MissileTargeterParent> () != null) {
-                var b = Target.GetComponent<MissileTargeterParent> ();
-                if (b.Target != null && b.noTarget == false) {
-                    Dafuq = b.Target;
-                }
-            } else if (Target.GetComponent<AITurretScript> () != null) {
-                var b = Target.GetComponent<AITurretScript> ();
-                if (b.Target != null) {
-                    Dafuq = b.Target;
+            if (Target.GetComponent<MissileTargeterParent>() != null)
+            {
+                var b = Target.GetComponent<MissileTargeterParent>();
+                if (b.Target != null && b.noTarget == false)
+                {
+                    targetObjectTracker = b.Target;
+                    // Debug.Log ("Assigned");
                 }
             }
-        } else {
+            else if (Target.GetComponent<AITurretScript>() != null)
+            {
+                var b = Target.GetComponent<AITurretScript>();
+                if (b.Target != null)
+                {
+                    targetObjectTracker = b.Target;
+                    // Debug.Log ("AssignedAI");
+                }
+            }
+        }
+        else
+        {
             // Debug.Log ("Target Must not be null????");
         }
     }
 
     //Missile on Impact
-    public void OnTriggerEnter (Collider col) {
-        if (!isExploded) {
-            ExplodeMissile ();
+    public void OnTriggerEnter(Collider col)
+    {
+        if (!isExploded)
+        {
+            ExplodeMissile();
         }
     }
 
-    public void OnTriggerStay (Collider col) {
-        if (!isExploded) {
-            ExplodeMissile ();
+    public void OnTriggerStay(Collider col)
+    {
+        if (!isExploded)
+        {
+            ExplodeMissile();
         }
     }
 
-    public void OnTriggerExit (Collider col) {
-        if (!isExploded) {
-            ExplodeMissile ();
+    public void OnTriggerExit(Collider col)
+    {
+        if (!isExploded)
+        {
+            ExplodeMissile();
         }
     }
 
-    public void OnCollisionEnter (Collision col) {
-        if (!isExploded) {
-            ExplodeMissile ();
+    public void OnCollisionEnter(Collision col)
+    {
+        if (!isExploded)
+        {
+            ExplodeMissile();
         }
     }
 
     //The entire explosion shenanigans
-    void ExplodeMissile () {
-        MissileObject.SetActive (false);
+    void ExplodeMissile()
+    {
+        MissileObject.SetActive(false);
         ExplosionEffects.SetActive(true);
         isExploded = true;
         destroyTimer = 0;
-        if (Smoke != null) {
-            Smoke.Stop ();
+        if (Smoke != null)
+        {
+            Smoke.Stop();
         }
-        MissileClass.GetComponent<ConstantForce> ().relativeForce = Vector3.zero; //Stop constant forward
-        MissileClass.GetComponent<Rigidbody> ().velocity = Vector3.zero; // In bisaya terms, "PARA SURE GYUD NA DILI MULIHOK."
+        MissileConstantForce.relativeForce = Vector3.zero; //Stop constant forward
+        MissileRigidBody.velocity = Vector3.zero; // In bisaya terms, "PARA SURE GYUD NA DILI MULIHOK."
         //Freeze Missile Object
-        MissileClass.GetComponent<Rigidbody> ().constraints = RigidbodyConstraints.FreezePositionZ;
-        MissileClass.GetComponent<Rigidbody> ().constraints = RigidbodyConstraints.FreezePositionX;
-        MissileClass.GetComponent<Rigidbody> ().constraints = RigidbodyConstraints.FreezePositionY;
-        MissileClass.GetComponent<Rigidbody> ().constraints = RigidbodyConstraints.FreezeRotationZ;
-        MissileClass.GetComponent<Rigidbody> ().constraints = RigidbodyConstraints.FreezeRotationX;
-        MissileClass.GetComponent<Rigidbody> ().constraints = RigidbodyConstraints.FreezeRotationY;
+        MissileRigidBody.constraints = RigidbodyConstraints.FreezePositionZ;
+        MissileRigidBody.constraints = RigidbodyConstraints.FreezePositionX;
+        MissileRigidBody.constraints = RigidbodyConstraints.FreezePositionY;
+        MissileRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
+        MissileRigidBody.constraints = RigidbodyConstraints.FreezeRotationX;
+        MissileRigidBody.constraints = RigidbodyConstraints.FreezeRotationY;
     }
 
-    void Update () {
+    void Update()
+    {
         // Debug.Log("I AM FIRED");
-        if (isExploded) {
-            if (ExplosionShortSystem != null) {
-                if (!explosionshorted) {
+        if (isExploded)
+        {
+            if (ExplosionShortSystem != null)
+            {
+                if (!explosionshorted)
+                {
                     // ExplosionEffects.Emit (explosionAmount);
-                    ExplosionShortSystem.gameObject.SetActive (true);
+                    ExplosionShortSystem.gameObject.SetActive(true);
                     explosionshorted = true;
                 }
-                if (!explosionshortstop && explosionShortTimer < explosionParticleShortTime) {
+                if (!explosionshortstop && explosionShortTimer < explosionParticleShortTime)
+                {
                     explosionShortTimer = explosionShortTimer + Time.deltaTime;
-                } else if (!explosionshortstop && explosionShortTimer > explosionParticleShortTime) {
-                    ExplosionShortSystem.Stop ();
+                }
+                else if (!explosionshortstop && explosionShortTimer > explosionParticleShortTime)
+                {
+                    ExplosionShortSystem.Stop();
                     explosionshortstop = true;
                 }
             }
         }
-        if (missileColliderTimer < colliderOn) { //Checker for initial missile fire to avoid collision
+        if (missileColliderTimer < colliderOn)
+        { //Checker for initial missile fire to avoid collision
             missileColliderTimer += Time.deltaTime;
-        } else if (missileColliderTimer > colliderOn && isSet == false) {
-            Collider mCollider = MissileClass.GetComponent<Collider> ();
+        }
+        else if (missileColliderTimer > colliderOn && isSet == false)
+        {
+            Collider mCollider = MissileClass.GetComponent<Collider>();
             mCollider.enabled = true;
             // follow = true;
             isSet = true;
         }
-        if (MissileTimer < timerLimit) { //Missile cleanu ptool
+        if (MissileTimer < timerLimit)
+        { //Missile cleanu ptool
             MissileTimer += Time.deltaTime;
         }
-        if (!isExploded) {
+        if (!isExploded)
+        {
             if (type == "missile")
-                MissileClass.GetComponent<ConstantForce> ().relativeForce = new Vector3 (0, 0, missileSpeed);
+                MissileConstantForce.relativeForce = new Vector3(0, 0, missileSpeed);
 
             if (type == "bomb")
-                MissileClass.GetComponent<ConstantForce> ().force = new Vector3 (0, -missileSpeed, 0);
+                MissileConstantForce.force = new Vector3(0, -missileSpeed, 0);
             //Tail the target. First checks if whether the target has a Tailer which is where the missile should chase after.
             //If not because you're lazy to assign one, then it tracks the targeter's location.
-            if (Dafuq != null) {
-                var targetObject = Dafuq.GetComponent<MissileTrackerAndResponse> ();
+            if (targetObjectTracker != null)
+            {
                 Transform missile = MissileClass.transform;
-                if (targetObject != null) {
-                    if (MissileTimer >.3f) {
+                if (targetObjectTracker != null)
+                {
+                    if (MissileTimer > .3f)
+                    {
 
-                        if (Vector3.Distance (missile.position, targetObject.gameObject.transform.position) < closeDistance && !close) {
+                        if (Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position) < closeDistance && !close)
+                        {
                             close = true;
                         }
-                        if (Vector3.Distance (missile.position, targetObject.gameObject.transform.position) > giveupDistance && close) {
+                        if (Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position) > giveupDistance && close)
+                        {
                             missed = true;
                         }
-                        if (Vector3.Distance (missile.position, targetObject.gameObject.transform.position) < explodeAt) {
-                            ExplodeMissile ();
+                        if (Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position) < explodeAt)
+                        {
+                            ExplodeMissile();
                         }
 
-                        if (!missed) {
-                            targetObject.isChasing = true;
-                            if(!indicatorCalled){
-                                indicatorCalled=true;
-                                targetObject.receiveTracker(this);
+                        if (!missed)
+                        {
+                            targetObjectTracker.isChasing = true;
+                            if (!indicatorCalled)
+                            {
+                                indicatorCalled = true;
+                                targetObjectTracker.receiveTracker(this);
                             }
-                            if (targetObject.Tailer != null) { //heatseeker
-                                if (usesOld) {
-                                    missile.LookAt (targetObject.Tailer);
-                                } else if (missileType == 1) {
-                                    var ObjectToTargetVector = targetObject.Tailer.gameObject.transform.position - missile.position;
+                            if (targetObjectTracker.Tailer != null)
+                            { //heatseeker
+                                if (usesOld)
+                                {
+                                    missile.LookAt(targetObjectTracker.Tailer);
+                                }
+                                else if (missileType == 1)
+                                {
+                                    var ObjectToTargetVector = targetObjectTracker.Tailer.gameObject.transform.position - missile.position;
                                     var AIForward = missile.forward;
                                     var targetDirection = ObjectToTargetVector.normalized;
-                                    var rotationAxis = Vector3.Cross (AIForward, targetDirection);
-                                    var deltaAngle = Vector3.Angle (AIForward, targetDirection);
+                                    var rotationAxis = Vector3.Cross(AIForward, targetDirection);
+                                    var deltaAngle = Vector3.Angle(AIForward, targetDirection);
 
-                                    missile.Rotate (rotationAxis, Mathf.Min (RotSpeed * Time.deltaTime, deltaAngle), Space.World);
+                                    missile.Rotate(rotationAxis, Mathf.Min(RotSpeed * Time.deltaTime, deltaAngle), Space.World);
 
-                                } else if (missileType == 2) { //predictive
+                                }
+                                else if (missileType == 2)
+                                { //predictive
                                     Vector3 finalVectors;
                                     Vector3 V;
-                                    if (targetObject.EngineController != null) {
-                                        V = targetObject.EngineController.CurrentVel;
-                                    } else if (targetObject.AI != null && targetObject.AI.AIClass != null && targetObject.AI.AIRigidBody != null) {
-                                        V = targetObject.AI.AIRigidBody.velocity;
-                                    } else {
+                                    if (targetObjectTracker.EngineController != null)
+                                    {
+                                        V = targetObjectTracker.EngineController.CurrentVel;
+                                    }
+                                    else if (targetObjectTracker.AI != null && targetObjectTracker.AI.AIClass != null && targetObjectTracker.AI.AIRigidBody != null)
+                                    {
+                                        V = targetObjectTracker.AI.AIRigidBody.velocity;
+                                    }
+                                    else
+                                    {
                                         V = Vector3.zero;
                                     }
-                                    finalVectors = FirstOrderIntercept (missile.gameObject.transform.position, missile.gameObject.GetComponent<Rigidbody> ().velocity, missile.gameObject.GetComponent<Rigidbody> ().velocity.magnitude, targetObject.Tailer.gameObject.transform.position, V);
+                                    finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, targetObjectTracker.Tailer.gameObject.transform.position, V);
                                     // Vector3 D = targetObject.gameObject.transform.position - missile.position;
                                     // float A = (V.sqrMagnitude - missile.gameObject.GetComponent<Rigidbody> ().velocity.magnitude) * missile.gameObject.GetComponent<Rigidbody> ().velocity.magnitude;
                                     // float B = 2 * Vector3.Dot (D, V);
@@ -213,8 +275,9 @@ public class MissileScript : UdonSharpBehaviour {
                                     //     float dt = (dt1 < 0 ? dt2 : dt1);
                                     //     finalVectors = targetObject.gameObject.transform.position;
                                     // }
-                                    if (TargetTest != null) {
-                                        var dist = Vector3.Distance (finalVectors, LaunchedFrom.transform.position);
+                                    if (TargetTest != null)
+                                    {
+                                        var dist = Vector3.Distance(finalVectors, LaunchedFrom.transform.position);
                                         TargetTest.transform.position = finalVectors;
                                         TargetTest.transform.localScale = TargetScale * dist;
                                     }
@@ -223,91 +286,118 @@ public class MissileScript : UdonSharpBehaviour {
                                     var ObjectToTargetVector = finalVectors - missile.position;
                                     var AIForward = missile.forward;
                                     var targetDirection = ObjectToTargetVector.normalized;
-                                    var rotationAxis = Vector3.Cross (AIForward, targetDirection);
-                                    var deltaAngle = Vector3.Angle (AIForward, targetDirection);
+                                    var rotationAxis = Vector3.Cross(AIForward, targetDirection);
+                                    var deltaAngle = Vector3.Angle(AIForward, targetDirection);
 
-                                    missile.Rotate (rotationAxis, Mathf.Min (RotSpeed * Time.deltaTime, deltaAngle), Space.World);
+                                    missile.Rotate(rotationAxis, Mathf.Min(RotSpeed * Time.deltaTime, deltaAngle), Space.World);
                                 }
-                            } else {
-                                if (usesOld) {
-                                    missile.LookAt (Dafuq.transform);
-                                } else if (missileType == 1) {
-                                    var ObjectToTargetVector = Dafuq.transform.position - missile.position;
+                            }
+                            else
+                            {
+                                if (usesOld)
+                                {
+                                    missile.LookAt(targetObjectTracker.transform);
+                                }
+                                else if (missileType == 1)
+                                {
+                                    var ObjectToTargetVector = targetObjectTracker.transform.position - missile.position;
                                     var AIForward = missile.forward;
                                     var targetDirection = ObjectToTargetVector.normalized;
-                                    var rotationAxis = Vector3.Cross (AIForward, targetDirection);
-                                    var deltaAngle = Vector3.Angle (AIForward, targetDirection);
+                                    var rotationAxis = Vector3.Cross(AIForward, targetDirection);
+                                    var deltaAngle = Vector3.Angle(AIForward, targetDirection);
 
-                                    missile.Rotate (rotationAxis, Mathf.Min (RotSpeed * Time.deltaTime, deltaAngle), Space.World);
-                                } else if (missileType == 2) {
+                                    missile.Rotate(rotationAxis, Mathf.Min(RotSpeed * Time.deltaTime, deltaAngle), Space.World);
+                                }
+                                else if (missileType == 2)
+                                {
                                     Vector3 finalVectors;
                                     Vector3 V;
                                     V = Vector3.zero;
-                                    finalVectors = FirstOrderIntercept (missile.gameObject.transform.position, missile.gameObject.GetComponent<Rigidbody> ().velocity, missile.gameObject.GetComponent<Rigidbody> ().velocity.magnitude, Dafuq.transform.position, V);
+                                    finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, targetObjectTracker.transform.position, V);
                                 }
                             }
                         }
-                        if (missed) {
-                            if (!missedCalled) {
-                                if(hasHitIndicator && LaunchedFrom.GetComponent<WeaponSelector>()!=null){
-                                    LaunchedFrom.GetComponent<WeaponSelector>().miss = true;
+                        if (missed)
+                        {
+                            if (!missedCalled)
+                            {
+                                if (hasHitIndicator && LaunchedWP != null)
+                                {
+                                    LaunchedWP.miss = true;
                                 }
-                                targetObject.isChasing = false;
+                                targetObjectTracker.isChasing = false;
                                 missedCalled = true;
+                                if (targetObjectTracker != null && !calledOff)
+                                {
+                                    targetObjectTracker.removeTracker(this);
+                                    calledOff = true;
+                                } //This will disable the missile alert in your cockpit.
+
                             }
                         }
 
                     }
-                } else {
-                    missile.LookAt (Dafuq.GetComponent<Transform> ());
+                }
+                else
+                {
+                    missile.LookAt(targetObjectTracker.gameObject.transform);
                 }
             }
         }
         // Sets the timer before the missile Object deletes itself for cleanup.
 
-        if (isExploded) {
-            if (!explodeSound) {
-                if(hasHitIndicator && !missed && LaunchedFrom.GetComponent<WeaponSelector>()!=null && Dafuq!=null){
-                    LaunchedFrom.GetComponent<WeaponSelector>().hit = true;
+        if (isExploded)
+        {
+            if (!explodeSound)
+            {
+                if (hasHitIndicator && !missed && LaunchedWP != null && Dafuq != null)
+                {
+                    LaunchedWP.hit = true;
                 }
                 explodeSound = true;
-                if (ExplosionSounds != null && ExplosionSounds.Length > 0) {
-                    int rInt = Random.Range (0, ExplosionSounds.Length);
-                    ExplosionSounds[rInt].Play ();
+                if (ExplosionSounds != null && ExplosionSounds.Length > 0)
+                {
+                    int rInt = Random.Range(0, ExplosionSounds.Length);
+                    ExplosionSounds[rInt].Play();
                 }
             }
-            if (destroyTimer < 5f) {
+            if (destroyTimer < 5f)
+            {
                 destroyTimer += Time.deltaTime;
-                if (Dafuq != null) {
-                    if (Dafuq.GetComponent<MissileTrackerAndResponse> () != null && !calledOff) {
-                        Dafuq.GetComponent<MissileTrackerAndResponse> ().isChasing = false;
-                        Dafuq.GetComponent<MissileTrackerAndResponse> ().removeTracker(this);
-                        calledOff = true;
-                    } //This will disable the missile alert in your cockpit.
 
-                }
+                if (targetObjectTracker != null && !calledOff)
+                {
+                    targetObjectTracker.isChasing = false;
+                    targetObjectTracker.removeTracker(this);
+                    calledOff = true;
+                } //This will disable the missile alert in your cockpit.
+
+
 
             }
-            if (destroyTimer > 5f) {
-                DestroyImmediate (MissileClass);
+            if (destroyTimer > 5f)
+            {
+                DestroyImmediate(MissileClass);
             }
         }
 
-        if (MissileTimer > timerLimit) { //Missile cleanup tool
-            ExplodeMissile ();
+        if (MissileTimer > timerLimit)
+        { //Missile cleanup tool
+            ExplodeMissile();
             MissileTimer = 0;
         }
     }
 
-    public Vector3 FirstOrderIntercept (
+    public Vector3 FirstOrderIntercept(
         Vector3 shooterPosition,
         Vector3 shooterVelocity,
         float shotSpeed,
         Vector3 targetPosition,
-        Vector3 targetVelocity) {
+        Vector3 targetVelocity)
+    {
         Vector3 targetRelativePosition = targetPosition - shooterPosition;
         Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
-        float t = FirstOrderInterceptTime (
+        float t = FirstOrderInterceptTime(
             shotSpeed,
             targetRelativePosition,
             targetRelativeVelocity
@@ -315,10 +405,11 @@ public class MissileScript : UdonSharpBehaviour {
         return targetPosition + t * (targetRelativeVelocity);
     }
 
-    public float FirstOrderInterceptTime (
+    public float FirstOrderInterceptTime(
         float shotSpeed,
         Vector3 targetRelativePosition,
-        Vector3 targetRelativeVelocity) {
+        Vector3 targetRelativeVelocity)
+    {
         float velocitySquared = targetRelativeVelocity.sqrMagnitude;
         if (velocitySquared < 0.001f)
             return 0f;
@@ -326,34 +417,39 @@ public class MissileScript : UdonSharpBehaviour {
         float a = velocitySquared - shotSpeed * shotSpeed;
 
         //handle similar velocities
-        if (Mathf.Abs (a) < 0.001f) {
+        if (Mathf.Abs(a) < 0.001f)
+        {
             float t = -targetRelativePosition.sqrMagnitude /
                 (
-                    2f * Vector3.Dot (
+                    2f * Vector3.Dot(
                         targetRelativeVelocity,
                         targetRelativePosition
                     )
                 );
-            return Mathf.Max (t, 0f); //don't shoot back in time
+            return Mathf.Max(t, 0f); //don't shoot back in time
         }
 
-        float b = 2f * Vector3.Dot (targetRelativeVelocity, targetRelativePosition);
+        float b = 2f * Vector3.Dot(targetRelativeVelocity, targetRelativePosition);
         float c = targetRelativePosition.sqrMagnitude;
         float determinant = b * b - 4f * a * c;
 
-        if (determinant > 0f) { //determinant > 0; two intercept paths (most common)
-            float t1 = (-b + Mathf.Sqrt (determinant)) / (2f * a),
-                t2 = (-b - Mathf.Sqrt (determinant)) / (2f * a);
-            if (t1 > 0f) {
+        if (determinant > 0f)
+        { //determinant > 0; two intercept paths (most common)
+            float t1 = (-b + Mathf.Sqrt(determinant)) / (2f * a),
+                t2 = (-b - Mathf.Sqrt(determinant)) / (2f * a);
+            if (t1 > 0f)
+            {
                 if (t2 > 0f)
-                    return Mathf.Min (t1, t2); //both are positive
+                    return Mathf.Min(t1, t2); //both are positive
                 else
                     return t1; //only t1 is positive
-            } else
-                return Mathf.Max (t2, 0f); //don't shoot back in time
-        } else if (determinant < 0f) //determinant < 0; no intercept path
+            }
+            else
+                return Mathf.Max(t2, 0f); //don't shoot back in time
+        }
+        else if (determinant < 0f) //determinant < 0; no intercept path
             return 0f;
         else //determinant = 0; one intercept path, pretty much never happens
-            return Mathf.Max (-b / (2f * a), 0f); //don't shoot back in time
+            return Mathf.Max(-b / (2f * a), 0f); //don't shoot back in time
     }
 }
