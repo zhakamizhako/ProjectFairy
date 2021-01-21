@@ -15,8 +15,8 @@ public class MissileScript : UdonSharpBehaviour
     public GameObject ExplosionEffects;
     public AudioSource[] ExplosionSounds;
     public GameObject LaunchedFrom;
-    private bool isExploded = false;
-    private float destroyTimer = 0;
+    public bool isExploded = false;
+    public float destroyTimer = 0;
     private float MissileTimer = 0;
     private float colliderOn = 0.5f;
     private float missileColliderTimer = 0;
@@ -28,6 +28,7 @@ public class MissileScript : UdonSharpBehaviour
     public int missileType = 1; // 0 = rockets, 1 
     public bool usesOld = false;
     public float RotSpeed = 15;
+    public float maxAngle = 45f;
     // private bool follow = false;
     private bool isSet = false;
     private bool explodeSound = false;
@@ -52,7 +53,12 @@ public class MissileScript : UdonSharpBehaviour
     public Vector3 TargetScale;
     private WeaponSelector LaunchedWP;
     private MissileTrackerAndResponse targetObjectTracker;
-
+    private Vector3 targetPosLastFrame;
+    private float missileDist = 0;
+    private Transform Targeting;
+    private Quaternion guidedRotation;
+    private Transform missileTransform;
+    public AITurretScript turretScript;
     void Start()
     {
         if (type == "missile")
@@ -63,11 +69,21 @@ public class MissileScript : UdonSharpBehaviour
         {
             colliderOn = 1f;
         }
+        else if (type == "flak")
+        {
+            if (turretScript != null)
+            {
+                timerLimit = turretScript.TimerLimitFlak;
+            }
+            colliderOn = 0.3f;
+        }
         MissileRigidBody = MissileClass.GetComponent<Rigidbody>();
         MissileConstantForce = MissileClass.GetComponent<ConstantForce>();
         LaunchedWP = LaunchedFrom != null ? LaunchedFrom.GetComponent<WeaponSelector>() : null;
+        missileTransform = MissileClass.transform;
+
         // Debug.Log ("MissileScript Initialized");
-        if (Target != null)
+        if (Target != null && type!="flak")
         {
             // Debug.Log ("I Have Target!");
             if (Target.GetComponent<MissileTargeterParent>() != null)
@@ -76,15 +92,31 @@ public class MissileScript : UdonSharpBehaviour
                 if (b.Target != null && b.noTarget == false)
                 {
                     targetObjectTracker = b.Target;
+                    if (targetObjectTracker.Tailer != null)
+                    {
+                        Targeting = targetObjectTracker.Tailer;
+                    }
+                    else
+                    {
+                        Targeting = targetObjectTracker.transform;
+                    }
                     // Debug.Log ("Assigned");
                 }
             }
-            else if (Target.GetComponent<AITurretScript>() != null)
+            else if (Target.GetComponent<AITurretScript>() != null && type!="flak")
             {
                 var b = Target.GetComponent<AITurretScript>();
                 if (b.Target != null)
                 {
                     targetObjectTracker = b.Target;
+                    if (targetObjectTracker.Tailer != null)
+                    {
+                        Targeting = targetObjectTracker.Tailer;
+                    }
+                    else
+                    {
+                        Targeting = targetObjectTracker.transform;
+                    }
                     // Debug.Log ("AssignedAI");
                 }
             }
@@ -191,7 +223,7 @@ public class MissileScript : UdonSharpBehaviour
         }
         if (!isExploded)
         {
-            if (type == "missile")
+            if (type == "missile" || type=="flak")
                 MissileConstantForce.relativeForce = new Vector3(0, 0, missileSpeed);
 
             if (type == "bomb")
@@ -205,18 +237,25 @@ public class MissileScript : UdonSharpBehaviour
                 {
                     if (MissileTimer > .3f)
                     {
+                        Vector3 relPos = Targeting.position - missileTransform.position;
+                        float angleToTarget = Mathf.Abs(Vector3.Angle(missileTransform.forward.normalized, relPos.normalized));
+                        missileDist = Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position);
 
-                        if (Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position) < closeDistance && !close)
+                        if (missileDist < closeDistance && !close)
                         {
                             close = true;
                         }
-                        if (Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position) > giveupDistance && close)
+                        if (missileDist > giveupDistance && close)
                         {
                             missed = true;
                         }
-                        if (Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position) < explodeAt)
+                        if (missileDist < explodeAt)
                         {
                             ExplodeMissile();
+                        }
+                        if (angleToTarget > maxAngle)
+                        {
+                            missed = true;
                         }
 
                         if (!missed)
@@ -227,15 +266,15 @@ public class MissileScript : UdonSharpBehaviour
                                 indicatorCalled = true;
                                 targetObjectTracker.receiveTracker(this);
                             }
-                            if (targetObjectTracker.Tailer != null)
+                            if (Targeting != null)
                             { //heatseeker
                                 if (usesOld)
                                 {
-                                    missile.LookAt(targetObjectTracker.Tailer);
+                                    missile.LookAt(Targeting);
                                 }
                                 else if (missileType == 1)
                                 {
-                                    var ObjectToTargetVector = targetObjectTracker.Tailer.gameObject.transform.position - missile.position;
+                                    var ObjectToTargetVector = Targeting.gameObject.transform.position - missile.position;
                                     var AIForward = missile.forward;
                                     var targetDirection = ObjectToTargetVector.normalized;
                                     var rotationAxis = Vector3.Cross(AIForward, targetDirection);
@@ -260,21 +299,7 @@ public class MissileScript : UdonSharpBehaviour
                                     {
                                         V = Vector3.zero;
                                     }
-                                    finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, targetObjectTracker.Tailer.gameObject.transform.position, V);
-                                    // Vector3 D = targetObject.gameObject.transform.position - missile.position;
-                                    // float A = (V.sqrMagnitude - missile.gameObject.GetComponent<Rigidbody> ().velocity.magnitude) * missile.gameObject.GetComponent<Rigidbody> ().velocity.magnitude;
-                                    // float B = 2 * Vector3.Dot (D, V);
-                                    // float C = D.sqrMagnitude;
-                                    // if (A >= 0) {
-                                    //     Debug.LogError ("No solution exists");
-                                    //     finalVectors = targetObject.gameObject.transform.position;
-                                    // } else {
-                                    //     float rt = Mathf.Sqrt (B * B - 4 * A * C);
-                                    //     float dt1 = (-B + rt) / (2 * A);
-                                    //     float dt2 = (-B - rt) / (2 * A);
-                                    //     float dt = (dt1 < 0 ? dt2 : dt1);
-                                    //     finalVectors = targetObject.gameObject.transform.position;
-                                    // }
+                                    finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, Targeting.gameObject.transform.position, V);
                                     if (TargetTest != null)
                                     {
                                         var dist = Vector3.Distance(finalVectors, LaunchedFrom.transform.position);
@@ -291,29 +316,37 @@ public class MissileScript : UdonSharpBehaviour
 
                                     missile.Rotate(rotationAxis, Mathf.Min(RotSpeed * Time.deltaTime, deltaAngle), Space.World);
                                 }
-                            }
-                            else
-                            {
-                                if (usesOld)
+                                else if (missileType == 3)
                                 {
-                                    missile.LookAt(targetObjectTracker.transform);
-                                }
-                                else if (missileType == 1)
-                                {
-                                    var ObjectToTargetVector = targetObjectTracker.transform.position - missile.position;
-                                    var AIForward = missile.forward;
-                                    var targetDirection = ObjectToTargetVector.normalized;
-                                    var rotationAxis = Vector3.Cross(AIForward, targetDirection);
-                                    var deltaAngle = Vector3.Angle(AIForward, targetDirection);
+                                    // relPos = Targeting.position - missileTransform.position;
+                                    // float angleToTarget = Mathf.Abs(Vector3.Angle(missileTransform.forward.normalized, relPos.normalized));
+                                    Vector3 targetVelocity = Targeting.position - targetPosLastFrame;
+                                    targetVelocity /= Time.deltaTime;
 
-                                    missile.Rotate(rotationAxis, Mathf.Min(RotSpeed * Time.deltaTime, deltaAngle), Space.World);
-                                }
-                                else if (missileType == 2)
-                                {
-                                    Vector3 finalVectors;
-                                    Vector3 V;
-                                    V = Vector3.zero;
-                                    finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, targetObjectTracker.transform.position, V);
+                                    float predictedSpeed = Mathf.Min(MissileRigidBody.velocity.magnitude * MissileTimer);
+                                    float timeToImpact = missileDist / Mathf.Max(predictedSpeed, 1.0f);
+
+                                    // Create lead position based on target velocity and time to impact.                
+                                    Vector3 leadPos = Targeting.position + targetVelocity * timeToImpact;
+                                    Vector3 leadVec = leadPos - missileTransform.position;
+
+                                    //print(leadVec.magnitude.ToString());
+
+                                    //=====================================================
+
+                                    // It's very easy for the lead position to be outside of the seeker head. To prevent
+                                    // this, only allow the target direction to be 90% of the seeker head's limit.
+                                    relPos = Vector3.RotateTowards(relPos.normalized, leadVec.normalized, maxAngle * Mathf.Deg2Rad * 0.9f, 0.0f);
+                                    guidedRotation = Quaternion.LookRotation(relPos, missileTransform.up);
+
+                                    //Debug.DrawRay(target.position, targetVelocity * timeToImpact, Color.red);
+                                    //Debug.DrawRay(target.position, targetVelocity * timeToHit, Color.red);
+                                    //Debug.DrawRay(transform.position, leadVec, Color.red);
+
+                                    targetPosLastFrame = Targeting.position;
+
+                                    missile.rotation = Quaternion.RotateTowards(missile.rotation, guidedRotation, RotSpeed * Time.deltaTime);
+                                    //reference https://github.com/brihernandez/AceArcadeMissiles/blob/master/Assets/AceArcadeMissiles/Scripts/AAMissile.cs
                                 }
                             }
                         }
@@ -363,7 +396,7 @@ public class MissileScript : UdonSharpBehaviour
             }
             if (destroyTimer < 5f)
             {
-                destroyTimer += Time.deltaTime;
+                destroyTimer = destroyTimer + Time.deltaTime;
 
                 if (targetObjectTracker != null && !calledOff)
                 {
@@ -377,11 +410,11 @@ public class MissileScript : UdonSharpBehaviour
             }
             if (destroyTimer > 5f)
             {
-                DestroyImmediate(MissileClass);
+                DestroyImmediate(gameObject);
             }
         }
 
-        if (MissileTimer > timerLimit)
+        if (!isExploded && MissileTimer > timerLimit)
         { //Missile cleanup tool
             ExplodeMissile();
             MissileTimer = 0;

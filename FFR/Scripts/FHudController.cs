@@ -34,7 +34,6 @@ public class FHudController : UdonSharpBehaviour
     public Text GsText;
     public Text SpeedMachText;
     public Text HealthText;
-    public Text CopilotHealthText;
     public Text AngleOfAttack;
     public GameObject MaveFlipMode;
     public float divisibleValue = 5;
@@ -46,25 +45,50 @@ public class FHudController : UdonSharpBehaviour
     private Vector3 speedometerLerp = new Vector3(0, 0, 0);
     private Vector3 headingTurn = new Vector3(0, 0, 0);
     private Vector3 gunhudLerp = new Vector3(0, 0, 0);
-    public float distance_from_head = 1.333f;
+    // public float distance_from_head = 1.333f;
     public Transform parentTransform;
-    public bool isVR;
+    // public bool isVR;
     public bool onTesting = false;
     public PlayerUIScript UIScript;
     private VRCPlayerApi localPlayer;
     private Vector3 startSize;
 
+    private int HealthTemp = 0;
+    private int altimetertemp = 0;
+    private int speedometerTextTemp = 0;
+    private float machTemp = 0f;
+    private float gsTemp = 0f;
+    private float aoatemp = 0f;
+
+    public GameObject CatchArmLocked;
+    public GameObject CatchArmReady;
+    public GameObject CatapultReady;
+    public GameObject MissObject;
+    public GameObject HitObject;
+    public GameObject MissileAlertObject;
+    public GameObject CautionObject;
+    private Rigidbody MainBodyPlane;
+
+
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
         startSize = gameObject.transform.localScale;
+        MainBodyPlane = PlaneBody != null ? PlaneBody.GetComponent<Rigidbody>() : null;
         // if (EngineController!=null && !EngineController.InEditor) {
         //     gameObject.SetActive (false);
         // }
         // EngineController.localPlayer = Networking.LocalPlayer;
+        if (CatchArmLocked != null) { CatchArmLocked.SetActive(false); }
+        if (CatchArmReady != null) { CatchArmReady.SetActive(false); }
+        if (CatapultReady != null) { CatapultReady.SetActive(false); }
+        if (MissObject != null) { MissObject.SetActive(false); }
+        if (HitObject != null) { HitObject.SetActive(false); }
+        if (MissileAlertObject != null) { MissileAlertObject.SetActive(false); }
+        if (CautionObject != null) { CautionObject.SetActive(false); }
     }
 
-    void Update()
+    void LateUpdate()
     {
         if (localPlayer != null && (onTesting || EngineController != null) && UIScript != null)
         {
@@ -88,6 +112,10 @@ public class FHudController : UdonSharpBehaviour
                 }
             }
         }
+    }
+
+    void Update()
+    {
         if (EngineController != null && EngineController.VehicleRigidbody != null && (EngineController.Passenger || EngineController.Piloting))
         {
             if (Speedometer != null)
@@ -134,7 +162,7 @@ public class FHudController : UdonSharpBehaviour
             }
             if (HorizonTool != null)
             {
-                var hrotate = EngineController.VehicleMainObj.transform.localRotation.eulerAngles;
+                var hrotate = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
                 // float new_z = hrotate.z;
                 // hrotate.z = 0;
                 hrotate.y = 0;
@@ -165,17 +193,37 @@ public class FHudController : UdonSharpBehaviour
                         FlapsUI.SetActive(false);
                 }
             }
-            if (HealthText != null) { HealthText.text = "HP: " + EngineController.Health.ToString("F0"); }
-            if (CopilotHealthText != null) { CopilotHealthText.text = "HP: " + EngineController.Health.ToString("F0"); }
+            if (HealthText != null)
+            {
+                int TestHealth = Mathf.RoundToInt(EngineController.Health);
+                if (TestHealth != HealthTemp)
+                {
+                    HealthTemp = TestHealth;
+                    HealthText.text = string.Format("HP:{0}", HealthTemp);
+                }
+            }
+            // if (CopilotHealthText != null) { CopilotHealthText.text = "HP: " + EngineController.Health.ToString("F0"); }
             if (AltimeterText != null)
             {
-                AltimeterText.text = ((EngineController.CenterOfMass.position.y + -EngineController.SeaLevel) * 3.28084f).ToString("F0") + "ft";
+                int testAltimeterVal = Mathf.RoundToInt((EngineController.CenterOfMass.position.y + -EngineController.SeaLevel) * 3.28084f);
+                if (testAltimeterVal != altimetertemp)
+                {
+                    altimetertemp = testAltimeterVal;
+                    AltimeterText.text = string.Format("{0}ft", testAltimeterVal);
+                }
             }
             if (SpeedometerText != null)
             {
                 if (EngineController.VehicleRigidbody != null)
                 {
-                    SpeedometerText.text = (((EngineController.CurrentVel.magnitude) * 1.9438445f).ToString("F0")) + "kt";
+                    int testSpeedometer = Mathf.RoundToInt(EngineController.CurrentVel.magnitude * 1.9438445f);
+                    if (testSpeedometer != speedometerTextTemp)
+                    {
+                        speedometerTextTemp = testSpeedometer;
+                        SpeedometerText.text = string.Format("{0}kt", speedometerTextTemp);
+                    }
+
+                    // SpeedometerText.text = (((EngineController.CurrentVel.magnitude) * 1.9438445f).ToString("F0")) + "kt";
                 }
             }
             if (LimiterUI != null)
@@ -193,15 +241,30 @@ public class FHudController : UdonSharpBehaviour
             }
             if (SpeedMachText != null)
             {
-                SpeedMachText.text = ((EngineController.CurrentVel.magnitude) / 343f).ToString("F2");
+                float TestSpeedMach = (EngineController.CurrentVel.magnitude) / 343f;
+                if (TestSpeedMach != machTemp)
+                {
+                    machTemp = TestSpeedMach;
+                    SpeedMachText.text = string.Format("{0:0.00}", machTemp);
+                }
             }
             if (GsText != null)
             {
-                GsText.text = EngineController.Gs.ToString("F2");
+                float gstest = EngineController.Gs;
+                if (gstest != gsTemp)
+                {
+                    gsTemp = gstest;
+                    GsText.text = string.Format("{0:0.00}", gsTemp);
+                }
             }
             if (AngleOfAttack != null)
             {
-                AngleOfAttack.text = EngineController.AngleOfAttack.ToString("F0");
+                float aoatest = EngineController.AngleOfAttack;
+                if (aoatest != aoatemp)
+                {
+                    aoatemp = aoatest;
+                    AngleOfAttack.text = string.Format("{0:0.00}", aoatemp);
+                }
             }
             if (PullupUI != null)
             {
@@ -297,29 +360,15 @@ public class FHudController : UdonSharpBehaviour
             }
             if (GunHud != null)
             {
-
-                // Vector3 tempvel = Vector3.zero;
-                // if (EngineController.CurrentVel.magnitude < 2) {
-                //     tempvel = -Vector3.up * 2; //straight down instead of spazzing out when moving very slow
-                // } else {
-                //     tempvel = EngineController.CurrentVel;
-                // }
-                Rigidbody MainBodyPlane = PlaneBody.GetComponent<Rigidbody>();
                 var localVelocity = PlaneBody.transform.InverseTransformDirection(EngineController.CurrentVel);
-                // Debug.Log("X:"+localVelocity.x +"::: Y:"+localVelocity.y+"::: Z:"+localVelocity.z);
                 gunhudLerp = Vector3.Lerp(gunhudLerp, new Vector3(-localVelocity.x / 2.5f, 0, localVelocity.y / 2.5f), 4.5f * Time.deltaTime);
                 GunHud.localPosition = gunhudLerp;
-
-                // GunHud.position = transform.position + tempvel;
-                // GunHud.localPosition = GunHud.localPosition.normalized * distance_from_head;
             }
 
             if (PlaneBody != null && HeadingTool != null)
             {
-                Rigidbody MainBodyPlane = PlaneBody.GetComponent<Rigidbody>();
                 float angle = (Mathf.Atan2(MainBodyPlane.velocity.x, MainBodyPlane.velocity.z) * Mathf.Rad2Deg);
                 angle = (angle + 360f) % 360f;
-                // headingTurn = Vector3.Lerp (headingTurn, new Vector3 (0, 0, -angle), 4.5f * Time.deltaTime);
                 Vector3 headingTurn = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
                 headingTurn.z = EngineController.VehicleMainObj.transform.rotation.eulerAngles.y;
                 headingTurn.x = 0;

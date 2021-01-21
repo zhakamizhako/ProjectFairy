@@ -23,6 +23,8 @@ public class CanvasHud : UdonSharpBehaviour {
     public PlayerUIScript UIScript;
     private VRCPlayerApi localPlayer;
 
+    private int TempAltimeterVal = 0;
+
     private Vector3 startSize;
     void Start () {
         localPlayer = Networking.LocalPlayer;
@@ -68,7 +70,13 @@ public class CanvasHud : UdonSharpBehaviour {
                 }
             }
             if (AltimeterText != null) {
-                AltimeterText.text = ((EngineControl.CenterOfMass.position.y + -EngineControl.SeaLevel) * 3.28084f).ToString ("F0") + "ft";
+                int testAltimeterVal = Mathf.RoundToInt((EngineControl.CenterOfMass.position.y + -EngineControl.SeaLevel) * 3.28084f);
+                if(testAltimeterVal!=TempAltimeterVal){
+                    TempAltimeterVal = testAltimeterVal;
+                    AltimeterText.text = string.Format("{0}ft",testAltimeterVal);
+                }
+                // AltimeterText.text = ((EngineControl.CenterOfMass.position.y + -EngineControl.SeaLevel) * 3.28084f).ToString ("F0") + "ft";
+
             }
             if (CanvasHUDAnimator != null) {
                 if (!hbcontroller.isLEngineDead) {

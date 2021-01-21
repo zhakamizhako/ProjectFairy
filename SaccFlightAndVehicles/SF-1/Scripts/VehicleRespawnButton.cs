@@ -18,7 +18,8 @@ public class VehicleRespawnButton : UdonSharpBehaviour
             Networking.SetOwner(EngineControl.localPlayer, EngineControl.VehicleMainObj);
             Networking.SetOwner(EngineControl.localPlayer, EngineControl.gameObject);
             Networking.SetOwner(EngineControl.localPlayer, EngineControl.EffectsControl.gameObject);
-            EngineControl.VehicleMainObj.transform.position = new Vector3(EngineControl.VehicleMainObj.transform.position.x, -10000, EngineControl.VehicleMainObj.transform.position.z);
+            EngineControl.VehicleMainObj.transform.position = EngineControl.Spawnposition;
+            EngineControl.VehicleMainObj.transform.rotation = Quaternion.Euler(EngineControl.Spawnrotation);
             if (EngineControl.HasCanopy) { EngineControl.EffectsControl.CanopyOpen = true; }
             EngineControl.EffectsControl.GearUp = false;
             EngineControl.EffectsControl.Flaps = true;

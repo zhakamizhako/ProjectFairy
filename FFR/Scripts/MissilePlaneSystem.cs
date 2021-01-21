@@ -18,7 +18,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public AudioSource NoTargets; // No target Sfx
     public MissileTargets MissileTargetScript; // Targets List. :3
     public MissileTargeterParent misTarget; // Missile Target Assigner
-    public GameObject MyTracker; // If it's your own tracker marker...
+    public MissileTrackerAndResponse MyTracker; // If it's your own tracker marker...
     public Transform Player; // Lol. I think i should remove this.
     public GameObject TargetChangeHUD; // Target Change Indicator
     public GameObject NoTargetHUD; // No target Indicator
@@ -108,9 +108,12 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     private int prevSelected = -1;
     public bool selectedWeapon = false;
     private Renderer LockSightRenderer;
+    private Transform LockSightTransform;
     public int missileindex = 0;
     public float tempAngleCheck = 0f;
+    public float damageValuePerParticle = 20f;
 
+    public bool sleep = false;
     void Start()
     { //Initialize Missile Packs and status
         if (LockSightHUD != null)
@@ -140,6 +143,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         // selectedWeapon = false;
 
         LockSightRenderer = LockSightHUD.GetComponent<Transform>().GetChild(0).GetComponent<Renderer>();
+        LockSightTransform = LockSightHUD.transform;
     }
 
     public void leavePlane()
@@ -351,7 +355,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         {
             cooldownhud += Time.deltaTime;
         }
-        if (cooldownhud > 1f)
+        else if (cooldownhud > 1f)
         {
             if (NoTargetHUD != null && NoTargetHUD.activeSelf)
             {
@@ -422,6 +426,51 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                 currentIndex = 0;
             }
 
+            if (LockSightHUD != null && selectedWeapon)
+            { //rendering the lock sight
+                float dist = 0f;
+
+                if (isLocking || isLocked)
+                {
+                    if (EngineController.localPlayer != null)
+                    {
+                        LockSightTransform.LookAt(EngineController.localPlayer.GetPosition());
+                        dist = Vector3.Distance(EngineController.localPlayer.GetPosition(), LockSightTransform.position);
+                        LockSightTransform.localScale = new Vector3(1, 1, 1) * dist;
+                    }
+                    else
+                    {
+                        dist = Vector3.Distance(Player.position, LockSightTransform.position);
+                        LockSightTransform.LookAt(Player);
+                        LockSightTransform.localScale = new Vector3(1, 1, 1) * dist;
+                    }
+                }
+
+                if (isLocking)
+                {
+                    Vector3 randomVectors = new Vector3(Random.Range(-50f, 50f), Random.Range(-50f, 50f), Random.Range(-50f, 50f));
+                    LockSightHUD.SetActive(true);
+                    if (updateCursor)
+                    {
+                        LockSightTransform.position = MissileTargetScript.Targets[selectedTargetIndex].transform.position + randomVectors;
+                    }
+
+                    if (isLocking && !isLocked)
+                        LockSightRenderer.material.SetColor("_Color", Color.white);
+                }
+                else
+                {
+                    LockSightHUD.SetActive(false);
+                }
+
+                if (isLocked)
+                {
+                    LockSightTransform.position = MissileTargetScript.Targets[selectedTargetIndex].transform.position;
+                    LockSightRenderer.material.SetColor("_Color", Color.red);
+                    //  SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetLocked");
+                }
+            }
+
         }
         else if ((!EngineController.Piloting || !EngineController.Passenger) && tempShow)
         {
@@ -429,57 +478,14 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             {
                 var TrackerObject = MissileTargetScript.Targets[bx];
                 if (TrackerObject != null)
-                    TrackerObject.GetComponent<MissileTrackerAndResponse>().ShowTargets = false;
+                    TrackerObject.ShowTargets = false;
+                    // TrackerObject.GetComponent<MissileTrackerAndResponse>().ShowTargets = false;
             }
             // foreach (GameObject go in MissileTargetScript.Targets) { }
             tempShow = false;
         }
         // ^---- Very efficient programming, i know. =/
 
-        if (LockSightHUD != null)
-        { //rendering the lock sight
-            float dist = 0f;
-
-            if (isLocking || isLocked)
-            {
-                if (EngineController.localPlayer != null)
-                {
-                    LockSightHUD.transform.LookAt(EngineController.localPlayer.GetPosition());
-                    dist = Vector3.Distance(EngineController.localPlayer.GetPosition(), LockSightHUD.transform.position);
-                    LockSightHUD.transform.localScale = new Vector3(1, 1, 1) * dist;
-                }
-                else
-                {
-                    dist = Vector3.Distance(Player.position, LockSightHUD.transform.position);
-                    LockSightHUD.transform.LookAt(Player);
-                    LockSightHUD.transform.localScale = new Vector3(1, 1, 1) * dist;
-                }
-            }
-
-            if (isLocking)
-            {
-                Vector3 randomVectors = new Vector3(Random.Range(-50f, 50f), Random.Range(-50f, 50f), Random.Range(-50f, 50f));
-                LockSightHUD.SetActive(true);
-                if (updateCursor)
-                {
-                    LockSightHUD.transform.position = MissileTargetScript.Targets[selectedTargetIndex].transform.position + randomVectors;
-                }
-
-                if (isLocking && !isLocked)
-                    LockSightRenderer.material.SetColor("_Color", Color.white);
-            }
-            else
-            {
-                LockSightHUD.SetActive(false);
-            }
-
-            if (isLocked)
-            {
-                LockSightHUD.transform.position = MissileTargetScript.Targets[selectedTargetIndex].transform.position;
-                LockSightRenderer.material.SetColor("_Color", Color.red);
-                //  SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "SetLocked");
-            }
-        }
 
         if ((EngineController.localPlayer == null || EngineController.Piloting) && !selectedWeapon && isGun)
         {
@@ -781,7 +787,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public void TrackingSync()
     {
         var targetToWarn = misTarget.Target;
-        if (targetToWarn != null) targetToWarn.GetComponent<MissileTrackerAndResponse>().isTracking = true;
+        if (targetToWarn != null) targetToWarn.isTracking = true;
     }
 
 
@@ -793,7 +799,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             int lastSelectedTarget = selectedTargetIndex;
             if (lastSelectedTarget != -1)
             {
-                var bt = MissileTargetScript.Targets[selectedTargetIndex].GetComponent<MissileTrackerAndResponse>();
+                var bt = MissileTargetScript.Targets[selectedTargetIndex];
                 if (bt != null)
                 {
                     bt.isTracking = false;
@@ -827,7 +833,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                                 {
                                     b = null;
                                 }
-                                if (b != null && b == MissileTargetScript.Targets[mm].GetComponent<MissileTrackerAndResponse>() && b != MyTracker.GetComponent<MissileTrackerAndResponse>() && b.isTargetable)
+                                if (b != null && b == MissileTargetScript.Targets[mm] && b != MyTracker && b.isTargetable)
                                 {
                                     MissileTrackerAndResponse[] temp = new MissileTrackerAndResponse[TGTList.Length + 1];
                                     int[] tempTargetIndices = new int[targetIndices.Length + 1];

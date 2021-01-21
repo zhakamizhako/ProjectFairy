@@ -70,6 +70,7 @@ public class TriggerScript : UdonSharpBehaviour
     public bool StopMusic = false;
     public int PlayMusicOn = 0;
     [TextArea] public string MusicDetails; //Or Chapter.
+    private bool updateString = false;
 
     void Start()
     {
@@ -140,11 +141,11 @@ public class TriggerScript : UdonSharpBehaviour
             if (!isRunning[currentX])
             {
                 isRunning[currentX] = true;
-                if (UIScript.textObject != null)
+                if (UIScript.textObject != null && !updateString)
                 {
                     UIScript.textObject.text = DialogLines[currentX];
                 }
-                if (UIScript.textObjectVR != null)
+                if (UIScript.textObjectVR != null && !updateString)
                 {
                     UIScript.textObjectVR.text = DialogLines[currentX];
                 }
@@ -152,6 +153,7 @@ public class TriggerScript : UdonSharpBehaviour
                 {
                     DialogSounds[currentX].Play();
                 }
+                updateString = true;
             }
 
             if (PlayMusic && !StopMusic && PlayMusicOn == currentX)
@@ -201,6 +203,7 @@ public class TriggerScript : UdonSharpBehaviour
                             isRunning[x] = false;
                         }
                         currentX = 0;
+                        updateString = false;
                         if (AfterRun != null)
                         {
                             AfterRun.run = true;
@@ -209,6 +212,7 @@ public class TriggerScript : UdonSharpBehaviour
                     else
                     {
                         currentX = currentX + 1;
+                        updateString = false;
                     }
                 }
                 if (clearBetweenDialogues)

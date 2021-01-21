@@ -22,7 +22,7 @@ public class PlaneSelector : UdonSharpBehaviour {
             } else {
                 SelectedPlane = SelectedPlane + 1;
             }
-            Networking.SetOwner(localPlayer,Planes[SelectedPlane]); 
+            Networking.SetOwner(localPlayer, Planes[SelectedPlane]); 
         }
     }
 
@@ -33,7 +33,7 @@ public class PlaneSelector : UdonSharpBehaviour {
             } else {
                 SelectedPlane = SelectedPlane - 1;
             }
-            Networking.SetOwner(localPlayer,Planes[SelectedPlane]); 
+            Networking.SetOwner(localPlayer, Planes[SelectedPlane]); 
         }
     }
 

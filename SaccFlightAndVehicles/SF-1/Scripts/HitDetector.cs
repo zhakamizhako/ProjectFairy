@@ -8,6 +8,7 @@ public class HitDetector : UdonSharpBehaviour {
     public MissileTrackerAndResponse Tracker;
     public LandingSystemController LSC;
     public GameObject OwnGun;
+    // private float damage = 0f;
     private void Start () {
         Assert (EngineControl != null, "Start: EngineControl != null");
     }

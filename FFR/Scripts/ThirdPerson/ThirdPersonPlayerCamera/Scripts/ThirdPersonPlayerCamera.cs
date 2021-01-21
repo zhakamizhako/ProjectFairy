@@ -86,7 +86,7 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour {
             ThirdCam.transform.position = cameraTarget[_mode].position;
             ThirdCam.transform.rotation = cameraTarget[_mode].rotation;
             enabledCam = ThirdCam.enabled;
-            PostProcessingGlobal.SetActive(!enabledCam);
+            // PostProcessingGlobal.SetActive(!enabledCam);
         }
         if (Input.GetKeyDown (KeyCode.Tab)) {
             menuItems[0].SetActive (!menuItems[0].activeInHierarchy);

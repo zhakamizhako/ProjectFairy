@@ -21,6 +21,7 @@ public class PilotSeat : UdonSharpBehaviour
     public Transform teleportTo;
     public MissileTrackerAndResponse mistracker;
     public OpenWorldMovementLogic OWML;
+    public GameObject[] EnableObjectsOnStart;
     public bool testMode = false;
     private void Start()
     {
@@ -112,6 +113,12 @@ public class PilotSeat : UdonSharpBehaviour
         if (fHud != null)
         {
             fHud.SetActive(true);
+        }
+
+        if(EnableObjectsOnStart!=null && EnableObjectsOnStart.Length >0){
+            foreach(GameObject x in EnableObjectsOnStart){
+                x.SetActive(true);
+            }
         }
 
         //hopefully prevents explosions when you enter the plane
@@ -230,6 +237,11 @@ public class PilotSeat : UdonSharpBehaviour
                 player.TeleportTo(teleportTo.position, teleportTo.rotation);
                 player.SetVelocity(Vector3.zero);
             }
+            if(EnableObjectsOnStart!=null && EnableObjectsOnStart.Length >0){
+            foreach(GameObject x in EnableObjectsOnStart){
+                x.SetActive(false);
+            }
+        }
 
             //set plane's layer back
             // if (PlaneMesh != null) {

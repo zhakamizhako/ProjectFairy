@@ -50,6 +50,9 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     [Header("Display Settings")]
     public GameObject TargetIconRender;
     public Text TrackerText;
+    public Text PlayerText;
+    public Text DistanceText;
+    public Text HealthText;
     public GameObject textIsAlly;
     public GameObject textIsEnemy;
     public GameObject textIsUknown;
@@ -85,9 +88,15 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public bool showX = false;
     public GameObject XIcon;
     private Renderer IconRenderer;
-    public bool HideIfFar = false;
-    public float farDistance = 20000f;
-    private float currentDistance = 0f;
+    public bool HideIfFar = true;
+    public float farDistance = 12000f;
+    public bool showneverthelessDistance = false;
+    public float currentDistance = 0f;
+    public float tempAngleCheck = 0f;
+    public float cullAngle = 75f;
+    private float tempHealth = 0f;
+    private bool healthUpdate = false;
+    private string words = "";
 
     void Start()
     {
@@ -177,7 +186,6 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
         Indicators = new GameObject[0];
         Debug.Log("CLEANDUP");
     }
-
     public void removeTracker(MissileScript misScript)
     {
         if (EngineController != null && (EngineController.Piloting || EngineController.Passenger))
@@ -378,18 +386,19 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             }
         }
     }
-
-    void FixedUpdate()
-    {
-
-    }
-
     void Update()
     {
         if(HideIfFar){
             currentDistance = Vector3.Distance(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetPosition():Vector3.zero, gameObject.transform.position);
-            if(currentDistance > farDistance){
+                                    var distance = Vector3.Distance(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero, gameObject.transform.position);
+                                    var ObjectToTargetVector = gameObject.transform.position -(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero);
+                                    var AIForward = Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward : Vector3.zero;
+                                    var targetDirection = ObjectToTargetVector.normalized;
+                                 tempAngleCheck = Vector3.Angle(targetDirection, AIForward);
+            if((currentDistance > farDistance &&!showneverthelessDistance) || tempAngleCheck > cullAngle ){
                 culled = true;
+            }else{
+                culled = false;
             }
         }
 
@@ -507,7 +516,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                                 IconRenderer.material.SetColor("_Color", Color.red);
                         }
                     }
-                    if (ShowDistance)
+                    if (ShowDistance || isSelected)
                     {
                         float distance = 0f;
                         if (EngineController != null && EngineController.localPlayer != null)
@@ -537,11 +546,11 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             if (TargetIconRender.activeSelf)
                 TargetIconRender.SetActive(false);
         }
-        if (isChasing == true)
-        {
-            // Debug.Log("Someone's chasing me.");
-        }
-        if (isWaypointEnabledSync)
+        // if (isChasing == true)
+        // {
+        //     // Debug.Log("Someone's chasing me.");
+        // }
+        if (isWaypoint && isWaypointEnabledSync)
         {
             if (isWaypointEnabled && isWaypointEnabled != hasWaypointEnabled)
             {

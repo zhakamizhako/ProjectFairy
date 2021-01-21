@@ -69,7 +69,7 @@ public class PlayerUIScript : UdonSharpBehaviour
 
     void Start()
     {
-        Debug.Log("UI Script started");
+        // Debug.Log("UI Script started");
         localPlayer = Networking.LocalPlayer;
         if (VRSizeSlider != null)
         {
@@ -247,6 +247,12 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             CurrentPlayingMusic.Stop();
         }
+    }
+
+    public void ForceCleanupUI(){
+     TriggerScript[] temp = new TriggerScript[0];
+     if(textObject!=null) textObject.text= "";
+     if(textObjectVR!=null) textObjectVR.text = "";
     }
 
     public void ReceiveTrigger(TriggerScript x)

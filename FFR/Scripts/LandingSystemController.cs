@@ -11,6 +11,8 @@ public class LandingSystemController : UdonSharpBehaviour
     // public Transform offSetGear;
     public EngineController EngineControl;
     public CatchArmController CAC;
+    public FHudController fhud;
+    
     // public ParentConstraint constraint;
     // [System.NonSerializedAttribute] public ConstraintSource source;
     public bool isSnagged;
@@ -24,6 +26,14 @@ public class LandingSystemController : UdonSharpBehaviour
     void Update(){
         if(CAC==null && isSnagged){
             isSnagged = false;
+            if(fhud!=null && fhud.CatchArmLocked!=null && fhud.CatchArmReady!=null & fhud.CatapultReady!=null){
+                if(fhud.CatchArmLocked.activeSelf)
+                fhud.CatchArmLocked.SetActive(false);
+                if(fhud.CatapultReady.activeSelf)
+                fhud.CatapultReady.SetActive(false);
+                if(fhud.CatchArmReady.activeSelf)
+                fhud.CatchArmReady.SetActive(false);
+            }
         }else if(CAC!=null && EngineControl.Piloting){
             if(Input.GetKeyDown(KeyCode.C) && CAC.holdTimer > CAC.holdTime){
                 if(EngineControl.localPlayer==null){ CAC.Launch(); }

@@ -22,7 +22,7 @@ public class AITurretScript : UdonSharpBehaviour
     public GameObject MissileFab;
     public Transform[] MissileSpawnAreas;
     public AudioSource[] MissileFireSounds;
-    public AudioSource ExplosionSound; // >=/
+    public AudioSource[] ExplosionSounds;
     //If CIWS
     // public ParticleSystem ShootEffect;
     // public ParticleSystem GunParticle;
@@ -86,6 +86,11 @@ public class AITurretScript : UdonSharpBehaviour
     public bool isAngleSpecific = false;
     public bool WarnTargetOnLock = true;
     private bool isSamReady = false;
+    public bool sleep = false;
+    public float TimerLimitFlak = 3f;
+    private float speedflak = 1000f;
+    public float minmultiplier = 2f;
+    public float maxmultiplier = 4f;
 
     void Start()
     {
@@ -97,6 +102,9 @@ public class AITurretScript : UdonSharpBehaviour
             initTargetable = TrackerObject.isTargetable;
             initRendered = TrackerObject.isRendered;
             initShouldFire = shouldFire;
+        }
+        if(turretType=="FLAK" && MissileFab!=null){
+            speedflak = MissileFab.GetComponent<MissileScript>().missileSpeed;
         }
     }
 
@@ -162,7 +170,8 @@ public class AITurretScript : UdonSharpBehaviour
         // Debug.Log ("StopFiring called");
         if (TurretAni != null && isFiringCiws)
         {
-            TurretAni.SetTrigger("stopfire");
+            // TurretAni.SetTrigger("stopfire");
+            TurretAni.SetBool("fireciws", false);
             if (Networking.IsOwner(gameObject))
                 isFiringCiws = false;
         }
@@ -201,9 +210,11 @@ public class AITurretScript : UdonSharpBehaviour
         if (Health < 1 && !dead)
         {
             dead = true;
-            if (!explosionSoundPlayed && ExplosionSound != null)
+            if (!explosionSoundPlayed && ExplosionSounds != null && ExplosionSounds.Length > 0)
             {
-                ExplosionSound.Play();
+                int r = Random.Range(0, ExplosionSounds.Length);
+                ExplosionSounds[r].Play();
+                explosionSoundPlayed = true;
             }
             if (Networking.IsOwner(gameObject))
             {
@@ -256,7 +267,8 @@ public class AITurretScript : UdonSharpBehaviour
                     // TrackerObject.gameObject.layer = 0;
                 }
             }
-            if(Target!=null){
+            if (Target != null)
+            {
                 Target.isTracking = false;
             }
             if (onDestroy != null)
@@ -264,7 +276,7 @@ public class AITurretScript : UdonSharpBehaviour
                 onDestroy.run = true;
             }
         }
-        if (!dead)
+        if (!dead && !sleep)
         {
             //sync with everyone
             if (turretType == "CIWS" && TurretAni != null)
@@ -361,6 +373,7 @@ public class AITurretScript : UdonSharpBehaviour
                     }
                 }
                 if (turretType == "SAM") { Target = TargetListTemp.Targets[currentTargetIndex]; }
+                if (turretType == "FLAK") { Target = TargetListTemp.Targets[currentTargetIndex]; }
             }
             if (Target != null)
             {
@@ -386,7 +399,7 @@ public class AITurretScript : UdonSharpBehaviour
                     else if (currentTargetIndex != -1 && TargetListTemp.Targets[currentTargetIndex] != null &&
                       TargetListTemp.Targets[currentTargetIndex].AI != null && TargetListTemp.Targets[currentTargetIndex].AI.AIRigidBody != null)
                     {
-                        V = TargetListTemp.Targets[currentTargetIndex].AI.AIRigidBody.velocity;
+                        V = TargetListTemp.Targets[currentTargetIndex].AI.veloSync;
                     }
                     else
                     {
@@ -640,7 +653,49 @@ public class AITurretScript : UdonSharpBehaviour
                     }
                     if (turretType == "FLAK")
                     {
-                        //Insert Missile fab, that explodes according to distance.
+                        float distanceTarget = Vector3.Distance(LineOfSightDetector.position, Target.gameObject.transform.position);
+                        float randa = Random.Range(minmultiplier, maxmultiplier);
+                        TimerLimitFlak = (distanceTarget / speedflak) * randa ;
+                        if (localPlayer == null || Networking.IsOwner(gameObject))
+                        {
+                            if (isAngleSpecific)
+                            {
+                                var ObjectToTargetVector = Target.gameObject.transform.position - LineOfSightDetector.transform.position;
+                                var AIForward = LineOfSightDetector.forward;
+                                var targetDirection = ObjectToTargetVector.normalized;
+                                if (Vector3.Angle(AIForward, targetDirection) < LockAngle)
+                                {
+                                    isSamReady = true;
+                                    // Target.isTracking = true;
+                                }
+                                else
+                                {
+                                    isSamReady = false;
+                                    // Target.isTracking = false;
+                                }
+                            }
+                            else
+                            {
+                                isSamReady = true;
+                            }
+
+                            if (!isFiring && isSamReady)
+                            {
+                                isFiring = true;
+                                fireCooldown = 0;
+                                if (Networking.IsOwner(gameObject) || localPlayer == null)
+                                    if (localPlayer == null) { syncFireMissile(); }
+                                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "syncFireMissile");
+                            }
+                            if (isFiring && fireCooldown < CooldownEachFire)
+                            {
+                                fireCooldown = fireCooldown + Time.deltaTime;
+                            }
+                            if (isFiring && fireCooldown > CooldownEachFire)
+                            {
+                                isFiring = false;
+                            }
+                        }
                     }
                     if (turretType == "static")
                     {
@@ -655,10 +710,13 @@ public class AITurretScript : UdonSharpBehaviour
                                 var ObjectToTargetVector = Target.gameObject.transform.position - LineOfSightDetector.transform.position;
                                 var AIForward = LineOfSightDetector.forward;
                                 var targetDirection = ObjectToTargetVector.normalized;
-                                if(Vector3.Angle(AIForward, targetDirection) < LockAngle){
+                                if (Vector3.Angle(AIForward, targetDirection) < LockAngle)
+                                {
                                     isSamReady = true;
                                     Target.isTracking = true;
-                                }else{
+                                }
+                                else
+                                {
                                     isSamReady = false;
                                     Target.isTracking = false;
                                 }
@@ -714,6 +772,16 @@ public class AITurretScript : UdonSharpBehaviour
 
                         }
                     }
+                    if (TurretAni != null)
+                    {
+                        isFiringCiws = false;
+                        TurretAni.SetBool("fireciws", false);
+                    }
+                    if (Target != null)
+                    {
+                        Target.isTracking = false;
+                    }
+
 
                 }
             }

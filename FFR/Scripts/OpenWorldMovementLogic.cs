@@ -44,7 +44,7 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
                 EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
                 // EngineControl.VehicleMainObj.transform.rotation = AnchorCoordsRotation;
 
-                Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime / 1))); //Divider set to 1. Maybe i should take that out. 
+                Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
                 PosSync = -Map.transform.position + AnchorCoordsPosition;
                 RotSync = EngineControl.VehicleMainObj.transform.rotation;
             }
