@@ -40,6 +40,8 @@ public class FHudController : UdonSharpBehaviour
     private bool isPlayedAB = false;
     private bool isPlayedPullup = false;
 
+    public bool isHeadTracked = true;
+
     // public float SeaLevel = -200000;
     private Vector3 altimeterLerp = new Vector3(0, 0, 0);
     private Vector3 speedometerLerp = new Vector3(0, 0, 0);
@@ -68,7 +70,13 @@ public class FHudController : UdonSharpBehaviour
     public GameObject MissileAlertObject;
     public GameObject CautionObject;
     private Rigidbody MainBodyPlane;
-
+    
+    //Animator centre
+    public Animator HUDAnimator;
+    public float altitudeMultiplier;
+    public float speedMultiplier;
+    public bool isHeadingConstrainted = false;
+    public bool isHeadingLocalRotation = true;
 
     void Start()
     {
@@ -88,9 +96,9 @@ public class FHudController : UdonSharpBehaviour
         if (CautionObject != null) { CautionObject.SetActive(false); }
     }
 
-    void LateUpdate()
+    void LateUpdate()//???????????????????????????
     {
-        if (localPlayer != null && (onTesting || EngineController != null) && UIScript != null)
+        if (localPlayer != null && (onTesting || EngineController != null) && UIScript != null && isHeadTracked)
         {
             if (parentTransform != null)
             {
@@ -118,6 +126,11 @@ public class FHudController : UdonSharpBehaviour
     {
         if (EngineController != null && EngineController.VehicleRigidbody != null && (EngineController.Passenger || EngineController.Piloting))
         {
+            //??
+            if(HUDAnimator!=null){
+                HUDAnimator.SetFloat("altimeter", (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f) * altitudeMultiplier );
+                HUDAnimator.SetFloat("speedometer", (EngineController.CurrentVel.magnitude *  1.9438445f) * speedMultiplier );
+            }
             if (Speedometer != null)
             {
                 if (EngineController.VehicleRigidbody)
@@ -370,10 +383,14 @@ public class FHudController : UdonSharpBehaviour
                 float angle = (Mathf.Atan2(MainBodyPlane.velocity.x, MainBodyPlane.velocity.z) * Mathf.Rad2Deg);
                 angle = (angle + 360f) % 360f;
                 Vector3 headingTurn = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
-                headingTurn.z = EngineController.VehicleMainObj.transform.rotation.eulerAngles.y;
+                headingTurn.z =  !isHeadingConstrainted ? EngineController.VehicleMainObj.transform.rotation.eulerAngles.y : 0;
                 headingTurn.x = 0;
                 headingTurn.y = 0;
-                HeadingTool.localRotation = Quaternion.Euler(headingTurn);
+                if(isHeadingLocalRotation){
+                    HeadingTool.localRotation = Quaternion.Euler(headingTurn);
+                }else{
+                    HeadingTool.rotation = Quaternion.Euler(headingTurn);
+                }
             }
         }
         if (EngineController != null && !EngineController.Piloting)

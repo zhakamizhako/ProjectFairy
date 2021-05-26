@@ -8,6 +8,7 @@ public class LeaveVehicleButton : UdonSharpBehaviour
 {
     public EngineController EngineControl;
     public VRCStation Seat;
+    public VRCPlayerApi SeatedPlayer;//used for messing with voice volumes
     private void Start()
     {
         Assert(EngineControl != null, "Start: EngineControl != null");

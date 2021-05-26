@@ -18,7 +18,7 @@ public class WeaponSelector : UdonSharpBehaviour {
     public float flareCountdown = 0;
     public float returnTracker = 3;
     private int prevselected = 0;
-    public Text FlareText;
+    public Text[] FlareTexts;
     public Text SwitchWeaponText;
     public EngineController EngineController;
     public AudioSource FlareSound;
@@ -41,8 +41,10 @@ public class WeaponSelector : UdonSharpBehaviour {
     private bool afterFlare = false;
     private bool called = false;
     void Start () {
-        if (FlareText != null) {
-            FlareText.text = "FLARES: " + flaresNow;
+        if (FlareTexts != null && FlareTexts.Length > 0) {
+            foreach(Text t in FlareTexts){
+                t.text = "FLARES: " + flaresNow;
+            }
         }
         if (SwitchWeaponText != null) {
             SwitchWeaponText.text = MissilePlaneSystems[selectedSystem].gameObject.name;
@@ -85,8 +87,12 @@ public class WeaponSelector : UdonSharpBehaviour {
                     flaresNow = flaresNow + 1;
                     // isFiredFlare = false;
                     flareCountdown = 0;
-                    if (FlareText != null)
-                        FlareText.text = "FLARES: " + flaresNow;
+                    if(FlareTexts!=null && FlareTexts.Length>0)
+                    foreach(Text t in FlareTexts){
+                           t.text = "FLARES: " + flaresNow;
+                    }
+                    Debug.Log("CHECK?");
+                     
                 }
             }
         }
@@ -215,6 +221,7 @@ public class WeaponSelector : UdonSharpBehaviour {
             Debug.Log("Setting Ownership");
             if(EngineController.localPlayer!=null && !Networking.IsOwner(MissilePlaneSystems[selectedSystem].gameObject)){
                 Networking.SetOwner(EngineController.localPlayer, MissilePlaneSystems[selectedSystem].gameObject);
+                Networking.SetOwner(EngineController.localPlayer, MissilePlaneSystems[selectedSystem].misTarget.gameObject);
                 Debug.Log("Ownership set");
             }
             
@@ -253,11 +260,17 @@ public class WeaponSelector : UdonSharpBehaviour {
                         FlareSound.Play ();
 
                     if (flaresNow == 0) {
-                        if (FlareText != null)
-                            FlareText.text = "FLARES: EMPTY";
+                        if(FlareTexts!=null && FlareTexts.Length>0)
+                        foreach(Text t in FlareTexts){
+                                t.text = "FLARES: EMPTY";
+                        }
+                        
+                        
                     } else {
-                        if (FlareText != null)
-                            FlareText.text = "FLARES: " + flaresNow;
+                        if(FlareTexts!=null && FlareTexts.Length>0)
+                         foreach(Text t in FlareTexts){
+                                t.text = "FLARES: " + flaresNow;
+                        }   
                     }
                     foreach (ParticleSystem fo in flareObject) {
                         // if (!isHeavyPlane) {

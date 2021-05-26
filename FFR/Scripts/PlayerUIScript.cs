@@ -53,9 +53,12 @@ public class PlayerUIScript : UdonSharpBehaviour
 
     public AudioSource CurrentPlayingMusic;
     public AudioSource QueueAudio;
+    public AudioSource IntroMusic;
+    public bool isPlayingIntro = false;
     public Animator MusicAni;
     public Animator MusicAniVR;
     public Slider MusicVolume;
+    public float MusicVolumeValue = 1f;
     public Text MusicVolumeText;
     private string tempMusicText;
     public Slider IconSlider;
@@ -107,8 +110,14 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             IconSliderText.text = "";
         }
-        if(IconSlider!=null){
+        if (IconSlider != null)
+        {
             startIconSize = IconSize;
+        }
+        if (MusicVolume != null)
+        {
+            MusicVolumeValue = MusicVolume.value;
+            MusicVolumeText.text = MusicVolumeValue + "";
         }
         Assert(textObject != null, "Start: TextObject MUST NOT BE null");
         Assert(textObjectVR != null, "Start: textobjectvr MUST NOT BE null");
@@ -151,6 +160,12 @@ public class PlayerUIScript : UdonSharpBehaviour
             IconSize = IconSlider.value;
             IconSliderText.text = IconSize.ToString("F3");
         }
+        if (MusicVolume != null && MusicVolumeText != null && MusicVolumeValue != MusicVolume.value)
+        {
+            MusicVolumeValue = MusicVolume.value;
+            MusicVolumeText.text = MusicVolumeValue.ToString("F3");
+            CurrentPlayingMusic.volume = MusicVolumeValue;
+        }
         if (PreviewToggle != null && PreviewHUD != null)
         {
             preview = PreviewToggle.isOn;
@@ -192,7 +207,64 @@ public class PlayerUIScript : UdonSharpBehaviour
                 }
             }
         }
+    }
 
+
+
+    public void ReceiveMusic(AudioSource Audio, AudioSource Intro, string Title)
+    {
+        if (Audio != null)
+        {
+            IntroMusic = Intro;
+            QueueAudio = Audio;
+            isSwitchingMusic = true;
+            isPlayingIntro = false;
+            tempMusicText = Title;
+        }
+
+        Debug.Log("eh?");
+    }
+
+    public void StopMusic()
+    {
+        if (CurrentPlayingMusic != null)
+        {
+            CurrentPlayingMusic.Stop();
+        }
+    }
+
+    public void ForceCleanupUI()
+    {
+        TriggerScript[] temp = new TriggerScript[0];
+        if (textObject != null) textObject.text = "";
+        if (textObjectVR != null) textObjectVR.text = "";
+    }
+
+    public void ReceiveTrigger(TriggerScript x)
+    {
+        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length + 1];
+        TriggerScripts.CopyTo(temp, 0);
+        temp[temp.Length - 1] = x;
+        TriggerScripts = temp;
+    }
+
+    public void RemoveTrigger(TriggerScript x)
+    {
+        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length - 1];
+        int b = 0;
+        for (int y = 0; y < TriggerScripts.Length; y++)
+        {
+            if (TriggerScripts[y] != x)
+            {
+                temp[b] = TriggerScripts[y];
+                b = b + 1;
+            }
+        }
+        TriggerScripts = temp;
+    }
+
+    void LateUpdate()
+    {
         if (parentHolderTexts != null && textObject != null && textObjectVR != null && textObject != null && TriggerScripts.Length > 0)
         {
             triggerEmpty = false;
@@ -229,57 +301,6 @@ public class PlayerUIScript : UdonSharpBehaviour
             if (textObjectVR.gameObject.activeSelf) textObjectVR.gameObject.SetActive(false);
             triggerEmpty = true;
         }
-    }
-
-    public void ReceiveMusic(AudioSource Audio, string Title)
-    {
-        if (Audio != null)
-        {
-            QueueAudio = Audio;
-            isSwitchingMusic = true;
-            tempMusicText = Title;
-        }
-    }
-
-    public void StopMusic()
-    {
-        if (CurrentPlayingMusic != null)
-        {
-            CurrentPlayingMusic.Stop();
-        }
-    }
-
-    public void ForceCleanupUI(){
-     TriggerScript[] temp = new TriggerScript[0];
-     if(textObject!=null) textObject.text= "";
-     if(textObjectVR!=null) textObjectVR.text = "";
-    }
-
-    public void ReceiveTrigger(TriggerScript x)
-    {
-        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length + 1];
-        TriggerScripts.CopyTo(temp, 0);
-        temp[temp.Length - 1] = x;
-        TriggerScripts = temp;
-    }
-
-    public void RemoveTrigger(TriggerScript x)
-    {
-        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length - 1];
-        int b = 0;
-        for (int y = 0; y < TriggerScripts.Length; y++)
-        {
-            if (TriggerScripts[y] != x)
-            {
-                temp[b] = TriggerScripts[y];
-                b = b + 1;
-            }
-        }
-        TriggerScripts = temp;
-    }
-
-    void LateUpdate()
-    {
         if (timerStarted && timer < TimeToFade)
         {
             UIAnimator.SetFloat("fadeTime", (timer - TimeToFade) * TimeToFade / 100f);
@@ -291,8 +312,24 @@ public class PlayerUIScript : UdonSharpBehaviour
             timer = 0;
         }
 
+        if (CurrentPlayingMusic == null && QueueAudio && isSwitchingMusic)
+        {
+            CurrentPlayingMusic = QueueAudio;
+        }
+
         if (CurrentPlayingMusic != null && MusicVolume != null && MusicVolumeText != null)
         {
+            if (!isSwitchingMusic)
+            {
+                if (IntroMusic != null && isPlayingIntro)
+                {
+                    if (!IntroMusic.isPlaying)
+                    {
+                        isPlayingIntro = false;
+                        CurrentPlayingMusic.Play();
+                    }
+                }
+            }
             if (isSwitchingMusic)
             {
                 if (musiFadeTimer < musicFade)
@@ -307,13 +344,34 @@ public class PlayerUIScript : UdonSharpBehaviour
                     CurrentPlayingMusic = QueueAudio;
                     isSwitchingMusic = false;
                     showTitle = true;
-                    CurrentPlayingMusic.Play();
+                    if (IntroMusic != null)
+                    {
+                        IntroMusic.Play();
+                        isPlayingIntro = true;
+                    }
+                    else
+                    {
+                        CurrentPlayingMusic.Play();
+                    }
+                    if(IntroMusic!=null){
+                        IntroMusic.volume = MusicVolume.value;
+                    }
                     CurrentPlayingMusic.volume = MusicVolume.value;
+                    QueueAudio = null;
                 }
             }
             if (isStoppingMusic)
             {
-
+                if (musiFadeTimer < musicFade)
+                {
+                    musiFadeTimer = musiFadeTimer + Time.deltaTime;
+                    CurrentPlayingMusic.volume = CurrentPlayingMusic.volume - musiFadeTimer;
+                }
+                else
+                {
+                    CurrentPlayingMusic.Stop();
+                    isStoppingMusic = false;
+                }
             }
             if (showTitle)
             {

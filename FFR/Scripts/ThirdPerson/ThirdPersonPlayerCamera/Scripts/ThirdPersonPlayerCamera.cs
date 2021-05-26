@@ -71,7 +71,7 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour {
         _camera = ThirdCam.GetComponent<Camera> ();
     }
 
-    private void Update () {
+    private void LateUpdate () {
         if (!_isEditor) {
             _visionTracker.transform.position = _playerLocal.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).position;
             _visionTracker.transform.rotation = _playerLocal.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).rotation;

@@ -168,12 +168,18 @@ public class AIObject : UdonSharpBehaviour
     private bool ranTriggerDead = false;
     private bool ranTriggerDeadTurrets = false;
 
-    private int aliveTurretsPrivate = 0;
-    private int turretindex = 0;
-    private bool turretCheck = false;
+    public int aliveTurretsPrivate = 0;
+    public int turretindex = 0;
+    // public bool turretCheck = false;
     private float damageReceived = 0f;
     private Transform AIClassTransform;
     private Transform GameObjectTransform;
+    private bool triggerDeadTurretsRan = false;
+    private bool triggerDeadTriggerRan = false;
+    private bool triggerHalfTurretRan = false;
+    private bool triggerHalfHealthRan = false;
+    private bool onDestroyRan = false;
+
     // private bool initShouldAttack = false;
 
     [System.NonSerializedAttribute] [HideInInspector] public VRCPlayerApi localPlayer;
@@ -184,7 +190,7 @@ public class AIObject : UdonSharpBehaviour
         initDamagable = damageable;
         initDisabled = disabled;
         initEnableMainTurrets = enableMainTurrets;
-        aliveTurretsPrivate = TurretScripts != null ? TurretScripts.Length : 0;
+        aliveTurretsPrivate = 0;
         // initShouldAttack = shouldAttack;
 
 
@@ -222,7 +228,15 @@ public class AIObject : UdonSharpBehaviour
     {
         if (!Networking.IsOwner(gameObject))
         {
-            AIClassTransform.position = posSync;
+            if (uselocalPosition)
+            {
+                AIClassTransform.localPosition = posSync;
+            }
+            else
+            {
+                AIClassTransform.position = posSync;
+            }
+
             AIClassTransform.rotation = rotationSync;
             AIRigidBody.velocity = veloSync;
         }
@@ -267,21 +281,10 @@ public class AIObject : UdonSharpBehaviour
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hitDamage");
         }
     }
-    void FixedUpdate()
-    {
-        if (!dead)
-        {
-            if (updateMovementTimer > updateMovementTendency)
-            {
-                MovementLogic();
-                updateMovementTimer = 0;
-            }
-            else
-            {
-                updateMovementTimer = updateMovementTimer + Time.deltaTime;
-            }
-        }
-    }
+    // void FixedUpdate()
+    // {
+
+    // }
     void LateUpdate()
     {
         LateUpdateLogic();
@@ -518,9 +521,12 @@ public class AIObject : UdonSharpBehaviour
 
                 if (shouldPing && !useSmoothingSync)
                 { // Ping Object's Location
-                    if(uselocalPosition){
+                    if (uselocalPosition)
+                    {
                         posSync = GameObjectTransform.localPosition;
-                    }else{
+                    }
+                    else
+                    {
                         posSync = GameObjectTransform.position;
                     }
                     rotationSync = GameObjectTransform.rotation;
@@ -542,7 +548,7 @@ public class AIObject : UdonSharpBehaviour
                 }
                 if (useSmoothingSync && shouldPing)
                 {
-                    posSync = GameObjectTransform.position;
+                    posSync = uselocalPosition ? GameObjectTransform.localPosition : GameObjectTransform.position;
                     rotationSync = GameObjectTransform.rotation;
                     veloSync = AIRigidBody.velocity;
                 }
@@ -635,6 +641,20 @@ public class AIObject : UdonSharpBehaviour
         damageable = true;
     }
 
+    public override void OnPlayerJoined(VRCPlayerApi player)
+    {
+        if (!dead && Networking.IsOwner(gameObject))
+        {
+            if (shouldPing)
+            {
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "pingPos");
+            }
+        }
+        // if(disableAfterDead){
+        //     gameObject.SetActive(false);
+        // }
+    }
+
     public void crash()
     {
         if (AIObjectAnimator != null)
@@ -653,6 +673,19 @@ public class AIObject : UdonSharpBehaviour
 
     void Update()
     {
+        if (!dead && (type == "air" || type == "heavyair"))
+        {
+            if (updateMovementTimer > updateMovementTendency)
+            {
+                MovementLogic();
+                updateMovementTimer = 0;
+            }
+            else
+            {
+                updateMovementTimer = updateMovementTimer + Time.deltaTime;
+            }
+        }
+
         if (!disabled)
         {
             if (!dead)
@@ -670,10 +703,13 @@ public class AIObject : UdonSharpBehaviour
                 }
                 if (Health < (fullHealth / 2))
                 {
-                    if (onHalfHealth != null)
+                    if (onHalfHealth != null && !triggerHalfHealthRan)
                     {
                         if (Networking.IsOwner(gameObject))
+                        {
                             onHalfHealth.run = true;
+                        }
+                        triggerHalfHealthRan = true;
                     }
                 }
 
@@ -701,27 +737,24 @@ public class AIObject : UdonSharpBehaviour
                         {
                             if (TurretScripts != null && TurretScripts.Length > 0)
                             {
-                                if (!turretCheck)
+                                if (turretindex < TurretScripts.Length)
                                 {
                                     if (!TurretScripts[turretindex].dead)
                                     {
                                         aliveTurretsPrivate = aliveTurretsPrivate + 1;
-                                        if (turretindex + 1 < TurretScripts.Length)
-                                        {
-                                            turretindex = turretindex + 1;
-                                        }else if(turretindex + 1 > TurretScripts.Length){
-                                            turretCheck = true;
-                                        }
                                     }
+                                    turretindex = turretindex + 1;
                                 }
                                 else
                                 {
                                     if (aliveTurretsPrivate < enableMainTurretsOn + 1)
                                     {
                                         enableMainTurrets = true;
-                                        if (onDeadTurrets != null)
+                                        if (onDeadTurrets != null && !triggerDeadTurretsRan)
                                         {
                                             onDeadTurrets.run = true;
+                                            triggerDeadTurretsRan = true;
+                                            // Debug.Log("TURRET END"); 
                                         }
                                     }
 
@@ -743,32 +776,70 @@ public class AIObject : UdonSharpBehaviour
                                     }
                                     if (aliveTurretsPrivate < (TurretScripts.Length / 2))
                                     {
-                                        if (onHalfTurrets != null)
+                                        if (onHalfTurrets != null && !triggerHalfTurretRan)
                                         {
                                             onHalfTurrets.run = true;
+                                            triggerHalfTurretRan = true;
                                         }
                                     }
-                                    turretCheck = false;
+                                    aliveTurretsPrivate = 0;
+                                    turretindex = 0;
                                 }
                             }
                             if (updated)
-                                {
+                            {
 
-                                    if (debugTargets != null && debugTargets.Length > 0)
+                                if (debugTargets != null && debugTargets.Length > 0)
+                                {
+                                    notargetsCheck = false;
+                                    if (targetChangeTimer < targetChangeTime)
                                     {
-                                        notargetsCheck = false;
-                                        if (targetChangeTimer < targetChangeTime)
+                                        targetChangeTimer = targetChangeTimer + Time.deltaTime;
+                                    }
+                                    else
+                                    {
+                                        TargetString = "";
+                                        for (int c = 0; c < TurretScripts.Length; c++)
                                         {
-                                            targetChangeTimer = targetChangeTimer + Time.deltaTime;
+                                            var skip = false;
+                                            // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
+                                            if (!TurretScripts[c].canTarget)
+                                            {
+                                                skip = true;
+                                            }
+                                            if (!skip)
+                                            {
+                                                int m = 0;
+                                                if (!isSingleTargetOnly)
+                                                {
+                                                    m = Random.Range(0, targetIndices.Length);
+                                                }
+                                                else
+                                                {
+                                                    m = 0;
+                                                }
+                                                TargetString = TargetString + TurretScripts[c].idTurret + "=" + targetIndices[m] + ";";
+                                            }
+                                            // TurretScripts[c].currentTargetIndex = targetIndices[m];
+                                            // if (
+                                            //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
+                                            //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
+                                            //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
+                                            // ) {
+                                            //     Transform[] childrena = TurretScripts[c].transform.GetComponentsInChildren<Transform>();
+                                            //     foreach (Transform child in childrena) {
+                                            //         Networking.SetOwner (Networking.GetOwner (gameObject), child.gameObject);
+                                            //     }
+                                            // //     Networking.SetOwner (Networking.GetOwner (TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), TurretScripts[c].gameObject);
+                                            // }
                                         }
-                                        else
+                                        if (enableMainTurrets)
                                         {
-                                            TargetString = "";
-                                            for (int c = 0; c < TurretScripts.Length; c++)
+                                            for (int c = 0; c < MainTurrets.Length; c++)
                                             {
                                                 var skip = false;
-                                                // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
-                                                if (!TurretScripts[c].canTarget)
+
+                                                if (!MainTurrets[c].canTarget)
                                                 {
                                                     skip = true;
                                                 }
@@ -783,330 +854,299 @@ public class AIObject : UdonSharpBehaviour
                                                     {
                                                         m = 0;
                                                     }
-                                                    TargetString = TargetString + TurretScripts[c].idTurret + "=" + targetIndices[m] + ";";
+                                                    TargetString = TargetString + MainTurrets[c].idTurret + "=" + targetIndices[m] + ";";
                                                 }
-                                                // TurretScripts[c].currentTargetIndex = targetIndices[m];
+                                                // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
+                                                // MainTurrets[c].currentTargetIndex = targetIndices[m];
+
                                                 // if (
-                                                //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
-                                                //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
-                                                //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
+                                                //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
+                                                //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
+                                                //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
                                                 // ) {
-                                                //     Transform[] childrena = TurretScripts[c].transform.GetComponentsInChildren<Transform>();
-                                                //     foreach (Transform child in childrena) {
-                                                //         Networking.SetOwner (Networking.GetOwner (gameObject), child.gameObject);
-                                                //     }
-                                                // //     Networking.SetOwner (Networking.GetOwner (TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), TurretScripts[c].gameObject);
+                                                //     // Transform[] children = MainTurrets[c].transform.GetComponentsInChildren<Transform>();
+                                                //     // foreach (Transform child in children) {
+                                                //     // Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), child.gameObject);    
+                                                //     // }
+                                                //     Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), MainTurrets[c].gameObject);
                                                 // }
                                             }
-                                            if (enableMainTurrets)
-                                            {
-                                                for (int c = 0; c < MainTurrets.Length; c++)
-                                                {
-                                                    var skip = false;
-
-                                                    if (!MainTurrets[c].canTarget)
-                                                    {
-                                                        skip = true;
-                                                    }
-                                                    if (!skip)
-                                                    {
-                                                        int m = 0;
-                                                        if (!isSingleTargetOnly)
-                                                        {
-                                                            m = Random.Range(0, targetIndices.Length);
-                                                        }
-                                                        else
-                                                        {
-                                                            m = 0;
-                                                        }
-                                                        TargetString = TargetString + MainTurrets[c].idTurret + "=" + targetIndices[m] + ";";
-                                                    }
-                                                    // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
-                                                    // MainTurrets[c].currentTargetIndex = targetIndices[m];
-
-                                                    // if (
-                                                    //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
-                                                    //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
-                                                    //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
-                                                    // ) {
-                                                    //     // Transform[] children = MainTurrets[c].transform.GetComponentsInChildren<Transform>();
-                                                    //     // foreach (Transform child in children) {
-                                                    //     // Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), child.gameObject);    
-                                                    //     // }
-                                                    //     Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), MainTurrets[c].gameObject);
-                                                    // }
-                                                }
-                                            }
-
-                                            targetChangeTimer = 0;
                                         }
-                                    }
-                                    else
-                                    {
-                                        if (notargetsCheck == false)
-                                        {
-                                            if (localPlayer == null)
-                                            {
-                                                removeTargets();
-                                            }
-                                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "removeTargets");
-                                            notargetsCheck = true;
-                                        }
+
+                                        targetChangeTimer = 0;
                                     }
                                 }
-
+                                else
+                                {
+                                    if (notargetsCheck == false)
+                                    {
+                                        if (localPlayer == null)
+                                        {
+                                            removeTargets();
+                                        }
+                                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "removeTargets");
+                                        notargetsCheck = true;
+                                    }
+                                }
                             }
+
                         }
                     }
                 }
             }
+        }
 
-            if (revive)
+        if (revive)
+        {
+            Health = fullHealth;
+            damageable = initDamagable;
+            disabled = initDisabled;
+            enableMainTurrets = initEnableMainTurrets;
+            if (deadParticle != null && deadParticle.activeSelf) { deadParticle.SetActive(false); }
+            isTargetableCheck = false;
+            if (TrackerObject != null)
             {
-                Health = fullHealth;
-                damageable = initDamagable;
-                disabled = initDisabled;
-                enableMainTurrets = initEnableMainTurrets;
-                if (deadParticle != null && deadParticle.activeSelf) { deadParticle.SetActive(false); }
-                isTargetableCheck = false;
+                TrackerObject.isRendered = initRendered;
+                TrackerObject.isTargetable = initTargetable;
+            }
+            if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("alive"); }
+            if (TurretScripts.Length > 0)
+            {
+                foreach (AITurretScript g in TurretScripts)
+                {
+                    g.revive = true;
+                }
+            }
+            if (MainTurrets.Length > 0)
+            {
+                foreach (AITurretScript g in MainTurrets)
+                {
+                    g.revive = true;
+                }
+            }
+            if (onDestroy != null)
+            {
+                onDestroy.ran = false;
+                // onDestroy.ranSync = false;
+                onDestroy.stopped = false;
+                onDestroy.currentX = 0;
+                for (int x = 0; x < onDestroy.isRunning.Length; x++)
+                {
+                    onDestroy.isRunning[x] = false;
+                }
+            }
+            if (onHalfHealth != null)
+            {
+                onHalfHealth.ran = false;
+                // onHalfHealth.ranSync = false;
+                onHalfHealth.stopped = false;
+                onHalfHealth.currentX = 0;
+                for (int x = 0; x < onHalfHealth.isRunning.Length; x++)
+                {
+                    onHalfHealth.isRunning[x] = false;
+                }
+            }
+            if (onHalfTurrets != null)
+            {
+                onHalfTurrets.ran = false;
+                // onHalfTurrets.ranSync = false;
+                onHalfTurrets.stopped = false;
+                onHalfTurrets.currentX = 0;
+                for (int x = 0; x < onHalfTurrets.isRunning.Length; x++)
+                {
+                    onHalfTurrets.isRunning[x] = false;
+                }
+            }
+            if (onDeadTurrets != null)
+            {
+                onDeadTurrets.ran = false;
+                // onDeadTurrets.ranSync = false;
+                onDeadTurrets.stopped = false;
+                onDeadTurrets.currentX = 0;
+                for (int x = 0; x < onDeadTurrets.isRunning.Length; x++)
+                {
+                    onDeadTurrets.isRunning[x] = false;
+                }
+            }
+            if (type == "air" || type == "heavyair")
+            {
+                AIRigidBody.mass = startmass;
+                AIRigidBody.useGravity = false;
+            }
+            revive = false;
+            dead = false;
+            deadplay = false;
+            triggerDeadTurretsRan = false;
+            triggerDeadTriggerRan = false;
+            triggerHalfTurretRan = false;
+            triggerHalfHealthRan = false;
+        }
+        if (dead)
+        {
+            if (type == "air" || type == "heavyair")
+            {
+                deadLogic();
+            }
+            if (Health > 0)
+            { // in case.
+                dead = false;
+            }
+            if (!hasCrashed)
+            {
+
+            }
+            if (disableAfterDead)
+            {
+                if (disableTimer > disableTime)
+                {
+                    gameObject.SetActive(false);
+                }
+                else
+                {
+                    disableTimer += Time.deltaTime;
+                }
+            }
+            if (isRespawnable)
+            {
+                if (RespawnTimer < RespawnTime)
+                {
+                    RespawnTimer = RespawnTimer + Time.deltaTime;
+                }
+                else
+                {
+                    // dead = false;
+                    if (RespawnArea != null)
+                    {
+                        AIClassTransform.position = RespawnArea.position;
+                        AIClassTransform.rotation = RespawnArea.rotation;
+                        currentWaypointIndex = 0;
+                        if (AIRigidBody != null)
+                        {
+                            AIRigidBody.velocity = Vector3.zero;
+                        }
+                        RespawnTimer = 0;
+                    }
+                    if (Networking.LocalPlayer == null) { revive = true; }
+                    // revive = true;
+                    if (Networking.IsOwner(gameObject))
+                    {
+                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "reviveAI");
+                    }
+                }
+            }
+            if (timerDead < disappearTrackerOn)
+            {
+                // if (Networking.IsOwner (gameObject))
+                timerDead = timerDead + Time.deltaTime;
+            }
+            else
+            {
                 if (TrackerObject != null)
                 {
-                    TrackerObject.isRendered = initRendered;
-                    TrackerObject.isTargetable = initTargetable;
+                    TrackerObject.isTargetable = false;
+                    TrackerObject.isRendered = false;
                 }
-                if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("alive"); }
-                if (TurretScripts.Length > 0)
+            }
+            if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("dead"); }
+            if (onDestroy != null && !onDestroyRan)
+            {
+                onDestroy.run = true;
+                onDestroyRan = true;
+            }
+            if (!deadplay)
+            {
+                if (Networking.IsOwner(gameObject))
                 {
                     foreach (AITurretScript g in TurretScripts)
                     {
-                        g.revive = true;
+                        g.currentTargetIndex = -1;
+                        g.Target = null;
+                        g.Health = 0;
                     }
-                }
-                if (MainTurrets.Length > 0)
-                {
                     foreach (AITurretScript g in MainTurrets)
                     {
-                        g.revive = true;
+                        g.currentTargetIndex = -1;
+                        g.Target = null;
+                        g.Health = 0;
                     }
+                    TargetString = null;
                 }
-                if (onDestroy != null)
+                if (deadSounds != null && deadSounds.Length > 0)
                 {
-                    onDestroy.ran = false;
-                    // onDestroy.ranSync = false;
-                    onDestroy.stopped = false;
-                    onDestroy.currentX = 0;
-                    for (int x = 0; x < onDestroy.isRunning.Length; x++)
-                    {
-                        onDestroy.isRunning[x] = false;
-                    }
+                    int random = Random.Range(0, deadSounds.Length);
+                    deadSounds[random].Play();
                 }
-                if (onHalfHealth != null)
-                {
-                    onHalfHealth.ran = false;
-                    // onHalfHealth.ranSync = false;
-                    onHalfHealth.stopped = false;
-                    onHalfHealth.currentX = 0;
-                    for (int x = 0; x < onHalfHealth.isRunning.Length; x++)
-                    {
-                        onHalfHealth.isRunning[x] = false;
-                    }
-                }
-                if (onHalfTurrets != null)
-                {
-                    onHalfTurrets.ran = false;
-                    // onHalfTurrets.ranSync = false;
-                    onHalfTurrets.stopped = false;
-                    onHalfTurrets.currentX = 0;
-                    for (int x = 0; x < onHalfTurrets.isRunning.Length; x++)
-                    {
-                        onHalfTurrets.isRunning[x] = false;
-                    }
-                }
-                if (onDeadTurrets != null)
-                {
-                    onDeadTurrets.ran = false;
-                    // onDeadTurrets.ranSync = false;
-                    onDeadTurrets.stopped = false;
-                    onDeadTurrets.currentX = 0;
-                    for (int x = 0; x < onDeadTurrets.isRunning.Length; x++)
-                    {
-                        onDeadTurrets.isRunning[x] = false;
-                    }
-                }
-                if (type == "air" || type == "heavyair")
-                {
-                    AIRigidBody.mass = startmass;
-                    AIRigidBody.useGravity = false;
-                }
-                revive = false;
-                dead = false;
-                deadplay = false;
+                // if (Networking.IsOwner (gameObject))
+                deadplay = true;
             }
-            if (dead)
-            {
-                if (type == "air" || type == "heavyair")
-                {
-                    deadLogic();
-                }
-                if (Health > 0)
-                { // in case.
-                    dead = false;
-                }
-                if (!hasCrashed)
-                {
-
-                }
-                if (disableAfterDead)
-                {
-                    if (disableTimer > disableTime)
-                    {
-                        gameObject.SetActive(false);
-                    }
-                    else
-                    {
-                        disableTimer += Time.deltaTime;
-                    }
-                }
-                if (isRespawnable)
-                {
-                    if (RespawnTimer < RespawnTime)
-                    {
-                        RespawnTimer = RespawnTimer + Time.deltaTime;
-                    }
-                    else
-                    {
-                        // dead = false;
-                        if (RespawnArea != null)
-                        {
-                            AIClassTransform.position = RespawnArea.position;
-                            AIClassTransform.rotation = RespawnArea.rotation;
-                            currentWaypointIndex = 0;
-                            if (AIRigidBody != null)
-                            {
-                                AIRigidBody.velocity = Vector3.zero;
-                            }
-                            RespawnTimer = 0;
-                        }
-                        if (Networking.LocalPlayer == null) { revive = true; }
-                        // revive = true;
-                        if (Networking.IsOwner(gameObject))
-                        {
-                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "reviveAI");
-                        }
-                    }
-                }
-                if (timerDead < disappearTrackerOn)
-                {
-                    // if (Networking.IsOwner (gameObject))
-                    timerDead = timerDead + Time.deltaTime;
-                }
-                else
-                {
-                    if (TrackerObject != null)
-                    {
-                        TrackerObject.isTargetable = false;
-                        TrackerObject.isRendered = false;
-                    }
-                }
-                if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("dead"); }
-                if (onDestroy != null)
-                {
-                    onDestroy.run = true;
-                }
-                if (!deadplay)
-                {
-                    if (Networking.IsOwner(gameObject))
-                    {
-                        foreach (AITurretScript g in TurretScripts)
-                        {
-                            g.currentTargetIndex = -1;
-                            g.Target = null;
-                            g.Health = 0;
-                        }
-                        foreach (AITurretScript g in MainTurrets)
-                        {
-                            g.currentTargetIndex = -1;
-                            g.Target = null;
-                            g.Health = 0;
-                        }
-                        TargetString = null;
-                    }
-                    if (deadSounds != null && deadSounds.Length > 0)
-                    {
-                        int random = Random.Range(0, deadSounds.Length);
-                        deadSounds[random].Play();
-                    }
-                    // if (Networking.IsOwner (gameObject))
-                    deadplay = true;
-                }
-            }
-
-        }
-
-        //Tools
-        public Vector3 FirstOrderIntercept(
-            Vector3 shooterPosition,
-            Vector3 shooterVelocity,
-            float shotSpeed,
-            Vector3 targetPosition,
-            Vector3 targetVelocity)
-        {
-            Vector3 targetRelativePosition = targetPosition - shooterPosition;
-            Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
-            float t = FirstOrderInterceptTime(
-                shotSpeed,
-                targetRelativePosition,
-                targetRelativeVelocity
-            );
-            return targetPosition + t * (targetRelativeVelocity);
-        }
-
-        public float FirstOrderInterceptTime(
-            float shotSpeed,
-            Vector3 targetRelativePosition,
-            Vector3 targetRelativeVelocity)
-        {
-            float velocitySquared = targetRelativeVelocity.sqrMagnitude;
-            if (velocitySquared < 0.001f)
-                return 0f;
-
-            float a = velocitySquared - shotSpeed * shotSpeed;
-
-            //handle similar velocities
-            if (Mathf.Abs(a) < 0.001f)
-            {
-                float t = -targetRelativePosition.sqrMagnitude /
-                    (
-                        2f * Vector3.Dot(
-                            targetRelativeVelocity,
-                            targetRelativePosition
-                        )
-                    );
-                return Mathf.Max(t, 0f); //don't shoot back in time
-            }
-
-            float b = 2f * Vector3.Dot(targetRelativeVelocity, targetRelativePosition);
-            float c = targetRelativePosition.sqrMagnitude;
-            float determinant = b * b - 4f * a * c;
-
-            if (determinant > 0f)
-            { //determinant > 0; two intercept paths (most common)
-                float t1 = (-b + Mathf.Sqrt(determinant)) / (2f * a),
-                    t2 = (-b - Mathf.Sqrt(determinant)) / (2f * a);
-                if (t1 > 0f)
-                {
-                    if (t2 > 0f)
-                        return Mathf.Min(t1, t2); //both are positive
-                    else
-                        return t1; //only t1 is positive
-                }
-                else
-                    return Mathf.Max(t2, 0f); //don't shoot back in time
-            }
-            else if (determinant < 0f) //determinant < 0; no intercept path
-                return 0f;
-            else //determinant = 0; one intercept path, pretty much never happens
-                return Mathf.Max(-b / (2f * a), 0f); //don't shoot back in time
         }
 
     }
+
+    //Tools
+    public Vector3 FirstOrderIntercept(
+        Vector3 shooterPosition,
+        Vector3 shooterVelocity,
+        float shotSpeed,
+        Vector3 targetPosition,
+        Vector3 targetVelocity)
+    {
+        Vector3 targetRelativePosition = targetPosition - shooterPosition;
+        Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
+        float t = FirstOrderInterceptTime(
+            shotSpeed,
+            targetRelativePosition,
+            targetRelativeVelocity
+        );
+        return targetPosition + t * (targetRelativeVelocity);
+    }
+
+    public float FirstOrderInterceptTime(
+        float shotSpeed,
+        Vector3 targetRelativePosition,
+        Vector3 targetRelativeVelocity)
+    {
+        float velocitySquared = targetRelativeVelocity.sqrMagnitude;
+        if (velocitySquared < 0.001f)
+            return 0f;
+
+        float a = velocitySquared - shotSpeed * shotSpeed;
+
+        //handle similar velocities
+        if (Mathf.Abs(a) < 0.001f)
+        {
+            float t = -targetRelativePosition.sqrMagnitude /
+                (
+                    2f * Vector3.Dot(
+                        targetRelativeVelocity,
+                        targetRelativePosition
+                    )
+                );
+            return Mathf.Max(t, 0f); //don't shoot back in time
+        }
+
+        float b = 2f * Vector3.Dot(targetRelativeVelocity, targetRelativePosition);
+        float c = targetRelativePosition.sqrMagnitude;
+        float determinant = b * b - 4f * a * c;
+
+        if (determinant > 0f)
+        { //determinant > 0; two intercept paths (most common)
+            float t1 = (-b + Mathf.Sqrt(determinant)) / (2f * a),
+                t2 = (-b - Mathf.Sqrt(determinant)) / (2f * a);
+            if (t1 > 0f)
+            {
+                if (t2 > 0f)
+                    return Mathf.Min(t1, t2); //both are positive
+                else
+                    return t1; //only t1 is positive
+            }
+            else
+                return Mathf.Max(t2, 0f); //don't shoot back in time
+        }
+        else if (determinant < 0f) //determinant < 0; no intercept path
+            return 0f;
+        else //determinant = 0; one intercept path, pretty much never happens
+            return Mathf.Max(-b / (2f * a), 0f); //don't shoot back in time
+    }
+
+}

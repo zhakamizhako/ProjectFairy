@@ -79,8 +79,8 @@ public class HUDController : UdonSharpBehaviour
         Assert(HUDText_knots != null, "Start: HUDText_knots != null");
         Assert(HUDText_knotsairspeed != null, "Start: HUDText_knotsairspeed != null");
         Assert(HUDText_angleofattack != null, "Start: HUDText_angleofattack != null");
-        Assert(HudCrosshairGun != null, "Start: HudCrosshairGun != null");
-        Assert(HudCrosshair != null, "Start: HudCrosshair != null");
+        // Assert(HudCrosshairGun != null, "Start: HudCrosshairGun != null");
+        // Assert(HudCrosshair != null, "Start: HudCrosshair != null");
         Assert(HudHold != null, "Start: HudHold != null");
         Assert(HudLimit != null, "Start: HudLimit != null");
         Assert(HudAB != null, "Start: HudAB != null");
@@ -115,7 +115,7 @@ public class HUDController : UdonSharpBehaviour
         BulletSpeedDivider = 1f / BulletSpeed;
 
         FullFuelDivider = 1f / EngineControl.Fuel;
-        FullGunAmmoDivider = 1f / EngineControl.GunAmmoInSeconds;
+        // FullGunAmmoDivider = 1f / EngineControl.GunAmmoInSeconds;
     }
     private void OnEnable()
     {
@@ -150,16 +150,16 @@ public class HUDController : UdonSharpBehaviour
         VelocityIndicator.localPosition = VelocityIndicator.localPosition.normalized * distance_from_head;
         /////////////////
 
-        if (EngineControl.RStickSelection == 1)
-        {
-            HudCrosshairGun.SetActive(true);
-            HudCrosshair.SetActive(false);
-        }
-        else
-        {
-            HudCrosshairGun.SetActive(false);
-            HudCrosshair.SetActive(true);
-        }
+        // if (EngineControl.RStickSelection == 1)
+        // {
+        //     HudCrosshairGun.SetActive(true);
+        //     HudCrosshair.SetActive(false);
+        // }
+        // else
+        // {
+        //     HudCrosshairGun.SetActive(false);
+        //     HudCrosshair.SetActive(true);
+        // }
 
         //AAM Target Indicator
         // if (EngineControl.AAMHasTarget && (EngineControl.RStickSelection == 1 || EngineControl.RStickSelection == 2))//GUN or AAM
@@ -223,11 +223,14 @@ public class HUDController : UdonSharpBehaviour
         /////////////////
 
         //LIMITS indicator
-        if (EngineControl.FlightLimitsEnabled)
+        if (HudLimit != null)
         {
-            HudLimit.SetActive(true);
+            if (EngineControl.FlightLimitsEnabled)
+            {
+                HudLimit.SetActive(true);
+            }
+            else { HudLimit.SetActive(false); }
         }
-        else { HudLimit.SetActive(false); }
 
         //Alt. HOLD indicator
         if (EngineControl.AltHold)
@@ -237,73 +240,76 @@ public class HUDController : UdonSharpBehaviour
         else { HudHold.SetActive(false); }
 
         //Left Stick Selector
-        switch (EngineControl.LStickSelection)
-        {
-            case 0:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 180);//invisible, backfacing
-                break;
-            case 1:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 0);
-                break;
-            case 2:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 45, 0);
-                break;
-            case 3:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 90, 0);
-                break;
-            case 4:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 135, 0);
-                break;
-            case 5:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 180, 0);
-                break;
-            case 6:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 225, 0);
-                break;
-            case 7:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 270, 0);
-                break;
-            case 8:
-                // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 315, 0);
-                break;
-        }
+        // switch (EngineControl.LStickSelection)
+        // {
+        //     case 0:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 180);//invisible, backfacing
+        //         break;
+        //     case 1:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 0);
+        //         break;
+        //     case 2:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 45, 0);
+        //         break;
+        //     case 3:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 90, 0);
+        //         break;
+        //     case 4:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 135, 0);
+        //         break;
+        //     case 5:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 180, 0);
+        //         break;
+        //     case 6:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 225, 0);
+        //         break;
+        //     case 7:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 270, 0);
+        //         break;
+        //     case 8:
+        //         // LStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 315, 0);
+        //         break;
+        // }
 
-        //Right Stick Selector
-        switch (EngineControl.RStickSelection)
-        {
-            case 0:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 180);//invisible, backfacing
-                break;
-            case 1:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 0);
-                break;
-            case 2:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 45, 0);
-                break;
-            case 3:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 90, 0);
-                break;
-            case 4:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 135, 0);
-                break;
-            case 5:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 180, 0);
-                break;
-            case 6:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 225, 0);
-                break;
-            case 7:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 270, 0);
-                break;
-            case 8:
-                // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 315, 0);
-                break;
-        }
+        // //Right Stick Selector
+        // switch (EngineControl.RStickSelection)
+        // {
+        //     case 0:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 180);//invisible, backfacing
+        //         break;
+        //     case 1:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 0, 0);
+        //         break;
+        //     case 2:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 45, 0);
+        //         break;
+        //     case 3:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 90, 0);
+        //         break;
+        //     case 4:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 135, 0);
+        //         break;
+        //     case 5:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 180, 0);
+        //         break;
+        //     case 6:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 225, 0);
+        //         break;
+        //     case 7:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 270, 0);
+        //         break;
+        //     case 8:
+        //         // RStickDisplayHighlighter.localRotation = Quaternion.Euler(0, 315, 0);
+        //         break;
+        // }
 
 
         //AB
-        if (EngineControl.EffectsControl.AfterburnerOn) { HudAB.SetActive(true); }
-        else { HudAB.SetActive(false); }
+        if (HudAB != null)
+        {
+            if (EngineControl.EffectsControl.AfterburnerOn) { HudAB.SetActive(true); }
+            else { HudAB.SetActive(false); }
+        }
 
         //Cruise Control target knots
         if (EngineControl.Cruise)
@@ -327,7 +333,7 @@ public class HUDController : UdonSharpBehaviour
         // else { LStick_funcon6.SetActive(false); }
 
         // /*         if (EngineControl.Trim.x != 0) { LStick_funcon6.SetActive(true); }
-                // else { LStick_funcon6.SetActive(false); } */
+        // else { LStick_funcon6.SetActive(false); } */
 
         // if (EngineControl.EffectsControl.CanopyOpen) { LStick_funcon7.SetActive(true); }
         // else { LStick_funcon7.SetActive(false); }
@@ -389,36 +395,36 @@ public class HUDController : UdonSharpBehaviour
         // }
         if (EngineControl.RStickSelection == 4)
         {
-        //     // if (!EngineControl.AtGCamNull)
-        //     // {
-        //     //     EngineControl.AtGCam.gameObject.SetActive(true);
-        //     //     AtGScreen.SetActive(true);
-        //     //     EngineControl.AtGCam.fieldOfView = 60;
-        //     //     EngineControl.AtGCam.transform.localRotation = Quaternion.Euler(110, 0, 0);
-        //     // }
-        // }
-        // else if (EngineControl.AGMLocked)
-        // {
-        //     // if (!EngineControl.AtGCamNull)
-        //     // {
-        //     //     EngineControl.AtGCam.gameObject.SetActive(true);
-        //     //     EngineControl.AtGCam.transform.LookAt(EngineControl.AGMTarget, EngineControl.VehicleMainObj.transform.up);
-        //     // }
-        //     // RaycastHit camhit;
-        //     // Physics.Raycast(EngineControl.AtGCam.transform.position, EngineControl.AtGCam.transform.forward, out camhit, Mathf.Infinity, 1);
-        //     // if (camhit.point != null)
-        //     // {
-        //     //     //dolly zoom //Mathf.Atan(40 <--the 40 is the height of the camera frustrum at the target distance
-        //     //     EngineControl.AtGCam.fieldOfView = Mathf.Max(Mathf.Lerp(EngineControl.AtGCam.fieldOfView, 2.0f * Mathf.Atan(60 * 0.5f / Vector3.Distance(gameObject.transform.position, camhit.point)) * Mathf.Rad2Deg, 5 * DeltaTime), 0.3f);
-        //     // }
-        // }
-        // else
-        // {
-        //     if (!EngineControl.AtGCamNull)
-        //     {
-        //         AtGScreen.SetActive(false);
-        //         EngineControl.AtGCam.gameObject.SetActive(false);
-        //     }
+            //     // if (!EngineControl.AtGCamNull)
+            //     // {
+            //     //     EngineControl.AtGCam.gameObject.SetActive(true);
+            //     //     AtGScreen.SetActive(true);
+            //     //     EngineControl.AtGCam.fieldOfView = 60;
+            //     //     EngineControl.AtGCam.transform.localRotation = Quaternion.Euler(110, 0, 0);
+            //     // }
+            // }
+            // else if (EngineControl.AGMLocked)
+            // {
+            //     // if (!EngineControl.AtGCamNull)
+            //     // {
+            //     //     EngineControl.AtGCam.gameObject.SetActive(true);
+            //     //     EngineControl.AtGCam.transform.LookAt(EngineControl.AGMTarget, EngineControl.VehicleMainObj.transform.up);
+            //     // }
+            //     // RaycastHit camhit;
+            //     // Physics.Raycast(EngineControl.AtGCam.transform.position, EngineControl.AtGCam.transform.forward, out camhit, Mathf.Infinity, 1);
+            //     // if (camhit.point != null)
+            //     // {
+            //     //     //dolly zoom //Mathf.Atan(40 <--the 40 is the height of the camera frustrum at the target distance
+            //     //     EngineControl.AtGCam.fieldOfView = Mathf.Max(Mathf.Lerp(EngineControl.AtGCam.fieldOfView, 2.0f * Mathf.Atan(60 * 0.5f / Vector3.Distance(gameObject.transform.position, camhit.point)) * Mathf.Rad2Deg, 5 * DeltaTime), 0.3f);
+            //     // }
+            // }
+            // else
+            // {
+            //     if (!EngineControl.AtGCamNull)
+            //     {
+            //         AtGScreen.SetActive(false);
+            //         EngineControl.AtGCam.gameObject.SetActive(false);
+            //     }
         }
 
 
@@ -454,7 +460,7 @@ public class HUDController : UdonSharpBehaviour
 
         PlaneAnimator.SetFloat("throttle", EngineControl.ThrottleInput);
         PlaneAnimator.SetFloat("fuel", EngineControl.Fuel * FullFuelDivider);
-        PlaneAnimator.SetFloat("gunammo", EngineControl.GunAmmoInSeconds * FullGunAmmoDivider);
+        // PlaneAnimator.SetFloat("gunammo", EngineControl.GunAmmoInSeconds * FullGunAmmoDivider);
     }
     private void Assert(bool condition, string message)
     {

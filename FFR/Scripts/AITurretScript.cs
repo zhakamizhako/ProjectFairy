@@ -91,6 +91,8 @@ public class AITurretScript : UdonSharpBehaviour
     private float speedflak = 1000f;
     public float minmultiplier = 2f;
     public float maxmultiplier = 4f;
+    private bool onHalfHealthrun = false;
+    private bool onDestroyRan = false;
 
     void Start()
     {
@@ -119,6 +121,17 @@ public class AITurretScript : UdonSharpBehaviour
         {
             TurretFire.Play();
             fireSoundPlayed = true;
+        }
+    }
+
+    public void setDamagable(){
+        damageable = true;
+    }
+
+    public void setEnableTurret(){
+        if(TrackerObject!=null){
+            TrackerObject.isRendered = true;
+            TrackerObject.isTargetable = true;
         }
     }
 
@@ -193,7 +206,7 @@ public class AITurretScript : UdonSharpBehaviour
 
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hitDamage");
         }
-        Debug.LogError("PARTICLE CONTACT");
+        // Debug.LogError("PARTICLE CONTACT");
     }
     public void hitDamage()
     {
@@ -207,6 +220,11 @@ public class AITurretScript : UdonSharpBehaviour
 
     void Update()
     {
+        //animation syncer
+        if(TurretAni!=null && !Networking.IsOwner(gameObject)){
+            TurretAni.SetBool("firecis", TurretAni);
+        }
+
         if (Health < 1 && !dead)
         {
             dead = true;
@@ -242,9 +260,10 @@ public class AITurretScript : UdonSharpBehaviour
         }
         if (Health < fullHealth * .50)
         {
-            if (onHalfHealth != null)
+            if (onHalfHealth != null && !onHalfHealthrun)
             {
                 onHalfHealth.run = true;
+                onHalfHealthrun = true;
             }
         }
         //in case of sleeping
@@ -271,9 +290,10 @@ public class AITurretScript : UdonSharpBehaviour
             {
                 Target.isTracking = false;
             }
-            if (onDestroy != null)
+            if (onDestroy != null && !onDestroyRan)
             {
                 onDestroy.run = true;
+                onDestroyRan = true;
             }
         }
         if (!dead && !sleep)
@@ -812,6 +832,12 @@ public class AITurretScript : UdonSharpBehaviour
 
                     }
                 }
+                if(turretType=="CIWS"){
+                    if(TurretAni!=null){
+                        TurretAni.SetBool("fireciws", false);
+                        TurretFire.Stop();
+                    }
+                }
             }
         }
         if (revive)
@@ -827,6 +853,7 @@ public class AITurretScript : UdonSharpBehaviour
             if (onDestroy != null)
             {
                 onDestroy.ran = false;
+                onDestroy.run = false;
                 // onDestroy.ranSync = false;
                 onDestroy.stopped = false;
                 onDestroy.currentX = 0;
@@ -838,6 +865,7 @@ public class AITurretScript : UdonSharpBehaviour
             if (onHalfHealth != null)
             {
                 onHalfHealth.ran = false;
+                onHalfHealth.run = false;
                 // onHalfHealth.ranSync = false;
                 onHalfHealth.stopped = false;
                 onHalfHealth.currentX = 0;
@@ -847,6 +875,8 @@ public class AITurretScript : UdonSharpBehaviour
                 }
             }
             revive = false;
+            onDestroyRan = false;
+            onHalfHealthrun = false;
         }
 
     }

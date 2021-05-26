@@ -24,7 +24,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public bool isWaypointEnabled = true;
     public bool isWaypointEnabledSync = true;
     [UdonSynced(UdonSyncMode.None)] public bool isTracking = false;
-    [UdonSynced(UdonSyncMode.None)] public bool isChasing = false;
+    public bool isChasing = false;
     private bool soundStarted = false;
     private bool soundCautionStarted = false;
     [Header("Waypoint Settings")]
@@ -86,6 +86,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public bool isAirTarget = false;
     public bool ShowDistance = true;
     public bool showX = false;
+
+    public bool ShowText = true;
     public GameObject XIcon;
     private Renderer IconRenderer;
     public bool HideIfFar = true;
@@ -97,6 +99,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     private float tempHealth = 0f;
     private bool healthUpdate = false;
     private string words = "";
+    public PathwaySystem pathway;
+    public bool isPathway = false;
 
     void Start()
     {
@@ -123,7 +127,6 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             IconRenderer = TargetIconRender.GetComponent<Renderer>();
         }
     }
-
     public void receiveTracker(MissileScript misScript)
     {
         if (EngineController != null && (EngineController.Piloting || EngineController.Passenger))
@@ -302,6 +305,10 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                             bb = currentHitObject.GetComponent<MissileTrackerAndResponse>();
                         }
 
+                        if(bb==null){
+                            return;
+                        }
+
                         if (bb.EngineController != null)
                         {
                             if (bb.EngineController.localPlayer != null && bb.EngineController.localPlayer.IsOwner(bb.EngineController.VehicleMainObj))
@@ -338,7 +345,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             }
         }
 
-        if (isRendered)
+        if (isRendered && ShowText)
         {
             if (textIsAlly != null)
             {

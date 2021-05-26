@@ -11,7 +11,7 @@ public class PilotSeat : UdonSharpBehaviour
     public GameObject SeatAdjuster;
     private Transform PlaneMesh;
     private LayerMask Planelayer = 0;
-    public MissilePlaneSystem MissileControl;
+    // public MissilePlaneSystem MissileControl;
     public WeaponSelector wp;
     private ParticleSystem.CollisionModule gunpilotcol;
     public GameObject fHud;
@@ -22,6 +22,10 @@ public class PilotSeat : UdonSharpBehaviour
     public MissileTrackerAndResponse mistracker;
     public OpenWorldMovementLogic OWML;
     public GameObject[] EnableObjectsOnStart;
+    public bool sit = false;
+
+    [UdonSharp.UdonSynced(UdonSyncMode.None)] public bool EnabledEngine = true;
+    private LeaveVehicleButton LeaveButtonControl;
     public bool testMode = false;
     private void Start()
     {
@@ -31,6 +35,7 @@ public class PilotSeat : UdonSharpBehaviour
         Assert(SeatAdjuster != null, "Start: SeatAdjuster != null");
 
         PlaneMesh = EngineControl.PlaneMesh.transform;
+        LeaveButtonControl = LeaveButton.GetComponent<LeaveVehicleButton>();
         //get the layer of the plane as set by the world creator
         // Planelayer = PlaneMesh.gameObject.layer;
         if (ButtonSet != null)
@@ -38,22 +43,39 @@ public class PilotSeat : UdonSharpBehaviour
             ButtonSet.SetActive(false);
         }
     }
-    private void Interact() //entering the plane
-    {
-        if (EngineControl.VehicleMainObj != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.VehicleMainObj); }
-        if (LeaveButton != null) { LeaveButton.SetActive(true); }
-        if (ButtonSet != null)
-        {
-            ButtonSet.SetActive(true);
+    public void EnableOWML(){
+        // if(EngineControl.Piloting || EngineControl.Passenger){
+            OWML.gameObject.SetActive(true);
+            Debug.Log("NYAHOI!");
+        // }
+    }
+
+    public void callEnableEngine(){
+        if(Networking.IsOwner(EngineControl.localPlayer, gameObject) ){
+            EnabledEngine = true;
         }
+    }
+
+    public void callEnableOWML(){
+         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "EnableOWML");
+    }
+
+    public void EngineStart()
+    {
+        if(EngineControl.Passenger || sit == false){
+            return;
+        }
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "StartEngineGlobal");
+        // EngineStartGlobal();
         if (EngineControl != null)
         {
+            EngineControl.Piloting = true;
             EngineControl.VehicleRigidbody.angularDrag = 0; //set to something nonzero when you're not owner to prevent juddering motion on collisions
+            EngineControl.VehicleRigidbody.isKinematic = false;
             if (!EngineControl.InEditor)
             {
-                if(!testMode)
-                EngineControl.localPlayer.UseAttachedStation();
-                Networking.SetOwner(EngineControl.localPlayer, EngineControl.gameObject);
+                if (!testMode)
+                    Networking.SetOwner(EngineControl.localPlayer, EngineControl.gameObject);
                 Networking.SetOwner(EngineControl.localPlayer, EngineControl.VehicleMainObj.gameObject);
                 if (EngineControl.hbcontroller != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.hbcontroller.gameObject); }
                 if (EngineControl.localPlayer.IsUserInVR())
@@ -90,7 +112,7 @@ public class PilotSeat : UdonSharpBehaviour
             EngineControl.HUDControl.gameObject.SetActive(true);
         }
         if (Gun_pilot != null) { Gun_pilot.SetActive(true); }
-        if (SeatAdjuster != null) { SeatAdjuster.SetActive(true); }
+        
         if (wp != null)
         {
             Networking.SetOwner(EngineControl.localPlayer, wp.gameObject);
@@ -98,7 +120,16 @@ public class PilotSeat : UdonSharpBehaviour
             foreach (MissilePlaneSystem ms in wp.MissilePlaneSystems)
             {
                 Networking.SetOwner(EngineControl.localPlayer, ms.gameObject);
+                Networking.SetOwner(EngineControl.localPlayer, ms.misTarget.gameObject);
             }
+        }
+        if (OWML != null)
+        {
+            Networking.SetOwner(EngineControl.localPlayer, OWML.gameObject);
+        }
+        if (mistracker != null)
+        {
+            Networking.SetOwner(EngineControl.localPlayer, mistracker.gameObject);
         }
         // if (MissileControl != null) {
         //     MissileControl.showTargets = true;
@@ -115,8 +146,10 @@ public class PilotSeat : UdonSharpBehaviour
             fHud.SetActive(true);
         }
 
-        if(EnableObjectsOnStart!=null && EnableObjectsOnStart.Length >0){
-            foreach(GameObject x in EnableObjectsOnStart){
+        if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
+        {
+            foreach (GameObject x in EnableObjectsOnStart)
+            {
                 x.SetActive(true);
             }
         }
@@ -128,8 +161,51 @@ public class PilotSeat : UdonSharpBehaviour
 
         //Make sure EngineControl.AAMCurrentTargetEngineControl is correct
     }
+    private void Interact() //entering the plane
+    {
+        if (EngineControl.VehicleMainObj != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.VehicleMainObj); }
+        if (LeaveButton != null) { LeaveButton.SetActive(true); }
+        if (ButtonSet != null)
+        {
+            ButtonSet.SetActive(true);
+        }
+        if (EngineControl != null)
+        {
+            EngineControl.localPlayer.UseAttachedStation();
+        }
+        if (SeatAdjuster != null) { SeatAdjuster.SetActive(true); }
+        if (EnabledEngine)
+        {
+            EngineStart();
+        }
+        sit = true;
+    }
     public override void OnStationEntered(VRCPlayerApi player)
     {
+        if (EnabledEngine)
+        {
+            StartEngineGlobal();
+        }
+
+        if (player.isLocal)
+        {
+            foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+            {
+                if (crew.SeatedPlayer != null)
+                {
+                    SetVoiceInside(crew.SeatedPlayer);
+                }
+            }
+        }
+        else if (EngineControl.Piloting || EngineControl.Passenger)
+        {
+            SetVoiceInside(player);
+        }
+    }
+
+    public void StartEngineGlobal()
+    {
+        VRCPlayerApi player = Networking.GetOwner(EngineControl.gameObject);
         EngineControl.PilotName = player.displayName;
         EngineControl.Pilot = player;
 
@@ -138,6 +214,10 @@ public class PilotSeat : UdonSharpBehaviour
         //old WakeUp();
         EngineControl.EffectsControl.DoEffects = 0f;
         EngineControl.SoundControl.DoSound = 0f;
+
+        LeaveButtonControl.SeatedPlayer = player;
+
+
         foreach (AudioSource thrust in EngineControl.SoundControl.Thrust)
         {
             thrust.gameObject.SetActive(true);
@@ -161,9 +241,18 @@ public class PilotSeat : UdonSharpBehaviour
     {
         EngineControl.PilotName = string.Empty;
         EngineControl.Pilot = null;
+        sit = false;
 
         if (player.isLocal)
         {
+            foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+            {
+                if (crew.SeatedPlayer != null)
+                {
+                    SetVoiceOutside(crew.SeatedPlayer);
+                }
+            }
+
             EngineControl.Piloting = false;
             if (CVH != null)
             {
@@ -230,6 +319,7 @@ public class PilotSeat : UdonSharpBehaviour
             }
             if (OWML != null)
             {
+
                 OWML.Map.position = Vector3.zero;
             }
             if (teleportTo != null && EngineControl.dead == true)
@@ -237,11 +327,13 @@ public class PilotSeat : UdonSharpBehaviour
                 player.TeleportTo(teleportTo.position, teleportTo.rotation);
                 player.SetVelocity(Vector3.zero);
             }
-            if(EnableObjectsOnStart!=null && EnableObjectsOnStart.Length >0){
-            foreach(GameObject x in EnableObjectsOnStart){
-                x.SetActive(false);
+            if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
+            {
+                foreach (GameObject x in EnableObjectsOnStart)
+                {
+                    x.SetActive(false);
+                }
             }
-        }
 
             //set plane's layer back
             // if (PlaneMesh != null) {
@@ -251,6 +343,19 @@ public class PilotSeat : UdonSharpBehaviour
             //     }
             // }
         }
+    }
+
+    private void SetVoiceInside(VRCPlayerApi Player)
+    {
+        Player.SetVoiceDistanceNear(999999);
+        Player.SetVoiceDistanceFar(1000000);
+        Player.SetVoiceGain(.6f);
+    }
+    private void SetVoiceOutside(VRCPlayerApi Player)
+    {
+        Player.SetVoiceDistanceNear(0);
+        Player.SetVoiceDistanceFar(25);
+        Player.SetVoiceGain(15);
     }
     private void Assert(bool condition, string message)
     {

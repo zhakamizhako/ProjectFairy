@@ -26,7 +26,9 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public GameObject LockSightHUD;
     private RaycastHit[] objects;
     public Transform SpawnParent;
-
+    public GameObject EnableTargeter;
+    public Animator WeaponAnimator;
+    public bool isAnimatorLocalOnly = false;
     public float lockAngle = 75f;
     public bool isGun = false;
     public float LerpMultiplier = 1f;
@@ -93,6 +95,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public float changeTargetDetectorRange = 20000;
     public Vector3 SpawnScaleOffset = new Vector3(1, 1, 1);
     [HideInInspector] [UdonSynced(UdonSyncMode.None)] public bool gunFiring = false;
+    [HideInInspector] [UdonSynced(UdonSyncMode.None)] public bool WeaponActivated = false;
     public AudioSource gunAudio;
     public Animator gunAnimator;
     public float gunSpeed;
@@ -112,7 +115,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public int missileindex = 0;
     public float tempAngleCheck = 0f;
     public float damageValuePerParticle = 20f;
-
+    public string WeaponAnimatorString = "activated";
     public bool sleep = false;
     void Start()
     { //Initialize Missile Packs and status
@@ -232,6 +235,26 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             }
         }
 
+        if(Networking.IsOwner(gameObject) && !selectedWeapon){
+            gunFiring = false;
+            if(WeaponAnimator!=null){
+                WeaponActivated = false;
+            }
+        }
+        if(Networking.IsOwner(gameObject) && selectedWeapon){
+            if(WeaponAnimator!=null){
+                WeaponActivated = true;
+            }
+        }
+
+        if(WeaponAnimator!=null){
+            if(EngineController.Occupied ||( isAnimatorLocalOnly && EngineController.Piloting) ){
+                WeaponAnimator.SetBool(WeaponAnimatorString, WeaponActivated);
+            }else{
+                WeaponAnimator.SetBool(WeaponAnimatorString, false);
+            }
+        }
+
         if (EngineController.Health < 1 || EngineController.dead)
         {
             if (!deadExecute)
@@ -256,6 +279,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                     LockSightHUD.SetActive(false);
                 }
                 deadExecute = true;
+                gunFiring = false;
             }
         }
         else if (EngineController.Health > 1)

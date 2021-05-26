@@ -87,7 +87,7 @@ public class ButtonListenerUI : UdonSharpBehaviour {
             var sliderObject = gameObject.GetComponent<Slider> ();
             if (ReferenceSlider != null) {
                 if (ReferenceSlider.value > ReferenceSlider.minValue) {
-                    ReferenceSlider.value = ReferenceSlider.value + ((ReferenceSlider.minValue / ReferenceSlider.maxValue) / 100);
+                    ReferenceSlider.value = ReferenceSlider.value + (((ReferenceSlider.minValue / ReferenceSlider.maxValue) / 100)* 10);
                     sliderObject.value = ReferenceSlider.value;
                 }
             } else {
@@ -99,7 +99,7 @@ public class ButtonListenerUI : UdonSharpBehaviour {
             var sliderObject = gameObject.GetComponent<Slider> ();
             if (ReferenceSlider != null) {
                 if (ReferenceSlider.value < ReferenceSlider.maxValue) {
-                    ReferenceSlider.value = ReferenceSlider.value - ((ReferenceSlider.minValue / ReferenceSlider.maxValue) / 100);
+                    ReferenceSlider.value = ReferenceSlider.value -( ((ReferenceSlider.minValue / ReferenceSlider.maxValue) / 100)*10);
                     sliderObject.value = ReferenceSlider.value;
                 }
             } else {

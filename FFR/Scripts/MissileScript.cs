@@ -293,7 +293,11 @@ public class MissileScript : UdonSharpBehaviour
                                     }
                                     else if (targetObjectTracker.AI != null && targetObjectTracker.AI.AIClass != null && targetObjectTracker.AI.AIRigidBody != null)
                                     {
-                                        V = targetObjectTracker.AI.AIRigidBody.velocity;
+                                        if(Networking.GetOwner(targetObjectTracker.AI.gameObject) == Networking.LocalPlayer){
+                                            V = targetObjectTracker.AI.AIRigidBody.velocity;
+                                        }else{
+                                            V = targetObjectTracker.AI.veloSync!=Vector3.zero ?targetObjectTracker.AI.veloSync : targetObjectTracker.AI.AIRigidBody.velocity;
+                                        }
                                     }
                                     else
                                     {

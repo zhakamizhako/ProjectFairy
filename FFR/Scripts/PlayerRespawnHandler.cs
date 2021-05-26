@@ -7,16 +7,17 @@ using VRC.Udon;
 public class PlayerRespawnHandler : UdonSharpBehaviour
 {
     public Transform MapObject;
-    private bool PlayerEntered = false;
-    public override void OnPlayerCollisionEnter(VRCPlayerApi Player){
-        if(!PlayerEntered){
+    public bool PlayerEntered = false;
+    public void OnPlayerTriggerEnter (VRCPlayerApi Player){
+        if(!PlayerEntered && Networking.LocalPlayer == Player){
             MapObject.position = Vector3.zero;
             PlayerEntered = true;
         }
     }
-
-    public override void OnPlayerCollisionExit(VRCPlayerApi player)
+    public void OnPlayerTriggerExit (VRCPlayerApi player)
     {
         PlayerEntered = false;
     }
+
+
 }

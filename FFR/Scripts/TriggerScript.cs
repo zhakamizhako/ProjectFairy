@@ -23,6 +23,8 @@ public class TriggerScript : UdonSharpBehaviour
     public bool runInSync = false;
     public bool disabled = false;
     [Header("TrackerObjects")]
+    public GameObject[] GameObjectsToManipulate;
+    public bool EnableOrDisable = false;
     public MissileTrackerAndResponse[] TrackerObjects;
     public int[] TrackerObjectToShowAt; //[Index Number] - MissileTrackerResponse number, Number :: Dialog Line number.
     public int[] TrackerObjectToTargetableAt; //[Index Number] - MissileTrackerResponse number, Number  :: Dialog Line number.
@@ -66,15 +68,23 @@ public class TriggerScript : UdonSharpBehaviour
 
     [Header("Music Options")]
     public AudioSource Music;
+    public AudioSource IntroMusic;
     public bool PlayMusic = false;
     public bool StopMusic = false;
     public int PlayMusicOn = 0;
     [TextArea] public string MusicDetails; //Or Chapter.
     private bool updateString = false;
+    private bool ranAfterRun = false;
+    private bool enabledGameObject = false;
+
+    public Animator aniTrigger;
+    public string AnimatorString;
+    public bool AnimatorArgument;
+    public int RunAnimatorOn = 0;
 
     void Start()
     {
-        isRunning = new bool[DialogLines.Length];
+        isRunning = DialogLines != null ? new bool[DialogLines.Length] : new bool[0];
         for (int x = 0; x < isRunning.Length; x++)
         {
             isRunning[x] = false;
@@ -82,13 +92,21 @@ public class TriggerScript : UdonSharpBehaviour
         Assert(UIScript != null, "Start: UISCRIPT MUST NOT BE null");
     }
 
+    public void callRunSync()
+    {
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runSync");
+    }
+
     public void runSync()
     {
-        // if (!Networking.IsOwner (gameObject)){
-        run = true;
-        ran = true;
-        UIScript.ReceiveTrigger(this);
-        // }
+        if (!ran)
+        {
+            // if (!Networking.IsOwner (gameObject)){
+            run = true;
+            ran = true;
+            UIScript.ReceiveTrigger(this);
+            // }
+        }
     }
 
     public void UBevent()
@@ -154,16 +172,38 @@ public class TriggerScript : UdonSharpBehaviour
                     DialogSounds[currentX].Play();
                 }
                 updateString = true;
+                if (aniTrigger != null && AnimatorString != null && RunAnimatorOn == currentX)
+                {
+                    aniTrigger.SetBool(AnimatorString, AnimatorArgument);
+                }
+                if (PlayMusic && !StopMusic && PlayMusicOn == currentX)
+                {
+                    UIScript.ReceiveMusic(Music,IntroMusic, MusicDetails);
+                }
+
+                if (!PlayMusic && StopMusic && PlayMusicOn == currentX)
+                {
+                    UIScript.StopMusic();
+                }
+                if (callUBEvent && UB != null && customEvent != null && runUBEventon == currentX)
+                {
+                    if (runUBEventGlobally)
+                    {
+                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UBevent");
+                    }
+                    else
+                    {
+                        UBevent();
+                    }
+                }
             }
 
-            if (PlayMusic && !StopMusic && PlayMusicOn == currentX)
+            if (!enabledGameObject && GameObjectsToManipulate != null && GameObjectsToManipulate.Length > 0)
             {
-                UIScript.ReceiveMusic(Music, MusicDetails);
-            }
-
-            if (!PlayMusic && StopMusic && PlayMusicOn == currentX)
-            {
-                UIScript.StopMusic();
+                foreach (GameObject x in GameObjectsToManipulate)
+                {
+                    x.SetActive(EnableOrDisable);
+                }
             }
 
 
@@ -204,9 +244,10 @@ public class TriggerScript : UdonSharpBehaviour
                         }
                         currentX = 0;
                         updateString = false;
-                        if (AfterRun != null)
+                        if (AfterRun != null && !ranAfterRun)
                         {
                             AfterRun.run = true;
+                            ranAfterRun = true;
                         }
                     }
                     else
@@ -280,18 +321,6 @@ public class TriggerScript : UdonSharpBehaviour
                         }
                     }
                 }
-
-            if (callUBEvent && UB != null && customEvent != null && runUBEventon == currentX)
-            {
-                if (runUBEventGlobally)
-                {
-                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "UBevent");
-                }
-                else
-                {
-                    UBevent();
-                }
-            }
 
             timer = timer + Time.deltaTime;
             // }

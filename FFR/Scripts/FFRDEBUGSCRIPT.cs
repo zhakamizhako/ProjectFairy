@@ -14,13 +14,21 @@ public AIObject[] AIObjects;
 public CatchArmController[] CAC;
 public AITurretScript[] AITurrets;
 public ThirdPersonPlayerCamera TPSScript;
+public Transform textoutputTransform;
+private Vector3 initPos;
+public PlayerUIScript UIScript;
+public int speed = 5;
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
         Debug.Log("Debug Script init");
+        if(TextOutput!=null){
+            // textoutputTransform = TextOutput.rectTransform;
+            initPos = textoutputTransform.position;
+        }
     }
     void Update(){
-        if(TextOutput!=null && TPSScript!=null &&TPSScript.TabShown ){
+        if(TextOutput!=null &&  TPSScript!=null && TPSScript.TabShown){
             // if(localPlayer!=null){
                 // pos = localPlayer.GetPosition();
                 if(localPlayer!=null){
@@ -28,16 +36,24 @@ public ThirdPersonPlayerCamera TPSScript;
                 }
                 string text = "X:" + pos.x + "\nY:" + pos.y + "\nZ:" + pos.z + "\n" +
                 "--ProjectFairyTest Debug Menu--\n" + 
-                "--V0.1--\n" + 
-                "--Press TAB to hide--\n" + 
-                "--AIOBJECTS--\n";
+                "--V0.1--!!Close when unused. Will drop frames.!!\n" + 
+                "--Press TAB to hide--\n";
+                if(UIScript!=null){
+                    string tt = "--UI Script Debug" + "\n" +
+                    "TriggerScript:" + UIScript.TriggerScripts!=null ? UIScript.TriggerScripts[0].currentX + "" : "Not active" + "\n" +
+                    "TriggerScript Length:" + UIScript.TriggerScripts!=null ? UIScript.TriggerScripts.Length + "" : "Not Active" + "\n" +
+                    "TriggerScript CurrentX: " + UIScript.TriggerScripts!=null  ? UIScript.TriggerScripts[0].currentX + "" : "Not Active";
+                    text = text + tt;
+                    
+                 }
                 if(AIObjects.Length >0){
                     string txtAIs = "";
                     foreach(AIObject g in AIObjects){
                         txtAIs = txtAIs + "\n" +
-                        g.gameObject.name + "\n" +
+                        "[AI]\n" +g.gameObject.name + "\n" +
                         "Disabled:" +(g.disabled) + "\n" +
                         "mainturrets:" +(g.enableMainTurrets) + "\n" +
+                        
                         "dead:" + (g.dead) + "\n" +
                         "health:" +(g.Health) + "\n" +
                         "TargetString"+ (g.TargetString) + "\n" +
@@ -56,7 +72,8 @@ public ThirdPersonPlayerCamera TPSScript;
                      string txtTurrets = "";
                     foreach(AITurretScript g in AITurrets){
                         txtTurrets = txtTurrets + "\n" +
-                        g.gameObject.name + "\n" +
+                        "[TURRET]\n" +
+                        g.gameObject.name +" - ID: "+g.idTurret+ "\n" +
                         "turretType:" +(g.turretType) + "\n" ;
                         if(g.Target!=null){ txtTurrets = txtTurrets + "target:" + g.Target;}
                         else { txtTurrets = txtTurrets + "target:null";}
@@ -64,6 +81,7 @@ public ThirdPersonPlayerCamera TPSScript;
                         else{ txtTurrets = txtTurrets + "Owner:" + "local"; }
                         // "target:" +(g.Target!=null ? g.Target :null) + "\n" +
                         txtTurrets = txtTurrets + "\ntargetIndex::" + (g.currentTargetIndex) + "\n" +
+                        "AISCRIPT:" +(g.mainAIObject.gameObject.name)+ "\n" +
                         "health:" +(g.Health) + "\n" +
                         "cooldown:" +(g.fireCooldown) + "\n" +
                         "launcharea:" +(g.launchArea) + "\n" +
@@ -78,7 +96,7 @@ public ThirdPersonPlayerCamera TPSScript;
                 if(CAC.Length>0){
                     string txtCAC = "";
                     foreach(CatchArmController c in CAC){
-                        txtCAC = txtCAC + "\n" +
+                        txtCAC = txtCAC + "\n" + "[CAC]\n"+
                         c.gameObject.name + "\n" +
                         "isReady:" + c.isReady + "\n" +
                         "isLaunched:" + c.isLaunched + "\n" +
@@ -98,6 +116,25 @@ public ThirdPersonPlayerCamera TPSScript;
                 }
                 TextOutput.text = text;
             // }
+        }
+        if(!TPSScript.TabShown){
+            textoutputTransform.position =initPos;
+        }else{
+            if(Input.GetKey(KeyCode.KeypadMultiply)){
+                textoutputTransform.position = new Vector3(textoutputTransform.position.x, textoutputTransform.position.y + speed, textoutputTransform.position.z);
+            }
+            if(Input.GetKey(KeyCode.Keypad9)){
+                textoutputTransform.position = new Vector3(textoutputTransform.position.x, textoutputTransform.position.y - speed, textoutputTransform.position.z);
+            }
+            if(Input.GetKey(KeyCode.KeypadDivide)){
+                textoutputTransform.position = Vector3.zero;
+            }
+            if(Input.GetKeyDown(KeyCode.Keypad7)){
+                speed = speed - 1;
+            }
+            if(Input.GetKeyDown(KeyCode.Keypad8)){
+                speed = speed + 1;
+            }
         }
     }
 }

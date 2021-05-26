@@ -11,6 +11,10 @@ public class VehicleRespawnButton : UdonSharpBehaviour
     {
         Assert(EngineControl != null, "Start: EngineControl != null");
     }
+
+    public void RespawnPlane(){
+        Interact();
+    }
     private void Interact()
     {
         if (!EngineControl.Occupied && !EngineControl.dead)
@@ -27,7 +31,7 @@ public class VehicleRespawnButton : UdonSharpBehaviour
             EngineControl.FlightLimitsEnabled = true;
             EngineControl.Health = EngineControl.FullHealth;
             EngineControl.Fuel = EngineControl.FullFuel;
-            EngineControl.GunAmmoInSeconds = EngineControl.FullGunAmmo;
+            // EngineControl.GunAmmoInSeconds = EngineControl.FullGunAmmo;
             EngineControl.Fuel = EngineControl.FullFuel;
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ButtonRespawn");
         }
@@ -38,7 +42,10 @@ public class VehicleRespawnButton : UdonSharpBehaviour
         EngineControl.dead = true;//this makes it invincible and unable to be respawned again for 5s
         EngineControl.EffectsControl.PlaneAnimator.SetTrigger("respawn");//this animation disables EngineControl.dead after 5s
         EngineControl.EffectsControl.PlaneAnimator.SetTrigger("instantgeardown");
+        EngineControl.VehicleRigidbody.velocity = Vector3.zero;
         EngineControl.hbcontroller.Respawn();
+        if(EngineControl.OWML != null){}
+            EngineControl.OWML.AnchorCoordsPosition = (EngineControl.gameObject.transform.localPosition = Vector3.zero);
     }
     private void Assert(bool condition, string message)
     {
