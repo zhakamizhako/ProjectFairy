@@ -7,7 +7,7 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
 {
     public EngineController EngineControl;
     public Transform Map;
-    public Vector3 AnchorCoordsPosition = Vector3.zero;
+    [UdonSynced(UdonSyncMode.None)] public Vector3 AnchorCoordsPosition = Vector3.zero;
     [UdonSynced(UdonSyncMode.Smooth)] public Vector3 PosSync;
     [UdonSynced(UdonSyncMode.Smooth)] public Quaternion RotSync;
     public VRCPlayerApi localPlayer;
@@ -17,37 +17,58 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
     private Quaternion startRot;
     private Vector3 startPos;
     private bool Moved = false;
-    public Transform PlayerParent;
+    [UdonSynced(UdonSyncMode.None)] public bool ScriptEnabled = false;
+    public PlayerUIScript UIScript;
+    public Transform targetParent;
+    public Transform originalParent;
+    private bool moved = false;
     // public Quaternion AnchorCoordsRotation;
     // public float maxX = 1000;
     // public float maxY = 1000;
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
-        if(EngineControl.Piloting){
+        if (EngineControl.Piloting)
+        {
             Networking.SetOwner(localPlayer, EngineControl.gameObject);
             AnchorCoordsPosition = EngineControl.VehicleMainObj.transform.position;
             PosSync = -Map.transform.position + AnchorCoordsPosition;
             RotSync = EngineControl.VehicleMainObj.transform.rotation;
             startPos = EngineControl.VehicleMainObj.transform.position;
+            originalParent = EngineControl.VehicleMainObj.transform.parent;
+            // ScriptEnabled = true;
         }
         // AnchorCoordsRotation = EngineControl.VehicleMainObj.transform.rotation;
     }
 
-    public void CallForRespawn(){
+    public void EnableScript()
+    {
+        ScriptEnabled = true;
+    }
+
+    public void CallForRespawn()
+    {
         respawnCall = true;
         AnchorCoordsPosition = startPos;
         respawnCall = false;
     }
     void Update()
     {
-        if ((EngineControl.Pilot != localPlayer && (!EngineControl.Passenger)) && !respawnCall)
+        if (!ScriptEnabled)
         {
-            EngineControl.VehicleMainObj.transform.position = PosSync;
-            if(syncRotate)
-            EngineControl.VehicleMainObj.transform.rotation = RotSync;
-        }else{
+            return;
+        }
 
+        if (EngineControl.Occupied && (EngineControl.Pilot != localPlayer && (!EngineControl.Passenger)) && !respawnCall)
+        {
+            if (syncRotate)
+                EngineControl.VehicleMainObj.transform.rotation = RotSync;
+
+            if(UIScript!=null && UIScript.PlayerAircraft!=null){
+                EngineControl.VehicleMainObj.transform.position = PosSync + UIScript.PlayerAircraft.OWML.Map.position;
+            }else{
+                EngineControl.VehicleMainObj.transform.position = PosSync;
+            }
         }
         // }else if(!EngineControl.Occupied && ){
 
@@ -56,25 +77,39 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
         MovementLogic();
     }
 
-    void MovementLogic(){
+    void MovementLogic()
+    {
         if (EngineControl != null && Map != null && EngineControl.CatapultStatus == 0 && !respawnCall && (EngineControl.Piloting || EngineControl.Passenger))
         {
-            if (EngineControl.Piloting && !EngineControl.Taxiing)
+            if (EngineControl.Piloting)
             {
+                ScriptEnabled = true;
+                if (!moved)
+                {
+                    targetParent.position = AnchorCoordsPosition;
+                    EngineControl.VehicleMainObj.transform.SetParent(targetParent);
+                    moved = true;
+                }
+                // if (!EngineControl.Taxiing)
+                // {
                 EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
-                // EngineControl.VehicleMainObj.transform.rotation = AnchorCoordsRotation;
-
                 Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
+                // }
                 PosSync = -Map.transform.position + AnchorCoordsPosition;
-                if(syncRotate)
-                RotSync = EngineControl.VehicleMainObj.transform.rotation;
+                if (syncRotate)
+                    RotSync = EngineControl.VehicleMainObj.transform.rotation;
             }
             else if (EngineControl.Passenger)
             {
+                if (!moved)
+                {
+                    EngineControl.VehicleMainObj.transform.SetParent(targetParent);
+                    moved = true;
+                }
                 Map.position = -PosSync + AnchorCoordsPosition;
-                EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY? AnchorCoordsPosition.y : PosSync.y, AnchorCoordsPosition.z);
-                if(syncRotate)
-                EngineControl.VehicleMainObj.transform.rotation = RotSync;
+                EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : PosSync.y, AnchorCoordsPosition.z);
+                if (syncRotate)
+                    EngineControl.VehicleMainObj.transform.rotation = RotSync;
             }
             else
             {
@@ -82,7 +117,13 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
             }
 
         }
+        else if ((!EngineControl.Occupied || !ScriptEnabled) && moved)
+        {
+            EngineControl.VehicleMainObj.transform.SetParent(originalParent);
+            moved = false;
+            ScriptEnabled = false;
+        }
 
-         AnchorCoordsPosition = EngineControl.VehicleMainObj.transform.position; 
+        AnchorCoordsPosition = EngineControl.VehicleMainObj.transform.position;
     }
 }
