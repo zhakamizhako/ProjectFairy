@@ -228,7 +228,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
                     isLElevatorDead = true;
                     Explode ();
                     EngineControl.PitchStrength = EngineControl.PitchStrength / 2;
-                    EngineControl.StartPitchStrength = EngineControl.StartPitchStrength / 2;
+                    // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength / 2;
                     EngineControl.PitchResponse = EngineControl.PitchResponse / 2;
                 } else if (HealthLElevator > 0 && isLElevatorDead) {
                     isLElevatorDead = false;
@@ -241,7 +241,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
                     isRElevatorDead = true;
                     Explode ();
                     EngineControl.PitchStrength = EngineControl.PitchStrength / 2;
-                    EngineControl.StartPitchStrength = EngineControl.StartPitchStrength / 2;
+                    // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength / 2;
                     EngineControl.PitchResponse = EngineControl.PitchResponse / 2;
                 } else if (HealthRElevator > 0 && isRElevatorDead) {
                     isRElevatorDead = false;
@@ -443,7 +443,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
             EngineControl.Lift = initLift;
             //Pitch
             EngineControl.PitchStrength = initPitchStrength;
-            EngineControl.StartPitchStrength = initStartPitchStrength;
+            // EngineControl.StartPitchStrength = initStartPitchStrength;
             EngineControl.PitchResponse = initPitchResponse;
             //Roll
             EngineControl.RollResponse = initRollResponse;
@@ -453,8 +453,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
             EngineControl.YawResponse = initYawResponse;
             EngineControl.YawStrength = initYawStrength;
             //AoA
-            EngineControl.HighAoaMinControlPitch = initHighAoAMinControlPitch;
-            EngineControl.HighAoaMinControlYaw = initHighAoAMinControlYaw;
+            EngineControl.HighPitchAoaMinControl = initHighAoAMinControlPitch;
+            EngineControl.HighYawAoaMinControl = initHighAoAMinControlYaw;
             EngineControl.MaxAngleOfAttackPitch = initMaxAngleOfAttackPitch;
             EngineControl.MaxAngleOfAttackYaw = initMaxAngleOfAttackYaw;
             //Engines

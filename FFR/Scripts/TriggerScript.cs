@@ -36,9 +36,10 @@ public class TriggerScript : UdonSharpBehaviour
     public bool isJustRandom = false;
     public int currentX = 0;
     [TextArea] public string[] DialogLines;
+    [TextArea] public string[] DialogLinesJP;
     public float[] TimePerDialog;
-
     public AudioSource[] DialogSounds;
+    public AudioSource[] DialogSoundsJP;
     // public Text textObject; //This is where all the texts are drawn. Maybe stick it with a player's Head.
     // public Text textObjectVR; //Automatically disabled if on VR
     public float delayBetweenDialogues = 1f;
@@ -127,6 +128,7 @@ public class TriggerScript : UdonSharpBehaviour
         if (run && runInSync == false && ran == false && !stopped)
         { // If global event..
             ran = true;
+            if(!playRegardless)
             UIScript.ReceiveTrigger(this);
             // runScript ();
         }
@@ -159,18 +161,37 @@ public class TriggerScript : UdonSharpBehaviour
             if (!isRunning[currentX])
             {
                 isRunning[currentX] = true;
-                if (UIScript.textObject != null && !updateString)
+                if (!UIScript.isEnglishOrJapanese)
                 {
-                    UIScript.textObject.text = DialogLines[currentX];
+                    if (UIScript.textObject != null && !updateString)
+                    {
+                        UIScript.textObject.text = DialogLines[currentX];
+                    }
+                    if (UIScript.textObjectVR != null && !updateString)
+                    {
+                        UIScript.textObjectVR.text = DialogLines[currentX];
+                    }
+                    if (DialogSounds[currentX] != null)
+                    {
+                        DialogSounds[currentX].Play();
+                    }
                 }
-                if (UIScript.textObjectVR != null && !updateString)
+                if (UIScript.isEnglishOrJapanese)
                 {
-                    UIScript.textObjectVR.text = DialogLines[currentX];
+                    if (UIScript.textObject != null && !updateString)
+                    {
+                        UIScript.textObject.text = DialogLinesJP[currentX];
+                    }
+                    if (UIScript.textObjectVR != null && !updateString)
+                    {
+                        UIScript.textObjectVR.text = DialogLinesJP[currentX];
+                    }
+                    if (DialogSoundsJP[currentX] != null)
+                    {
+                        DialogSoundsJP[currentX].Play();
+                    }
                 }
-                if (DialogSounds[currentX] != null)
-                {
-                    DialogSounds[currentX].Play();
-                }
+
                 updateString = true;
                 if (aniTrigger != null && AnimatorString != null && RunAnimatorOn == currentX)
                 {
@@ -178,7 +199,7 @@ public class TriggerScript : UdonSharpBehaviour
                 }
                 if (PlayMusic && !StopMusic && PlayMusicOn == currentX)
                 {
-                    UIScript.ReceiveMusic(Music,IntroMusic, MusicDetails);
+                    UIScript.ReceiveMusic(Music, IntroMusic, MusicDetails);
                 }
 
                 if (!PlayMusic && StopMusic && PlayMusicOn == currentX)

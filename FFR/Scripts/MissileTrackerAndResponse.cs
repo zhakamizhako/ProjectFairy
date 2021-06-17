@@ -3,7 +3,6 @@ using UnityEngine;
 using UnityEngine.UI;
 using VRC.SDKBase;
 using VRC.Udon;
-// using UnityEditor;
 
 public class MissileTrackerAndResponse : UdonSharpBehaviour
 {
@@ -14,6 +13,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public AITurretScript AITurret;
     public AIObject AI;
     public EngineController EngineController;
+    public TarpsMode tarps;
 
     [Header("Tracker Settings")]
     public bool isTargetable = true;
@@ -86,7 +86,6 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public bool isAirTarget = false;
     public bool ShowDistance = true;
     public bool showX = false;
-
     public bool ShowText = true;
     public GameObject XIcon;
     private Renderer IconRenderer;
@@ -101,6 +100,15 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     private string words = "";
     public PathwaySystem pathway;
     public bool isPathway = false;
+
+
+    [Header("Objective Markers only")]
+    public ObjectiveIndicator objectiveIndicatorPrefab;
+    public bool showObjectiveTracker = false;
+    //ui
+    public GameObject[] OBJIndicators;
+    public bool isRenderedMarker = false;
+
 
     void Start()
     {
@@ -163,6 +171,92 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             runtime = null;
             temporary = misScript;
         }
+    }
+
+    public void AddObjectiveMarker(ObjectiveIndicator obj)
+    {
+        Debug.Log("Attempting to add");
+        if (UIScript == null || UIScript.PlayerAircraft == null)
+        {
+            Debug.LogError("MissingUISCript or PlayerAircraft");
+            return;
+        }
+
+        var runtime2 = VRCInstantiate(obj.gameObject);
+
+        GameObject[] temp = new GameObject[OBJIndicators.Length + 1];
+        OBJIndicators.CopyTo(temp, 0);
+
+        temp[temp.Length - 1] = runtime2;
+        OBJIndicators = temp;
+        // GameObject[] temp2 = new GameObject[OBJIndicators.Length + 1];
+        // OBJIndicators.CopyTo(temp2, 0);
+
+        runtime2.SetActive(true);
+        // temp2[temp2.Length - 1] = runtime2;
+        // OBJIndicators = temp2;
+        Debug.Log("AAdded");
+        // runtime = null;
+
+    }
+
+    public void RemoveObjectiveTracker(ObjectiveIndicator obj)
+    {
+        if (UIScript == null || UIScript.PlayerAircraft == null)
+        {
+            return;
+        }
+
+        bool found = false;
+        for (int x = 0; x < OBJIndicators.Length; x++)
+        {
+            if (OBJIndicators[x] != null && OBJIndicators[x] == obj.gameObject)
+            {
+                found = true;
+            }
+        }
+        if (found)
+        {
+            GameObject[] temp = new GameObject[OBJIndicators.Length - 1];
+            // Debug.Log("B");
+            int y = 0;
+            for (int x = 0; x < OBJIndicators.Length; x++)
+            {
+                // Debug.Log("SCAN");
+                if (OBJIndicators[x] != obj.gameObject)
+                {
+                    temp[y] = OBJIndicators[x];
+                    y = y + 1;
+                    // Debug.Log("INCREMENT");
+                }
+                else
+                {
+                    OBJIndicators[x].GetComponent<ObjectiveIndicator>().toDestroy();
+                    // Destroy(Indicators[x]);
+                    Debug.Log("DESTROY");
+                }
+            }
+            OBJIndicators = temp;
+        }
+        else
+        {
+            Debug.Log("Not found");
+        }
+    }
+
+
+    public void cleanupOBJMarkers()
+    {
+        Debug.Log("CLEANUP");
+        for (int x = 0; x < OBJIndicators.Length; x++)
+        {
+            if (OBJIndicators[x] != null)
+            {
+                DestroyImmediate(OBJIndicators[x]);
+            }
+        }
+        OBJIndicators = new GameObject[0];
+        Debug.Log("CLEANDUP OBJIndicators");
     }
 
     void OnBecameVisible()
@@ -281,7 +375,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             if (isWaypointEnabled)
             {
                 RaycastHit[] hit = Physics.SphereCastAll(WaypointDetector.position, WaypointDetectorRadius, WaypointDetector.forward, WaypointDetectorRange, layermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
-                // Debug.DrawLine (WaypointDetector.position, WaypointDetectorRange);
+                                                                                                                                                                                                            // Debug.DrawLine (WaypointDetector.position, WaypointDetectorRange);
                 DebugHits = new Transform[hit.Length];
                 for (int x = 0; x < hit.Length; x++)
                 {
@@ -305,7 +399,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                             bb = currentHitObject.GetComponent<MissileTrackerAndResponse>();
                         }
 
-                        if(bb==null){
+                        if (bb == null)
+                        {
                             return;
                         }
 
@@ -318,6 +413,10 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                                     isRendered = false;
                                     isWaypointEnabled = false;
                                 }
+                                if (hideInSyncContact)
+                                {
+                                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hideSync");
+                                }
                                 if (onEnter != null)
                                 {
                                     onEnter.run = true;
@@ -329,10 +428,10 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                                 {
                                     isRendered = false;
                                     isWaypointEnabled = false;
-                                }
-                                if (hideInSyncContact)
-                                {
-                                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hideSync");
+                                    if (hideInSyncContact)
+                                    {
+                                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hideSync");
+                                    }
                                 }
                                 if (onEnter != null)
                                 {
@@ -395,16 +494,20 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     }
     void Update()
     {
-        if(HideIfFar){
-            currentDistance = Vector3.Distance(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetPosition():Vector3.zero, gameObject.transform.position);
-                                    var distance = Vector3.Distance(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetTrackingData (VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero, gameObject.transform.position);
-                                    var ObjectToTargetVector = gameObject.transform.position -(Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero);
-                                    var AIForward = Networking.LocalPlayer!=null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward : Vector3.zero;
-                                    var targetDirection = ObjectToTargetVector.normalized;
-                                 tempAngleCheck = Vector3.Angle(targetDirection, AIForward);
-            if((currentDistance > farDistance &&!showneverthelessDistance) || tempAngleCheck > cullAngle ){
+        if (HideIfFar)
+        {
+            currentDistance = Vector3.Distance(Networking.LocalPlayer != null ? Networking.LocalPlayer.GetPosition() : Vector3.zero, gameObject.transform.position);
+            var distance = Vector3.Distance(Networking.LocalPlayer != null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero, gameObject.transform.position);
+            var ObjectToTargetVector = gameObject.transform.position - (Networking.LocalPlayer != null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero);
+            var AIForward = Networking.LocalPlayer != null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward : Vector3.zero;
+            var targetDirection = ObjectToTargetVector.normalized;
+            tempAngleCheck = Vector3.Angle(targetDirection, AIForward);
+            if ((currentDistance > farDistance && !showneverthelessDistance) || tempAngleCheck > cullAngle)
+            {
                 culled = true;
-            }else{
+            }
+            else
+            {
                 culled = false;
             }
         }
@@ -540,12 +643,33 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                     TrackerText.text = words;
 
                 }
-
             }
             else
             {
                 if (TargetIconRender.activeSelf)
                     TargetIconRender.SetActive(false);
+            }
+
+            if (isRendered)
+            {
+                if (objectiveIndicatorPrefab != null && showObjectiveTracker && isObjective)
+                {
+                    if (!isRenderedMarker && culled)
+                    {
+                        AddObjectiveMarker(objectiveIndicatorPrefab);
+                        isRenderedMarker = true;
+                    }
+                    if (isRenderedMarker && !culled)
+                    {
+                        RemoveObjectiveTracker(objectiveIndicatorPrefab);
+                        isRenderedMarker = false;
+                    }
+                }
+            }
+
+            if(!isRendered && OBJIndicators!=null && OBJIndicators.Length > 0){
+                cleanupOBJMarkers();
+                isRenderedMarker = false;
             }
         }
         else

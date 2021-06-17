@@ -1,3 +1,4 @@
+
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -9,9 +10,7 @@ public class PilotSeat : UdonSharpBehaviour
     public GameObject LeaveButton;
     public GameObject Gun_pilot;
     public GameObject SeatAdjuster;
-    private Transform PlaneMesh;
-    private LayerMask Planelayer = 0;
-    // public MissilePlaneSystem MissileControl;
+    private LeaveVehicleButton LeaveButtonControl;
     public WeaponSelector wp;
     private ParticleSystem.CollisionModule gunpilotcol;
     public GameObject fHud;
@@ -22,11 +21,35 @@ public class PilotSeat : UdonSharpBehaviour
     public MissileTrackerAndResponse mistracker;
     public OpenWorldMovementLogic OWML;
     public GameObject[] EnableObjectsOnStart;
-    public bool sit = false;
-
+    public bool EnableOWMLByDefault = true;
     [UdonSharp.UdonSynced(UdonSyncMode.None)] public bool EnabledEngine = true;
-    private LeaveVehicleButton LeaveButtonControl;
-    public bool testMode = false;
+    private bool sit = false;
+
+    public void EnableOWML()
+    {
+        // if(EngineControl.Piloting || EngineControl.Passenger){
+        OWML.gameObject.SetActive(true);
+        Debug.Log("NYAHOI!");
+        // }
+    }
+
+    public void DisableKinematic()
+    {
+        EngineControl.VehicleRigidbody.isKinematic = false;
+    }
+    public void callEnableEngine()
+    {
+        if (Networking.IsOwner(EngineControl.localPlayer, gameObject))
+        {
+            EnabledEngine = true;
+        }
+    }
+
+    public void callEnableOWML()
+    {
+        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "EnableOWML");
+    }
+
     private void Start()
     {
         Assert(EngineControl != null, "Start: EngineControl != null");
@@ -34,85 +57,64 @@ public class PilotSeat : UdonSharpBehaviour
         Assert(Gun_pilot != null, "Start: Gun_pilot != null");
         Assert(SeatAdjuster != null, "Start: SeatAdjuster != null");
 
-        PlaneMesh = EngineControl.PlaneMesh.transform;
         LeaveButtonControl = LeaveButton.GetComponent<LeaveVehicleButton>();
-        //get the layer of the plane as set by the world creator
-        // Planelayer = PlaneMesh.gameObject.layer;
+    }
+    private void Interact()//entering the plane
+    {
+        if (EnabledEngine)
+        {
+            EngineStart();
+            // EngineControl.PilotEnterPlaneLocal();
+        }
         if (ButtonSet != null)
         {
-            ButtonSet.SetActive(false);
+            ButtonSet.SetActive(true);
         }
-    }
-    public void EnableOWML(){
-        // if(EngineControl.Piloting || EngineControl.Passenger){
-            OWML.gameObject.SetActive(true);
-            Debug.Log("NYAHOI!");
-        // }
+        if (OWML != null)
+        {
+            Networking.SetOwner(EngineControl.localPlayer, OWML.gameObject);
+        }
+
+        EngineControl.localPlayer.UseAttachedStation();
+        if (LeaveButton != null) { LeaveButton.SetActive(true); }
+        if (Gun_pilot != null) { Gun_pilot.SetActive(true); }
+        if (SeatAdjuster != null) { SeatAdjuster.SetActive(true); }
+        if (mistracker != null) { mistracker.UIScript.PlayerAircraft = EngineControl; }
+        sit = true;
     }
 
-    public void callEnableEngine(){
-        if(Networking.IsOwner(EngineControl.localPlayer, gameObject) ){
-            EnabledEngine = true;
-        }
-    }
-
-    public void callEnableOWML(){
-         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "EnableOWML");
+    public void globalCall()
+    {
+        EngineControl.EffectsControl.DoEffects = 0f;
+        EngineControl.SoundControl.Wakeup();
     }
 
     public void EngineStart()
     {
-        if(EngineControl.Passenger || sit == false){
+        if (EngineControl.Passenger || sit == false)
+        {
             return;
         }
-        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "StartEngineGlobal");
-        // EngineStartGlobal();
-        if (EngineControl != null)
-        {
-            EngineControl.Piloting = true;
-            EngineControl.VehicleRigidbody.angularDrag = 0; //set to something nonzero when you're not owner to prevent juddering motion on collisions
-            EngineControl.VehicleRigidbody.isKinematic = false;
-            if (!EngineControl.InEditor)
-            {
-                if (!testMode)
-                    Networking.SetOwner(EngineControl.localPlayer, EngineControl.gameObject);
-                Networking.SetOwner(EngineControl.localPlayer, EngineControl.VehicleMainObj.gameObject);
-                if (EngineControl.hbcontroller != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.hbcontroller.gameObject); }
-                if (EngineControl.localPlayer.IsUserInVR())
-                {
-                    if (CVHVR != null)
-                    {
-                        CVHVR.gameObject.SetActive(true);
-                    }
-                }
-                else
-                {
-                    if (CVH != null)
-                    {
-                        CVH.gameObject.SetActive(true);
-                    }
-                }
 
+        EngineControl.PilotEnterPlaneLocal();
+        EngineControl.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "globalCall");
+
+        if (EngineControl.hbcontroller != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.hbcontroller.gameObject); }
+        if (EngineControl.localPlayer.IsUserInVR())
+        {
+            if (CVHVR != null)
+            {
+                CVHVR.gameObject.SetActive(true);
             }
-            EngineControl.Piloting = true;
-            //canopy closed/open sound
-            if (EngineControl.EffectsControl.CanopyOpen) EngineControl.CanopyCloseTimer = -100000 - EngineControl.CanopyCloseTime;
-            else EngineControl.CanopyCloseTimer = -1; //less than 0
-            if (EngineControl.dead) EngineControl.Health = 100; //dead is true for the first 5 seconds after spawn, this might help with spontaneous explosions
         }
-        if (EngineControl.EffectsControl != null)
+        else
         {
-            if (!EngineControl.InEditor) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.EffectsControl.gameObject); }
-            EngineControl.IsFiringGun = false;
-            EngineControl.EffectsControl.Smoking = false;
+            if (CVH != null)
+            {
+                CVH.gameObject.SetActive(true);
+            }
         }
-        if (EngineControl.HUDControl != null)
-        {
-            if (!EngineControl.InEditor) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.HUDControl.gameObject); }
-            EngineControl.HUDControl.gameObject.SetActive(true);
-        }
-        if (Gun_pilot != null) { Gun_pilot.SetActive(true); }
-        
+
         if (wp != null)
         {
             Networking.SetOwner(EngineControl.localPlayer, wp.gameObject);
@@ -125,22 +127,17 @@ public class PilotSeat : UdonSharpBehaviour
         }
         if (OWML != null)
         {
-            Networking.SetOwner(EngineControl.localPlayer, OWML.gameObject);
+            if (EnableOWMLByDefault)
+            {
+                OWML.ScriptEnabled = true;
+            }
+
+
         }
         if (mistracker != null)
         {
             Networking.SetOwner(EngineControl.localPlayer, mistracker.gameObject);
         }
-        // if (MissileControl != null) {
-        //     MissileControl.showTargets = true;
-        //     Networking.SetOwner (EngineControl.localPlayer, MissileControl.gameObject);
-        // }
-        // if (PlaneMesh != null) {
-        //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();
-        //     foreach (Transform child in children) {
-        //         child.gameObject.layer = EngineControl.OnboardPlaneLayer;
-        //     }
-        // }
         if (fHud != null)
         {
             fHud.SetActive(true);
@@ -153,198 +150,111 @@ public class PilotSeat : UdonSharpBehaviour
                 x.SetActive(true);
             }
         }
-
-        //hopefully prevents explosions when you enter the plane
-        EngineControl.VehicleRigidbody.velocity = EngineControl.CurrentVel;
-        EngineControl.Gs = 0;
-        EngineControl.LastFrameVel = EngineControl.CurrentVel;
-
-        //Make sure EngineControl.AAMCurrentTargetEngineControl is correct
-    }
-    private void Interact() //entering the plane
-    {
-        if (EngineControl.VehicleMainObj != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.VehicleMainObj); }
-        if (LeaveButton != null) { LeaveButton.SetActive(true); }
-        if (ButtonSet != null)
-        {
-            ButtonSet.SetActive(true);
-        }
-        if (EngineControl != null)
-        {
-            EngineControl.localPlayer.UseAttachedStation();
-        }
-        if (SeatAdjuster != null) { SeatAdjuster.SetActive(true); }
-        if (EnabledEngine)
-        {
-            EngineStart();
-        }
-        sit = true;
+        globalCall();
     }
     public override void OnStationEntered(VRCPlayerApi player)
     {
-        if (EnabledEngine)
+        if (player != null)
         {
-            StartEngineGlobal();
-        }
-
-        if (player.isLocal)
-        {
-            foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+            // if(EnabledEngine){
+            EngineControl.PilotEnterPlaneGlobal(player);
+            // }
+            //voice range change to allow talking inside cockpit (after VRC patch 1008)
+            LeaveButtonControl.SeatedPlayer = player.playerId;
+            if (player.isLocal)
             {
-                if (crew.SeatedPlayer != null)
-                {
-                    SetVoiceInside(crew.SeatedPlayer);
+                foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+                {//get get a fresh VRCPlayerAPI every time to prevent players who left leaving a broken one behind and causing crashes
+                    VRCPlayerApi guy = VRCPlayerApi.GetPlayerById(crew.SeatedPlayer);
+                    if (guy != null)
+                    {
+                        SetVoiceInside(guy);
+                    }
                 }
+
+                OWML.ScriptEnabled = true;
+            }
+            else if (EngineControl.Piloting || EngineControl.Passenger)
+            {
+                SetVoiceInside(player);
             }
         }
-        else if (EngineControl.Piloting || EngineControl.Passenger)
-        {
-            SetVoiceInside(player);
-        }
-    }
-
-    public void StartEngineGlobal()
-    {
-        VRCPlayerApi player = Networking.GetOwner(EngineControl.gameObject);
-        EngineControl.PilotName = player.displayName;
-        EngineControl.Pilot = player;
-
-        EngineControl.dead = false; //Plane stops being invincible if someone gets in, also acts as redundancy incase someone missed the notdead respawn event
-
-        //old WakeUp();
-        EngineControl.EffectsControl.DoEffects = 0f;
-        EngineControl.SoundControl.DoSound = 0f;
-
-        LeaveButtonControl.SeatedPlayer = player;
-
-
-        foreach (AudioSource thrust in EngineControl.SoundControl.Thrust)
-        {
-            thrust.gameObject.SetActive(true);
-        }
-        foreach (AudioSource idle in EngineControl.SoundControl.PlaneIdle)
-        {
-            idle.gameObject.SetActive(true);
-        }
-        if (!EngineControl.SoundControl.PlaneDistantNull) EngineControl.SoundControl.PlaneDistant.gameObject.SetActive(true);
-        if (!EngineControl.SoundControl.PlaneWindNull) EngineControl.SoundControl.PlaneWind.gameObject.SetActive(true);
-        if (!EngineControl.SoundControl.PlaneInsideNull) EngineControl.SoundControl.PlaneInside.gameObject.SetActive(true);
-        if (EngineControl.SoundControl.soundsoff)
-        {
-            EngineControl.SoundControl.PlaneIdleVolume = 0;
-            EngineControl.SoundControl.PlaneDistantVolume = 0;
-            EngineControl.SoundControl.PlaneThrustVolume = 0;
-        }
-        EngineControl.SoundControl.soundsoff = false;
     }
     public override void OnStationExited(VRCPlayerApi player)
     {
-        EngineControl.PilotName = string.Empty;
-        EngineControl.Pilot = null;
-        sit = false;
-
-        if (player.isLocal)
+        PlayerExitPlane(player);
+    }
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        if (player.playerId == LeaveButtonControl.SeatedPlayer)
         {
-            foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
-            {
-                if (crew.SeatedPlayer != null)
-                {
-                    SetVoiceOutside(crew.SeatedPlayer);
-                }
-            }
-
-            EngineControl.Piloting = false;
-            if (CVH != null)
-            {
-                CVH.gameObject.SetActive(false);
-            }
-            if (CVHVR != null)
-            {
-                CVHVR.gameObject.SetActive(false);
-            }
-            if (wp != null)
-            {
-                wp.MissilePlaneSystems[wp.selectedSystem].showTargets = false;
-                wp.MissilePlaneSystems[wp.selectedSystem].leavePlane();
-
-            }
-            if (mistracker != null)
-            {
-                mistracker.cleanup();
-            }
-            // if (MissileControl != null) {
-            //     MissileControl.showTargets = false;
-            //     MissileControl.leavePlane ();
-            // }
-            if (EngineControl.Ejected)
-            {
-                EngineControl.localPlayer.SetVelocity(EngineControl.CurrentVel + EngineControl.VehicleMainObj.transform.up * 25);
-                EngineControl.Ejected = false;
-            }
-            else EngineControl.localPlayer.SetVelocity(EngineControl.CurrentVel);
-            EngineControl.EjectTimer = 2;
-            EngineControl.Hooked = false;
-            EngineControl.BrakeInput = 0;
-            EngineControl.LTriggerTapTime = 1;
-            EngineControl.RTriggerTapTime = 1;
-            EngineControl.Taxiinglerper = 0;
-            EngineControl.PlayerThrottle = 0;
-            EngineControl.LGripLastFrame = false;
-            EngineControl.RGripLastFrame = false;
-            EngineControl.LStickSelection = 0;
-            EngineControl.RStickSelection = 0;
-            EngineControl.BrakeInput = 0;
-            EngineControl.LTriggerLastFrame = false;
-            EngineControl.RTriggerLastFrame = false;
-            // EngineControl.HUDControl.MenuSoundCheckLast = 0;
-            EngineControl.EffectsControl.PlaneAnimator.SetInteger("missilesincoming", 0);
-            if (EngineControl.CatapultStatus == 1) { EngineControl.CatapultStatus = 0; } //keep launching if launching, otherwise unlock from catapult
-
-            if (LeaveButton != null) { LeaveButton.SetActive(false); }
-            if (EngineControl.EffectsControl != null)
-            {
-                EngineControl.IsFiringGun = false;
-                EngineControl.EffectsControl.Smoking = false;
-            }
-            if (Gun_pilot != null) { Gun_pilot.SetActive(false); }
-            if (SeatAdjuster != null) { SeatAdjuster.SetActive(false); }
-            if (EngineControl.HUDControl != null) { EngineControl.HUDControl.gameObject.SetActive(false); }
-            if (fHud != null)
-            {
-                fHud.SetActive(false);
-            }
-            if (ButtonSet != null)
-            {
-                ButtonSet.SetActive(false);
-            }
-            if (OWML != null)
-            {
-
-                OWML.Map.position = Vector3.zero;
-            }
-            if (teleportTo != null && EngineControl.dead == true)
-            {
-                player.TeleportTo(teleportTo.position, teleportTo.rotation);
-                player.SetVelocity(Vector3.zero);
-            }
-            if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
-            {
-                foreach (GameObject x in EnableObjectsOnStart)
-                {
-                    x.SetActive(false);
-                }
-            }
-
-            //set plane's layer back
-            // if (PlaneMesh != null) {
-            //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();
-            //     foreach (Transform child in children) {
-            //         child.gameObject.layer = Planelayer;
-            //     }
-            // }
+            PlayerExitPlane(player);
         }
     }
+    public void PlayerExitPlane(VRCPlayerApi player)
+    {
+        LeaveButtonControl.SeatedPlayer = -1;
+        if (player != null && player.isLocal)
+        {
+            EngineControl.PilotExitPlane(player);
+            SetVoiceOutside(player);
+            if (EngineControl.EffectsControl != null)
+            {
+                EngineControl.EffectsControl.PlaneAnimator.SetTrigger("deactivate_hud");
+            }
+            if (LeaveButton != null) { LeaveButton.SetActive(false); }
+            if (Gun_pilot != null) { Gun_pilot.SetActive(false); }
+            if (SeatAdjuster != null) { SeatAdjuster.SetActive(false); }
+            if (player.isLocal)
+            {
+                //undo voice distances of all players inside the vehicle
+                foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+                {
+                    VRCPlayerApi guy = VRCPlayerApi.GetPlayerById(crew.SeatedPlayer);
+                    if (guy != null)
+                    {
+                        SetVoiceOutside(guy);
+                    }
+                }
 
+                // OWML.ScriptEnabled = false;
+                if (CVH != null)
+                {
+                    CVH.gameObject.SetActive(false);
+                }
+                if (CVHVR != null)
+                {
+                    CVHVR.gameObject.SetActive(false);
+                }
+                if (wp != null)
+                {
+                    wp.MissilePlaneSystems[wp.selectedSystem].showTargets = false;
+                    wp.MissilePlaneSystems[wp.selectedSystem].leavePlane();
+
+                }
+                if (mistracker != null)
+                {
+                    mistracker.cleanup();
+                    mistracker.cleanupOBJMarkers();
+                    mistracker.UIScript.PlayerAircraft = null;
+                }
+                if (fHud != null)
+                {
+                    fHud.SetActive(false);
+                }
+                if (ButtonSet != null)
+                {
+                    ButtonSet.SetActive(false);
+                }
+                if (OWML != null)
+                {
+                    OWML.Map.position = Vector3.zero;
+                }
+
+            }
+        }
+        sit = false;
+    }
     private void SetVoiceInside(VRCPlayerApi Player)
     {
         Player.SetVoiceDistanceNear(999999);
@@ -361,7 +271,7 @@ public class PilotSeat : UdonSharpBehaviour
     {
         if (!condition)
         {
-            Debug.LogError("Assertion failed : '" + GetType() + " : " + message + "'", this);
+            Debug.LogWarning("Assertion failed : '" + GetType() + " : " + message + "'", this);
         }
     }
 }

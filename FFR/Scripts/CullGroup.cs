@@ -10,6 +10,7 @@ public class CullGroup : UdonSharpBehaviour
     public float RenderDistance = 7000f;
     public GameObject Object;
     private VRCPlayerApi localPlayer;
+    public bool reverseCull = false;
 
     void Start()
     {
@@ -21,11 +22,11 @@ public class CullGroup : UdonSharpBehaviour
             Vector3 pos = localPlayer.GetPosition();
             var distance = Vector3.Distance(pos, gameObject.transform.position);
             if(distance > RenderDistance){
-                if(Object.activeSelf)
-               Object.SetActive(false);
+                // if(Object.activeSelf)
+               Object.SetActive(!reverseCull ? false : true);
             }else if(distance < RenderDistance){
-                if(!Object.activeSelf)
-                Object.SetActive(true);
+                // if(!Object.activeSelf)
+                Object.SetActive(!reverseCull ? true : false);
             }
         }
     }

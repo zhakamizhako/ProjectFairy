@@ -117,6 +117,8 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public float damageValuePerParticle = 20f;
     public string WeaponAnimatorString = "activated";
     public bool sleep = false;
+
+    public PlayerUIScript UIScript;
     void Start()
     { //Initialize Missile Packs and status
         if (LockSightHUD != null)
@@ -709,11 +711,16 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                     {
                         if (Input.GetAxisRaw("Oculus_CrossPlatform_SecondaryIndexTrigger") > .5f) { buttonDown = true; }
                         if (DPAD_DOWN < 0 || DPAD_DOWN > 0) { DPAD_DOWN_last_trigger = true; }
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileSync");
-                        if (EngineController.localPlayer == null) //so it works in editor
-                        {
-                            MissileSync();
+                        if(locked){
+                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireLocked");    
+                        }else{
+                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireUnlocked");    
                         }
+                        // SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileSync");
+                        // if (EngineController.localPlayer == null) //so it works in editor
+                        // {
+                            // MissileSync();
+                        // }
                     }
                     if (Input.GetAxisRaw("Oculus_CrossPlatform_SecondaryIndexTrigger") < .5f && buttonDown == true)
                     {
@@ -1027,6 +1034,16 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             }
         }
         misTarget.noTarget = true;
+    }
+
+    public void MissileFireLocked(){
+        misTarget.noTarget = false;
+        MissileSync();
+    }
+
+    public void MissileFireUnlocked(){
+        misTarget.noTarget = true;
+        MissileSync();
     }
 
     public void MissileSync()

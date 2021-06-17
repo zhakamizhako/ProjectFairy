@@ -25,7 +25,7 @@ public class ButtonNavigator : UdonSharpBehaviour
     public Text SouthText;
     public Text EastText;
     public Text WestText;
-
+    public EngineController EngineControl;
     public GameObject QueryObject;
     public Animator BUIAnimator;
     public Text DebugText;
@@ -44,6 +44,9 @@ public class ButtonNavigator : UdonSharpBehaviour
 
     void Update()
     {
+        if(EngineControl == null || !(EngineControl.Piloting || EngineControl.Passenger) ){
+            return;
+        }
         if (standbyTime < 1)
         {
             standbyTime = standbyTime + Time.deltaTime;

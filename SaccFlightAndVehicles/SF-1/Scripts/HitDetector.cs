@@ -25,35 +25,32 @@ public class HitDetector : UdonSharpBehaviour {
         }
 
     }
-    public void PlaneHit () {
-        if (EngineControl.dead) return;
-        if (EngineControl.InEditor || EngineControl.localPlayer.IsOwner (EngineControl.gameObject)) {
-            EngineControl.Health -= 10;
-        }
-        if (EngineControl.EffectsControl != null) { EngineControl.EffectsControl.DoEffects = 0f; }
-        if (EngineControl.SoundControl != null && !EngineControl.SoundControl.BulletHitNull) {
-            int rand = Random.Range (0, EngineControl.SoundControl.BulletHit.Length);
-            EngineControl.SoundControl.BulletHit[rand].pitch = Random.Range (.8f, 1.2f);
-            EngineControl.SoundControl.BulletHit[rand].Play ();
-        }
-    }
-    public void Respawn () //called by the explode animation on last frame
+    public void PlaneHit()
     {
-        if (EngineControl.InEditor) //editor
+        EngineControl.PlaneHit();
+    }
+    public void Respawn()//called by the explode animation on last frame
+    {
+        if (EngineControl.InEditor)//editor
         {
-            Respawn_event ();
-        } else if (EngineControl.localPlayer.IsOwner (EngineControl.VehicleMainObj)) {
-            SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Respawn_event"); //owner broadcasts because it's more reliable than everyone doing it individually
+            EngineControl.Respawn_event();
+        }
+        else if (EngineControl.IsOwner)
+        {
+            EngineControl.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Respawn_event");//owner broadcasts because it's more reliable than everyone doing it individually
         }
     }
-    public void MoveToSpawn () //called 3 seconds before respawn, to prevent a glitch where the plane will appear where it died for a second for non-owners
+    public void MoveToSpawn()//called 3 seconds before respawn, to prevent a glitch where the plane will appear where it died for a second for non-owners
     {
-        if (EngineControl.IsOwner) {
-            if (EngineControl.InEditor) {
-                EngineControl.VehicleMainObj.transform.rotation = Quaternion.Euler (EngineControl.Spawnrotation);
-                EngineControl.VehicleMainObj.transform.position = EngineControl.Spawnposition;
-            } else { //this should respawn it in VRC, doesn't work in editor
-                EngineControl.VehicleMainObj.transform.position = new Vector3 (EngineControl.VehicleMainObj.transform.position.x, -10000, EngineControl.VehicleMainObj.transform.position.z);
+        if (EngineControl.IsOwner)
+        {
+            if (EngineControl.InEditor)
+            {
+                EngineControl.VehicleTransform.SetPositionAndRotation(EngineControl.Spawnposition, Quaternion.Euler(EngineControl.Spawnrotation));
+            }
+            else
+            { //this should respawn it in VRC, doesn't work in editor
+                EngineControl.VehicleMainObj.transform.position = new Vector3(EngineControl.VehicleMainObj.transform.position.x, -10000, EngineControl.VehicleMainObj.transform.position.z);
             }
         }
     }
@@ -83,13 +80,17 @@ public class HitDetector : UdonSharpBehaviour {
             }
         }
     }
-    public void NotDead () //called by 'respawn' animation 5s in
+    public void NotDead()//called by 'respawn' animation twice because calling on the last frame of animation is unreliable for some reason
     {
-        if (EngineControl.InEditor) {
-            NotDead_event ();
-        } else if (EngineControl.localPlayer.IsOwner (EngineControl.VehicleMainObj)) {
-            SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "NotDead_event"); //owner broadcasts because it seems more reliable than everyone doing it individually
+        if (EngineControl.InEditor)
+        {
+            EngineControl.Health = EngineControl.FullHealth;
         }
+        else if (EngineControl.IsOwner)
+        {
+            EngineControl.Health = EngineControl.FullHealth;
+        }
+        EngineControl.dead = false;
     }
     public void NotDead_event () //called by NotDead()
     {
@@ -100,9 +101,12 @@ public class HitDetector : UdonSharpBehaviour {
         }
         EngineControl.dead = false; //because respawning gives us an immense number of Gs because we move so far in one frame, we stop being 'dead' 5 seconds after we respawn. Can't explode when 'dead' is set. 
     }
-    private void Assert (bool condition, string message) {
-        if (!condition) {
-            Debug.LogError ("Assertion failed : '" + GetType () + " : " + message + "'", this);
+
+    private void Assert(bool condition, string message)
+    {
+        if (!condition)
+        {
+            Debug.LogWarning("Assertion failed : '" + GetType() + " : " + message + "'", this);
         }
     }
 }

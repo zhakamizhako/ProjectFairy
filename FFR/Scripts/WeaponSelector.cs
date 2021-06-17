@@ -31,6 +31,7 @@ public class WeaponSelector : UdonSharpBehaviour {
     [HideInInspector] public bool miss = false;
     private float MissIndicatorTimer = 0f;
     public float MissIndicatorTime = 1f;
+    public TarpsMode tarps;
 
     public GameObject HitIndicator;
     [HideInInspector] public bool hit = false;
@@ -62,6 +63,19 @@ public class WeaponSelector : UdonSharpBehaviour {
             MissilePlaneSystems[x].gameObject.SetActive(false);
         }
         if(MissilePlaneSystems.Length>0 && MissilePlaneSystems[selectedSystem]!=null){
+            MissilePlaneSystems[selectedSystem].selectedWeapon = true;
+        }
+    }
+
+    public void UseTarps(){
+        if(tarps==null){
+            return;
+        }
+        tarps.isSelected = !tarps.isSelected;
+        if(tarps.isSelected){
+            MissilePlaneSystems[selectedSystem].selectedWeapon = false;
+        }
+        if(!tarps.isSelected){
             MissilePlaneSystems[selectedSystem].selectedWeapon = true;
         }
     }
@@ -196,6 +210,9 @@ public class WeaponSelector : UdonSharpBehaviour {
     }
     public void SwitchWeaponSystem () {
         if (Networking.IsOwner (gameObject)) {
+            if(tarps!=null && tarps.isSelected){
+                tarps.isSelected = false;
+            }
             if (SwitchWeapon != null)
                 SwitchWeapon.Play ();
             var prevSelected = selectedSystem;

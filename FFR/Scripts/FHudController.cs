@@ -41,6 +41,7 @@ public class FHudController : UdonSharpBehaviour
     private bool isPlayedPullup = false;
 
     public bool isHeadTracked = true;
+    public float distance_from_head = 1.333f;
 
     // public float SeaLevel = -200000;
     private Vector3 altimeterLerp = new Vector3(0, 0, 0);
@@ -70,13 +71,17 @@ public class FHudController : UdonSharpBehaviour
     public GameObject MissileAlertObject;
     public GameObject CautionObject;
     private Rigidbody MainBodyPlane;
-    
+
     //Animator centre
     public Animator HUDAnimator;
     public float altitudeMultiplier;
     public float speedMultiplier;
     public bool isHeadingConstrainted = false;
     public bool isHeadingLocalRotation = true;
+
+    public LayerMask pullupdetector;
+    public float checkPullupEvery = 1f;
+    private float checkpulluptimer = 0f;
 
     void Start()
     {
@@ -98,7 +103,7 @@ public class FHudController : UdonSharpBehaviour
 
     void LateUpdate()//???????????????????????????
     {
-        if (localPlayer != null && (onTesting || EngineController != null) && UIScript != null && isHeadTracked)
+        if (localPlayer != null && (onTesting || EngineController != null) && UIScript != null && isHeadTracked && (EngineController.Piloting || EngineController.Passenger))
         {
             if (parentTransform != null)
             {
@@ -127,9 +132,15 @@ public class FHudController : UdonSharpBehaviour
         if (EngineController != null && EngineController.VehicleRigidbody != null && (EngineController.Passenger || EngineController.Piloting))
         {
             //??
-            if(HUDAnimator!=null){
-                HUDAnimator.SetFloat("altimeter", (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f) * altitudeMultiplier );
-                HUDAnimator.SetFloat("speedometer", (EngineController.CurrentVel.magnitude *  1.9438445f) * speedMultiplier );
+            if (HUDAnimator != null)
+            {
+                float value = EngineController.VehicleMainObj.transform.position.y +
+                       (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
+                                (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
+                                : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
+
+                HUDAnimator.SetFloat("altimeter", (value));
+                HUDAnimator.SetFloat("speedometer", (EngineController.CurrentVel.magnitude * 1.9438445f) * speedMultiplier);
             }
             if (Speedometer != null)
             {
@@ -170,7 +181,12 @@ public class FHudController : UdonSharpBehaviour
             }
             if (Altimeter != null)
             {
-                altimeterLerp = Vector3.Lerp(altimeterLerp, new Vector3(-(EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f) / divisibleValue, 0, 0), 4.5f * Time.deltaTime);
+                float value = EngineController.VehicleMainObj.transform.position.y +
+                                       (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
+                                                (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
+                                                : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
+
+                altimeterLerp = Vector3.Lerp(altimeterLerp, new Vector3(-(value) / divisibleValue, 0, 0), 4.5f * Time.deltaTime);
                 Altimeter.localRotation = Quaternion.Euler(altimeterLerp);
             }
             if (HorizonTool != null)
@@ -218,11 +234,20 @@ public class FHudController : UdonSharpBehaviour
             // if (CopilotHealthText != null) { CopilotHealthText.text = "HP: " + EngineController.Health.ToString("F0"); }
             if (AltimeterText != null)
             {
-                int testAltimeterVal = Mathf.RoundToInt((EngineController.CenterOfMass.position.y + -EngineController.SeaLevel) * 3.28084f);
-                if (testAltimeterVal != altimetertemp)
+                float value = EngineController.VehicleMainObj.transform.position.y +
+                       (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
+                                (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
+                                : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
+
+                if (value != altimetertemp)
                 {
-                    altimetertemp = testAltimeterVal;
-                    AltimeterText.text = string.Format("{0}ft", testAltimeterVal);
+                    altimetertemp = Mathf.RoundToInt(value);
+                    AltimeterText.text = string.Format("{0}ft", altimetertemp);
+                }
+
+                if (PullupUI != null)
+                {
+                    doPullup();
                 }
             }
             if (SpeedometerText != null)
@@ -279,40 +304,7 @@ public class FHudController : UdonSharpBehaviour
                     AngleOfAttack.text = string.Format("{0:0.00}", aoatemp);
                 }
             }
-            if (PullupUI != null)
-            {
-                if (EngineController.EffectsControl.GearUp)
-                {
-                    if ((EngineController.CenterOfMass.position.y + -EngineController.SeaLevel) * 3.28084f < 500f)
-                    {
-                        PullupUI.SetActive(true);
-                        if (Pullupaudio != null && isPlayedPullup == false)
-                        {
-                            Pullupaudio.Play();
-                            isPlayedPullup = true;
-                        }
-                    }
-                    else
-                    {
-                        PullupUI.SetActive(false);
-                        if (Pullupaudio != null && isPlayedPullup == true)
-                        {
-                            Pullupaudio.Stop();
-                            isPlayedPullup = false;
-                        }
-                    }
 
-                }
-                else
-                {
-                    PullupUI.SetActive(false);
-                    if (Pullupaudio != null && isPlayedPullup == true)
-                    {
-                        Pullupaudio.Stop();
-                        isPlayedPullup = false;
-                    }
-                }
-            }
             if (GearDownUI != null)
             {
                 if (!EngineController.EffectsControl.GearUp)
@@ -373,8 +365,20 @@ public class FHudController : UdonSharpBehaviour
             }
             if (GunHud != null)
             {
-                var localVelocity = PlaneBody.transform.InverseTransformDirection(EngineController.CurrentVel);
-                gunhudLerp = Vector3.Lerp(gunhudLerp, new Vector3(-localVelocity.x / 2.5f, 0, localVelocity.y / 2.5f), 4.5f * Time.deltaTime);
+                Vector3 tempvel;
+                if (EngineController.CurrentVel.magnitude < 2)
+                {
+                    tempvel = -Vector3.up * 2;//straight down instead of spazzing out when moving very slow
+                }
+                else
+                {
+                    tempvel = EngineController.CurrentVel;
+                }
+
+                GunHud.position = transform.position + tempvel;
+                GunHud.localPosition = GunHud.localPosition.normalized * distance_from_head;
+                // var localVelocity = PlaneBody.transform.InverseTransformDirection(EngineController.CurrentVel);
+                // gunhudLerp = Vector3.Lerp(gunhudLerp, new Vector3(-localVelocity.x / 2.5f, 0, localVelocity.y / 2.5f), 4.5f * Time.deltaTime);
                 GunHud.localPosition = gunhudLerp;
             }
 
@@ -383,12 +387,15 @@ public class FHudController : UdonSharpBehaviour
                 float angle = (Mathf.Atan2(MainBodyPlane.velocity.x, MainBodyPlane.velocity.z) * Mathf.Rad2Deg);
                 angle = (angle + 360f) % 360f;
                 Vector3 headingTurn = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
-                headingTurn.z =  !isHeadingConstrainted ? EngineController.VehicleMainObj.transform.rotation.eulerAngles.y : 0;
+                headingTurn.z = !isHeadingConstrainted ? EngineController.VehicleMainObj.transform.rotation.eulerAngles.y : 0;
                 headingTurn.x = 0;
                 headingTurn.y = 0;
-                if(isHeadingLocalRotation){
+                if (isHeadingLocalRotation)
+                {
                     HeadingTool.localRotation = Quaternion.Euler(headingTurn);
-                }else{
+                }
+                else
+                {
                     HeadingTool.rotation = Quaternion.Euler(headingTurn);
                 }
             }
@@ -402,5 +409,50 @@ public class FHudController : UdonSharpBehaviour
             }
         }
 
+    }
+
+    public void doPullup()
+    {
+        if(checkpulluptimer < checkPullupEvery){
+            checkpulluptimer = checkpulluptimer + Time.deltaTime;
+
+            return;
+        }else{
+            checkpulluptimer = 0f;
+        }
+
+        if (EngineController.EffectsControl.GearUp)
+        {
+            var hit = Physics.Raycast(EngineController.GroundDetector.position, -(EngineController.GroundDetector.up), 500f, pullupdetector, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
+
+            if (hit)
+            {
+                PullupUI.SetActive(true);
+                if (Pullupaudio != null && isPlayedPullup == false)
+                {
+                    Pullupaudio.Play();
+                    isPlayedPullup = true;
+                }
+            }
+            else
+            {
+                PullupUI.SetActive(false);
+                if (Pullupaudio != null && isPlayedPullup == true)
+                {
+                    Pullupaudio.Stop();
+                    isPlayedPullup = false;
+                }
+            }
+
+        }
+        else
+        {
+            PullupUI.SetActive(false);
+            if (Pullupaudio != null && isPlayedPullup == true)
+            {
+                Pullupaudio.Stop();
+                isPlayedPullup = false;
+            }
+        }
     }
 }

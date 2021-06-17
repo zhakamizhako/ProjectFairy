@@ -13,8 +13,12 @@ public class ButtonListenerUI : UdonSharpBehaviour {
     public ButtonListenerUI buttonRight;
     public UdonBehaviour UB;
     public Slider ReferenceSlider;
+    public bool isBinary = false;
     public string customEvent;
     public string customEventRelease;
+    public bool setVariableValue = false;
+    public string variableValue;
+    public float valuebeforeTrigger = 0.75f;
     public bool isSelected = false;
     public bool isTrigger = false;
     private bool isButton;

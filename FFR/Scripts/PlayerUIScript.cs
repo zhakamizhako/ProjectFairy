@@ -50,7 +50,6 @@ public class PlayerUIScript : UdonSharpBehaviour
     private bool isSwitchingMusic = false;
     private bool isStoppingMusic = false;
     private bool showTitle = false;
-
     public AudioSource CurrentPlayingMusic;
     public AudioSource QueueAudio;
     public AudioSource IntroMusic;
@@ -65,9 +64,11 @@ public class PlayerUIScript : UdonSharpBehaviour
     public Text IconSliderText;
     public float IconSize = 0f;
     private bool triggerEmpty = false;
+    public bool isEnglishOrJapanese = false; //False = english, japanese = 1;
+    public Toggle LanguageEn;
+    public Toggle LanguageJP;
     // public float triggerScriptTimeout = 15f;
-
-
+    public EngineController PlayerAircraft;
     public MissileTrackerAndResponse sampleThing;
 
     void Start()
@@ -164,7 +165,22 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             MusicVolumeValue = MusicVolume.value;
             MusicVolumeText.text = MusicVolumeValue.ToString("F3");
-            CurrentPlayingMusic.volume = MusicVolumeValue;
+            if (CurrentPlayingMusic != null)
+            {
+                if (IntroMusic != null) IntroMusic.volume = MusicVolumeValue;
+                CurrentPlayingMusic.volume = MusicVolumeValue;
+            }
+        }
+        if(LanguageEn!=null && LanguageJP!=null){
+            if(LanguageEn.isOn){
+                isEnglishOrJapanese = false;
+                LanguageJP.isOn = false;
+            }
+            if(LanguageJP.isOn){
+                isEnglishOrJapanese = true;
+                LanguageEn.isOn = false;
+            }
+            // isEnglishOrJapanese
         }
         if (PreviewToggle != null && PreviewHUD != null)
         {
@@ -242,6 +258,16 @@ public class PlayerUIScript : UdonSharpBehaviour
 
     public void ReceiveTrigger(TriggerScript x)
     {
+        if(x.stopped){
+            return;
+        }
+
+        for(int y = 0; y < TriggerScripts.Length; y++){
+            if(TriggerScripts[y]==x){
+                return;
+            }
+        }
+
         TriggerScript[] temp = new TriggerScript[TriggerScripts.Length + 1];
         TriggerScripts.CopyTo(temp, 0);
         temp[temp.Length - 1] = x;
@@ -353,7 +379,8 @@ public class PlayerUIScript : UdonSharpBehaviour
                     {
                         CurrentPlayingMusic.Play();
                     }
-                    if(IntroMusic!=null){
+                    if (IntroMusic != null)
+                    {
                         IntroMusic.volume = MusicVolume.value;
                     }
                     CurrentPlayingMusic.volume = MusicVolume.value;

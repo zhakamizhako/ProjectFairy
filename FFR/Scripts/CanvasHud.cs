@@ -80,7 +80,13 @@ public class CanvasHud : UdonSharpBehaviour
             }
             if (AltimeterText != null)
             {
-                int testAltimeterVal = Mathf.RoundToInt((EngineControl.CenterOfMass.position.y + -EngineControl.SeaLevel) * 3.28084f);
+
+                float value = EngineControl.VehicleMainObj.transform.position.y +
+                        (EngineControl.OWML != null && EngineControl.OWML.ScriptEnabled ?
+                                 (EngineControl.OWML.AnchorCoordsPosition.y - EngineControl.OWML.Map.position.y) + EngineControl.SeaLevel * 3.28084f
+                                 : (EngineControl.VehicleMainObj.transform.position.y + EngineControl.SeaLevel * 3.28084f));
+
+                int testAltimeterVal = Mathf.RoundToInt(value);
                 if (testAltimeterVal != TempAltimeterVal)
                 {
                     TempAltimeterVal = testAltimeterVal;
@@ -93,7 +99,7 @@ public class CanvasHud : UdonSharpBehaviour
             {
                 if (!hbcontroller.isLEngineDead)
                 {
-                    CanvasHUDAnimator.SetFloat("RPML", EngineControl.Throttle);
+                    CanvasHUDAnimator.SetFloat("RPML", EngineControl.EngineOutput);
                     CanvasHUDAnimator.SetFloat("speedL", ((EngineControl.CurrentVel.magnitude) * 1.9438445f) / 360);
                     CanvasHUDAnimator.SetBool("ABL", EffectsControl.AfterburnerOn);
                 }
@@ -105,7 +111,7 @@ public class CanvasHud : UdonSharpBehaviour
                 }
                 if (!hbcontroller.isREngineDead)
                 {
-                    CanvasHUDAnimator.SetFloat("RPMR", EngineControl.Throttle);
+                    CanvasHUDAnimator.SetFloat("RPMR", EngineControl.EngineOutput);
                     CanvasHUDAnimator.SetBool("ABR", EffectsControl.AfterburnerOn);
                     CanvasHUDAnimator.SetFloat("speedR", ((EngineControl.CurrentVel.magnitude) * 1.9438445f) / 360);
                 }

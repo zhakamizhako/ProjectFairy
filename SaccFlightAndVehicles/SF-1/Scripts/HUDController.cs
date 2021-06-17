@@ -53,21 +53,26 @@ public class HUDController : UdonSharpBehaviour
     public float distance_from_head = 1.333f;
     private float maxGs = 0f;
     private Vector3 InputsZeroPos;
-    private Vector3 tempvel = Vector3.zero;
     private Vector3 startingpos;
     private float check = 0;
     [System.NonSerializedAttribute] public float MenuSoundCheckLast = 0;
-    private Vector3 temprot;
     private int showvel;
     const float InputSquareSize = 0.0284317f;
-    [System.NonSerializedAttribute] public Vector3 GUN_TargetDirLastFrame;
+    [System.NonSerializedAttribute] public Vector3 GUN_TargetDirOld;
     [System.NonSerializedAttribute] public float GUN_TargetSpeedLerper;
+    [System.NonSerializedAttribute] public Vector3 RelativeTargetVelLastFrame;
     private Vector3 TargetDir = Vector3.zero;
     private Vector3 TargetSpeed;
     // private bool HasAAMTargets = false;
-    private float BulletSpeedDivider;
     private float FullFuelDivider;
     private float FullGunAmmoDivider;
+    private Vector3 RelativeTargetVel;
+    private Vector3 AAMCurrentTargetPositionLastFrame;
+    private Transform VehicleTransform;
+    private EffectsController EffectsControl;
+    private Camera AtGCam;
+    float debuglerper;
+    float debugcurrentframe;
     private void Start()
     {
         Assert(EngineControl != null, "Start: EngineControl != null");
@@ -109,26 +114,29 @@ public class HUDController : UdonSharpBehaviour
         // Assert(RStick_funcon7 != null, "Start: LStick_funcon7 != null");
         // Assert(RStick_funcon8 != null, "Start: LStick_funcon8 != null");
 
-        PlaneAnimator = EngineControl.VehicleMainObj.GetComponent<Animator>();
+	PlaneAnimator = EngineControl.VehicleMainObj.GetComponent<Animator>();
         InputsZeroPos = PitchRoll.localPosition;
+        VehicleTransform = EngineControl.VehicleMainObj.transform;
+        EffectsControl = EngineControl.EffectsControl;
+        // AtGCam = EngineControl.AtGCam;
 
-        BulletSpeedDivider = 1f / BulletSpeed;
-
-        FullFuelDivider = 1f / EngineControl.Fuel;
-        // FullGunAmmoDivider = 1f / EngineControl.GunAmmoInSeconds;
+        float fuel = EngineControl.Fuel;
+        FullFuelDivider = 1f / (fuel > 0 ? fuel : 10000000);
+        // float gunammo = EngineControl.GunAmmoInSeconds;
+        // FullGunAmmoDivider = 1f / (gunammo > 0 ? gunammo : 10000000);
     }
     private void OnEnable()
     {
         maxGs = 0f;
     }
-    private void Update()
+    private void LateUpdate()
     {
-        float DeltaTime = Time.deltaTime;
+        float SmoothDeltaTime = Time.smoothDeltaTime;
         //RollPitch Indicator
-        PitchRoll.localPosition = InputsZeroPos + (new Vector3(-EngineControl.RollInput, EngineControl.PitchInput, 0)) * InputSquareSize;
+        PitchRoll.localPosition = InputsZeroPos + (new Vector3(-EngineControl.RotationInputs.z, EngineControl.RotationInputs.x, 0)) * InputSquareSize;
 
         //Yaw Indicator
-        Yaw.localPosition = InputsZeroPos + (new Vector3(EngineControl.YawInput, 0, 0)) * InputSquareSize;
+        Yaw.localPosition = InputsZeroPos + (new Vector3(EngineControl.RotationInputs.y, 0, 0)) * InputSquareSize;
 
         /*         //Yaw Trim Indicator
                 TrimYaw.localPosition = InputsZeroPos + (new Vector3(EngineControl.Trim.y, 0, 0)) * InputSquareSize;
@@ -137,6 +145,7 @@ public class HUDController : UdonSharpBehaviour
                 TrimPitch.localPosition = InputsZeroPos + (new Vector3(0, EngineControl.Trim.x, 0)) * InputSquareSize; */
 
         //Velocity indicator
+        Vector3 tempvel;
         if (EngineControl.CurrentVel.magnitude < 2)
         {
             tempvel = -Vector3.up * 2;//straight down instead of spazzing out when moving very slow
@@ -179,59 +188,61 @@ public class HUDController : UdonSharpBehaviour
         // else AAMTargetIndicator.localScale = Vector3.zero;
         /////////////////
 
-        //GUN Lead Indicator
-        // if (EngineControl.AAMHasTarget && EngineControl.RStickSelection == 1)
-        // {
-        //     // GUNLeadIndicator.gameObject.SetActive(true);
-        //     Vector3 TargetDir = EngineControl.AAMCurrentTargetDirection;
-        //     Vector3 RelativeTargetVel = TargetDir - GUN_TargetDirLastFrame;
-        //     //lerp target speed to smooth out the really unsmooth VRChat rigidbodies
-        //     GUN_TargetSpeedLerper = Mathf.Lerp(GUN_TargetSpeedLerper, RelativeTargetVel.magnitude / DeltaTime, .6f * DeltaTime);
-        //     float BulletHitTime = TargetDir.magnitude * BulletSpeedDivider;
-        //     //normalize relative target velocity vector and multiply by lerped speed so the direction is accurate, but the distance is lerped, so not necesarily precise.
-        //     Vector3 PredictedPos = TargetDir + ((RelativeTargetVel.normalized * GUN_TargetSpeedLerper) * BulletHitTime);
-        //     // GUNLeadIndicator.position = transform.position + PredictedPos;
-        //     // // GUNLeadIndicator.localPosition = GUNLeadIndicator.localPosition.normalized * distance_from_head;
-
-        //     GUN_TargetDirLastFrame = TargetDir;
-        // }
-        // else GUNLeadIndicator.gameObject.SetActive(false);
+        ////GUN Lead Indicator
+        //if (EngineControl.AAMHasTarget && EngineControl.RStickSelection == 1)
+        //{
+        //    GUNLeadIndicator.gameObject.SetActive(true);
+        //    Vector3 TargetDir;
+        //    if (EngineControl.AAMCurrentTargetEngineControl == null)//target is a dummy target
+        //    { TargetDir = EngineControl.AAMTargets[EngineControl.AAMTarget].transform.position - transform.position; }
+        //    else
+        //    { TargetDir = EngineControl.AAMCurrentTargetEngineControl.CenterOfMass.position - transform.position; }
+        //    GUN_TargetDirOld = Vector3.Lerp(GUN_TargetDirOld, TargetDir, .2f);
+	//
+        //    Vector3 RelativeTargetVel = TargetDir - GUN_TargetDirOld;
+        //    float BulletPlusPlaneSpeed = (EngineControl.CurrentVel + (VehicleTransform.forward * BulletSpeed) - (RelativeTargetVel * .25f)).magnitude;
+        //   Vector3 TargetAccel = RelativeTargetVel - RelativeTargetVelLastFrame;
+        //    //GUN_TargetDirOld is around 4 frames worth of distance behind a moving target (lerped by .2) in order to smooth out the calculation for unsmooth netcode
+        //    //multiplying the result by .25(to get back to 1 frames worth) seems to actually give an accurate enough result to use in prediction
+        //    GUN_TargetSpeedLerper = Mathf.Lerp(GUN_TargetSpeedLerper, (RelativeTargetVel.magnitude * .25f) / SmoothDeltaTime, 15 * SmoothDeltaTime);
+        //    float BulletHitTime = TargetDir.magnitude / BulletPlusPlaneSpeed;
+        //    //normalize lerped relative target velocity vector and multiply by lerped speed
+        //   Vector3 RelTargVelNormalized = RelativeTargetVel.normalized;
+        //    Vector3 PredictedPos = (TargetDir
+        //        + ((RelTargVelNormalized * GUN_TargetSpeedLerper)/* Linear */
+        //            //the .125 in the next line is combined .25 for undoing the lerp, and .5 for the acceleration formula
+        //            + (TargetAccel * .125f * BulletHitTime)
+        //                + new Vector3(0, 9.81f * .5f * BulletHitTime, 0))//Bulletdrop
+        //                    * BulletHitTime);
+        //    GUNLeadIndicator.position = transform.position + PredictedPos;
+        //    GUNLeadIndicator.localPosition = GUNLeadIndicator.localPosition.normalized * distance_from_head;
+        //    RelativeTargetVelLastFrame = RelativeTargetVel;
+        //}
+        //else GUNLeadIndicator.gameObject.SetActive(false);
         /////////////////
 
         //Smoke Color Indicator
         // SmokeColorIndicator.color = EngineControl.SmokeColor_Color;
 
         //Heading indicator
-        temprot = EngineControl.VehicleMainObj.transform.rotation.eulerAngles;
-        temprot.x = 0;
-        temprot.z = 0;
-        HeadingIndicator.localRotation = Quaternion.Euler(-temprot);
+        Vector3 VehicleEuler = EngineControl.VehicleMainObj.transform.rotation.eulerAngles;
+        HeadingIndicator.localRotation = Quaternion.Euler(new Vector3(0, -VehicleEuler.y, 0));
         /////////////////
 
-        //Elevation indicator
-        temprot = EngineControl.VehicleMainObj.transform.rotation.eulerAngles;
-        float new_z = temprot.z;
-        temprot.y = 0;
-        temprot.z = 0;
-        ElevationIndicator.localRotation = Quaternion.Euler(-temprot);
-        ElevationIndicator.RotateAround(ElevationIndicator.position, EngineControl.VehicleMainObj.transform.forward, -new_z);
-        ElevationIndicator.localPosition = Vector3.zero;
+	//Elevation indicator
+        ElevationIndicator.rotation = Quaternion.Euler(new Vector3(0, VehicleEuler.y, 0));
         /////////////////
 
         //Down indicator
-        DownIndicator.localRotation = Quaternion.Euler(new Vector3(0, 0, -new_z));
+        DownIndicator.localRotation = Quaternion.Euler(new Vector3(0, 0, -VehicleEuler.z));
         /////////////////
 
         //LIMITS indicator
-        if (HudLimit != null)
+        if (EngineControl.FlightLimitsEnabled)
         {
-            if (EngineControl.FlightLimitsEnabled)
-            {
-                HudLimit.SetActive(true);
-            }
-            else { HudLimit.SetActive(false); }
+            HudLimit.SetActive(true);
         }
-
+        else { HudLimit.SetActive(false); }
         //Alt. HOLD indicator
         if (EngineControl.AltHold)
         {
@@ -319,9 +330,8 @@ public class HUDController : UdonSharpBehaviour
         else { HUDText_knotstarget.text = string.Empty; }
 
         //left stick toggles/functions on?
-
-        // if (EngineControl.EffectsControl.AfterburnerOn) { LStick_funcon1.SetActive(true); }
-        // else { LStick_funcon1.SetActive(false); }
+	//if (EngineControl.VTOLAngle > 0) { LStick_funcon1.SetActive(true); }
+        //else { LStick_funcon1.SetActive(false); }
 
         // if (EngineControl.FlightLimitsEnabled) { LStick_funcon2.SetActive(true); }
         // else { LStick_funcon2.SetActive(false); }
@@ -437,7 +447,7 @@ public class HUDController : UdonSharpBehaviour
             HUDText_mach.text = ((EngineControl.Speed) / 343f).ToString("F2");
             HUDText_altitude.text = string.Concat((EngineControl.CurrentVel.y * 60 * 3.28084f).ToString("F0"), "\n", ((EngineControl.CenterOfMass.position.y + -EngineControl.SeaLevel) * 3.28084f).ToString("F0"));
             HUDText_knots.text = ((EngineControl.Speed) * 1.9438445f).ToString("F0");
-            HUDText_knotsairspeed.text = ((EngineControl.AirVel.magnitude) * 1.9438445f).ToString("F0");
+            HUDText_knotsairspeed.text = ((EngineControl.AirSpeed) * 1.9438445f).ToString("F0");
 
             if (EngineControl.Speed < 2)
             {
@@ -449,7 +459,7 @@ public class HUDController : UdonSharpBehaviour
             }
             check = 0;
         }
-        check += DeltaTime;
+        check += SmoothDeltaTime;
 
         // if (EngineControl.HasAAM) HUDText_AAM_ammo.text = EngineControl.NumAAM.ToString("F0");
         // else HUDText_AAM_ammo.text = string.Empty;
@@ -458,7 +468,6 @@ public class HUDController : UdonSharpBehaviour
         // if (EngineControl.HasBomb) HUDText_Bomb_ammo.text = EngineControl.NumBomb.ToString("F0");
         // else HUDText_Bomb_ammo.text = string.Empty;
 
-        PlaneAnimator.SetFloat("throttle", EngineControl.ThrottleInput);
         PlaneAnimator.SetFloat("fuel", EngineControl.Fuel * FullFuelDivider);
         // PlaneAnimator.SetFloat("gunammo", EngineControl.GunAmmoInSeconds * FullGunAmmoDivider);
     }

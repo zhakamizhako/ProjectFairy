@@ -9,6 +9,7 @@ public class TarpsTarget : UdonSharpBehaviour
     public bool doneScan = false;
     public float timerScan = 0;
     public float timeToScan = 5;
+    public float timeToBreakSignal = 10f;
     public MissileTrackerAndResponse TrackerObject;
     public TriggerScript AfterScan;
     public TriggerScript ScanFail;
@@ -18,7 +19,11 @@ public class TarpsTarget : UdonSharpBehaviour
     public bool aniArgument;
     public bool HideAfterScan = true;
     public bool ReturnToZeroIfFail = true;
-    public float range = 1000f;
+    public float farRange = 1000f;
+    public float nearRange = 500f;
+    public GameObject[] DetectorsNear;
+    public GameObject[] DetectorsFar;
     public bool isShown = false;
     public bool isActive = false;
+    public bool isEnabed = true;
 }

@@ -8,6 +8,7 @@ public class PassengerSeat : UdonSharpBehaviour
     public EngineController EngineControl;
     public GameObject LeaveButton;
     public GameObject SeatAdjuster;
+    private LeaveVehicleButton LeaveButtonControl;
     private Transform PlaneMesh;
     private LayerMask Planelayer;
     public GameObject fHud;
@@ -15,7 +16,6 @@ public class PassengerSeat : UdonSharpBehaviour
     public CanvasHud CVHVR;
     public GameObject ButtonSet;
     public MissileTrackerAndResponse mistracker;
-    private LeaveVehicleButton LeaveButtonControl;
     public Transform teleportTo;
     // public MissilePlaneSystem MissileControl;
     public WeaponSelector wp;
@@ -32,7 +32,7 @@ public class PassengerSeat : UdonSharpBehaviour
     }
     private void Interact()
     {
-        EngineControl.Passenger = true;
+        EngineControl.PasengerEnterPlaneLocal();
         // Networking.SetOwner (EngineControl.localPlayer, gameObject);
         //Set CVH Params
         if (EngineControl.localPlayer.IsUserInVR())
@@ -67,9 +67,6 @@ public class PassengerSeat : UdonSharpBehaviour
         {
             ButtonSet.SetActive(true);
         }
-        if (EngineControl.HUDControl != null) { EngineControl.HUDControl.gameObject.SetActive(true); }
-        if (EngineControl.EffectsControl.CanopyOpen) EngineControl.CanopyCloseTimer = -100001;
-        else EngineControl.CanopyCloseTimer = -1;
         EngineControl.localPlayer.UseAttachedStation();
         // if (PlaneMesh != null) {
         //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();
@@ -81,88 +78,123 @@ public class PassengerSeat : UdonSharpBehaviour
         {
             fHud.SetActive(true);
         }
+
+        if (mistracker != null)
+        {
+            mistracker.UIScript.PlayerAircraft = EngineControl;
+        }
     }
 
     public override void OnStationEntered(VRCPlayerApi player)
     {
         //voice range change to allow talking inside cockpit (after VRC patch 1008)
-        LeaveButtonControl.SeatedPlayer = player;
-        if (player.isLocal)
+        if (player != null)
         {
-            foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+            LeaveButtonControl.SeatedPlayer = player.playerId;
+            if (player.isLocal)
             {
-                if (crew.SeatedPlayer != null)
+                foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
                 {
-                    SetVoiceInside(crew.SeatedPlayer);
+                    VRCPlayerApi guy = VRCPlayerApi.GetPlayerById(crew.SeatedPlayer);
+                    if (guy != null)
+                    {
+                        SetVoiceInside(guy);
+                    }
                 }
             }
-        }
-        else if (EngineControl.Piloting || EngineControl.Passenger)
-        {
-            SetVoiceInside(player);
+            else if (EngineControl.Piloting || EngineControl.Passenger)
+            {
+                SetVoiceInside(player);
+            }
         }
     }
     public override void OnStationExited(VRCPlayerApi player)
     {
-        if (player.isLocal)
+        PlayerExitPlane(player);
+    }
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        if (player.playerId == LeaveButtonControl.SeatedPlayer)
         {
-            foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
+            PlayerExitPlane(player);
+        }
+    }
+    public void PlayerExitPlane(VRCPlayerApi player)
+    {
+        LeaveButtonControl.SeatedPlayer = -1;
+        if (player != null)
+        {
+            SetVoiceOutside(player);
+            if (player.isLocal)
             {
-                if (crew.SeatedPlayer != null)
+                foreach (LeaveVehicleButton crew in EngineControl.LeaveButtons)
                 {
-                    SetVoiceOutside(crew.SeatedPlayer);
+                    VRCPlayerApi guy = VRCPlayerApi.GetPlayerById(crew.SeatedPlayer);
+                    if (guy != null)
+                    {
+                        SetVoiceOutside(guy);
+                    }
                 }
-            }
 
-            if (EngineControl != null)
-            {
-                EngineControl.Passenger = false;
-                EngineControl.localPlayer.SetVelocity(EngineControl.CurrentVel);
-            }
-            if (LeaveButton != null) { LeaveButton.SetActive(false); }
-            if (SeatAdjuster != null) { SeatAdjuster.SetActive(false); }
-            if (EngineControl.HUDControl != null) { EngineControl.HUDControl.gameObject.SetActive(false); }
-            if (CVH != null)
-            {
-                CVH.gameObject.SetActive(false);
-            }
-            if (CVHVR != null)
-            {
-                CVHVR.gameObject.SetActive(false);
-            }
-            if (wp != null)
-            {
-                wp.MissilePlaneSystems[wp.selectedSystem].showTargets = false;
-                wp.MissilePlaneSystems[wp.selectedSystem].leavePlane();
-            }
-            if (mistracker != null)
-            {
-                mistracker.cleanup();
-            }
-            // if (MissileControl != null) {
-            //     MissileControl.showTargets = false;
-            //     MissileControl.leavePlane ();
-            // }
-            if (fHud != null)
-            {
-                fHud.SetActive(false);
-            }
-            if (ButtonSet != null)
-            {
-                ButtonSet.SetActive(false);
-            }
+                if (EngineControl.EffectsControl != null)
+                {
+                    EngineControl.EffectsControl.PlaneAnimator.SetTrigger("deactivate_hud");
+                }
 
-            if (teleportTo != null && EngineControl.dead == true)
-            {
-                player.TeleportTo(teleportTo.position, teleportTo.rotation);
-                player.SetVelocity(Vector3.zero);
+                if (EngineControl != null)
+                {
+                    if (EngineControl.EffectsControl != null) { EngineControl.EffectsControl.PlaneAnimator.SetBool("localpassenger", false); }
+                    EngineControl.Passenger = false;
+                    EngineControl.localPlayer.SetVelocity(EngineControl.CurrentVel);
+                    // EngineControl.MissilesIncoming = 0;
+                    EngineControl.EffectsControl.PlaneAnimator.SetInteger("missilesincoming", 0);
+                }
+                if (LeaveButton != null) { LeaveButton.SetActive(false); }
+                if (SeatAdjuster != null) { SeatAdjuster.SetActive(false); }
+                if (EngineControl.HUDControl != null) { EngineControl.HUDControl.gameObject.SetActive(false); }
+                if (CVH != null)
+                {
+                    CVH.gameObject.SetActive(false);
+                }
+                if (CVHVR != null)
+                {
+                    CVHVR.gameObject.SetActive(false);
+                }
+                if (wp != null)
+                {
+                    wp.MissilePlaneSystems[wp.selectedSystem].showTargets = false;
+                    wp.MissilePlaneSystems[wp.selectedSystem].leavePlane();
+                }
+                if (mistracker != null)
+                {
+                    mistracker.cleanup();
+                    mistracker.UIScript.PlayerAircraft = null;
+                }
+                // if (MissileControl != null) {
+                //     MissileControl.showTargets = false;
+                //     MissileControl.leavePlane ();
+                // }
+                if (fHud != null)
+                {
+                    fHud.SetActive(false);
+                }
+                if (ButtonSet != null)
+                {
+                    ButtonSet.SetActive(false);
+                }
+
+                if (teleportTo != null && EngineControl.dead == true)
+                {
+                    player.TeleportTo(teleportTo.position, teleportTo.rotation);
+                    player.SetVelocity(Vector3.zero);
+                }
+                // if (PlaneMesh != null) {
+                //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();
+                //     foreach (Transform child in children) {
+                //         child.gameObject.layer = Planelayer;
+                //     }
+                // }
             }
-            // if (PlaneMesh != null) {
-            //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();
-            //     foreach (Transform child in children) {
-            //         child.gameObject.layer = Planelayer;
-            //     }
-            // }
         }
     }
 

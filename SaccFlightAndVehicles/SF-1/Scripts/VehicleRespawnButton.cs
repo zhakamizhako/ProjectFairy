@@ -44,8 +44,11 @@ public class VehicleRespawnButton : UdonSharpBehaviour
         EngineControl.EffectsControl.PlaneAnimator.SetTrigger("instantgeardown");
         EngineControl.VehicleRigidbody.velocity = Vector3.zero;
         EngineControl.hbcontroller.Respawn();
-        if(EngineControl.OWML != null){}
+        if(EngineControl.OWML != null){
             EngineControl.OWML.AnchorCoordsPosition = (EngineControl.gameObject.transform.localPosition = Vector3.zero);
+            EngineControl.OWML.CallForRespawn();
+        }
+            
     }
     private void Assert(bool condition, string message)
     {
