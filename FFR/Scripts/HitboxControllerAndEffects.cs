@@ -2,7 +2,8 @@
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
-public class HitboxControllerAndEffects : UdonSharpBehaviour {
+public class HitboxControllerAndEffects : UdonSharpBehaviour
+{
     public EngineController EngineControl;
     public GameObject Body;
     public GameObject LWing;
@@ -17,6 +18,12 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
     public GameObject REngine;
     public GameObject LFlap;
     public GameObject RFlap;
+
+    public Transform LWingDamagePosition;
+    public Transform RWingDamagePosition;
+    public Transform BothDamagePosition;
+    public Transform CenterOfMassObject;
+    private Vector3 originalCenterOfMassPosition;
     // public GameObject debrisBody;
     // public GameObject debrisLWing;
     // public GameObject debrisRWing;
@@ -43,19 +50,19 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
     [System.NonSerializedAttribute] public bool isREngineDead = false;
     [System.NonSerializedAttribute] public bool isLFlapDead = false;
     [System.NonSerializedAttribute] public bool isRFlapDead = false;
-    [UdonSynced (UdonSyncMode.None)] public float HealthBody = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthLWing = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthRWing = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthLRudder = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthRRudder = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthLAileron = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthRAileron = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthLElevator = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthRElevator = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthLEngine = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthREngine = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthLFlap = 100;
-    [UdonSynced (UdonSyncMode.None)] public float HealthRFlap = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthBody = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthLWing = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthRWing = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthLRudder = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthRRudder = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthLAileron = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthRAileron = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthLElevator = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthRElevator = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthLEngine = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthREngine = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthLFlap = 100;
+    [UdonSynced(UdonSyncMode.None)] public float HealthRFlap = 100;
 
     [System.NonSerializedAttribute] public float initHealthBody = 0;
     [System.NonSerializedAttribute] public float initHealthLWing = 0;
@@ -78,7 +85,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
     [System.NonSerializedAttribute] public float initYawResponse = 0;
     [System.NonSerializedAttribute] public float initFlapsDragMulti = 0;
     [System.NonSerializedAttribute] public float initFlapsLiftMulti = 0;
-     public float initStartPitchStrength = 0;
+    public float initStartPitchStrength = 0;
     [System.NonSerializedAttribute] public float initLift = 0;
     [System.NonSerializedAttribute] public float initPitchResponse = 0;
     [System.NonSerializedAttribute] public float initHighAoAMinControlPitch = 0;
@@ -88,12 +95,14 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
     [System.NonSerializedAttribute] public float initThrottleStrength = 0;
     [System.NonSerializedAttribute] public bool initHasAfterburner = false;
     [System.NonSerializedAttribute] public bool initd = false; // execution order stuff.
+    private bool comSet = false;
 
     public AudioSource[] componentExplosionSound;
     // public Animator DamageIndicatorAnimator;
     // public EffectsController EffectsControl;
 
-    void Start () {
+    void Start()
+    {
         // if (EngineControl != null) {
         //     //EngineController Params
         //     initLift = EngineControl.Lift;
@@ -133,286 +142,430 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
         initHealthREngine = HealthREngine;
         initHealthLFlap = HealthLFlap;
         initHealthRFlap = HealthRFlap;
+        originalCenterOfMassPosition = CenterOfMassObject.position;
+        comSet = true;
 
     }
-    void Update () {
-        if (initd &&Networking.IsOwner (gameObject) || EngineControl.localPlayer==null) {
+    void Update()
+    {
+        if (initd && Networking.IsOwner(gameObject) || EngineControl.localPlayer == null)
+        {
             //If Deif(HealthBody!=null){  }
-            if (Body != null) {
-                if (HealthBody <= 0 && isBodyDead == false) {
-                    Body.SetActive (false);
+            if (Body != null)
+            {
+                if (HealthBody <= 0 && isBodyDead == false)
+                {
+                    Body.SetActive(false);
                     isBodyDead = true;
-                    Explode ();
-                } else if (HealthBody > 0 && isBodyDead) {
+                    Explode();
+                }
+                else if (HealthBody > 0 && isBodyDead)
+                {
                     isBodyDead = false;
-                    Body.SetActive (true);
+                    Body.SetActive(true);
                 }
             }
-            if (LWing != null) {
-                if (HealthLWing <= 0 && isLWingDead == false) {
-                    LWing.SetActive (false);
+            if (LWing != null)
+            {
+                if (HealthLWing <= 0 && isLWingDead == false)
+                {
+                    LWing.SetActive(false);
                     isLWingDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.Lift = EngineControl.Lift / 2;
                     EngineControl.RollFriction = EngineControl.RollFriction / 2;
                     EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch / 2;
-                } else if (HealthLWing > 0 && isLWingDead) {
+                    comSet = false;
+                }
+                else if (HealthLWing > 0 && isLWingDead)
+                {
                     isLWingDead = false;
-                    LWing.SetActive (true);
+                    LWing.SetActive(true);
                 }
             }
-            if (RWing != null) {
-                if (HealthRWing <= 0 && isRWingDead == false) {
-                    RWing.SetActive (false);
+
+            if (LWingDamagePosition != null && RWingDamagePosition != null && CenterOfMassObject != null && BothDamagePosition!=null && !comSet)
+            {
+                if (isLWingDead && !isRWingDead)
+                {
+                    CenterOfMassObject.position = LWingDamagePosition.position;
+                    comSet = true;
+                }
+                if (isRWingDead && !isLWingDead)
+                {
+                    CenterOfMassObject.position = RWingDamagePosition.position;
+                    comSet = true;
+                }
+                if (isRWingDead && isLWingDead)
+                {
+                    CenterOfMassObject.position = BothDamagePosition.position;
+                    comSet = true;
+                }
+                if (!isRWingDead && !isLWingDead)
+                {
+                    CenterOfMassObject.position = originalCenterOfMassPosition;
+                    comSet = true;
+                }
+                EngineControl.VehicleRigidbody.centerOfMass = EngineControl.VehicleTransform.InverseTransformDirection(EngineControl.CenterOfMass.position - EngineControl.VehicleTransform.position);//correct position if scaled
+            }
+
+            if (RWing != null)
+            {
+                if (HealthRWing <= 0 && isRWingDead == false)
+                {
+                    RWing.SetActive(false);
                     isRWingDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.Lift = EngineControl.Lift / 2;
                     EngineControl.RollFriction = EngineControl.RollFriction / 2;
                     EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch / 2;
-                } else if (HealthRWing > 0 && isRWingDead) {
+                    comSet = false;
+
+                }
+                else if (HealthRWing > 0 && isRWingDead)
+                {
                     isRWingDead = false;
-                    RWing.SetActive (true);
+                    RWing.SetActive(true);
                 }
             }
-            if (LRudder != null) {
-                if (HealthLRudder <= 0 && isLRudderDead == false) {
-                    LRudder.SetActive (false);
+            if (LRudder != null)
+            {
+                if (HealthLRudder <= 0 && isLRudderDead == false)
+                {
+                    LRudder.SetActive(false);
                     isLRudderDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.YawStrength = EngineControl.YawStrength / 2;
                     EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw / 2;
-                } else if (HealthLRudder > 0 && isLRudderDead) {
+                }
+                else if (HealthLRudder > 0 && isLRudderDead)
+                {
                     isLRudderDead = false;
-                    LRudder.SetActive (true);
+                    LRudder.SetActive(true);
                 }
             }
-            if (RRudder != null) {
-                if (HealthRRudder <= 0 && isRRudderDead == false) {
-                    RRudder.SetActive (false);
+            if (RRudder != null)
+            {
+                if (HealthRRudder <= 0 && isRRudderDead == false)
+                {
+                    RRudder.SetActive(false);
                     isRRudderDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.YawStrength = EngineControl.YawStrength / 2;
                     EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw / 2;
-                } else if (HealthRRudder > 0 && isRRudderDead) {
+                }
+                else if (HealthRRudder > 0 && isRRudderDead)
+                {
                     isRRudderDead = false;
-                    RRudder.SetActive (true);
+                    RRudder.SetActive(true);
                 }
             }
-            if (LAileron != null) {
-                if (HealthLAileron <= 0 && isLAileronDead == false) {
-                    LAileron.SetActive (false);
+            if (LAileron != null)
+            {
+                if (HealthLAileron <= 0 && isLAileronDead == false)
+                {
+                    LAileron.SetActive(false);
                     isLAileronDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.RollStrength = EngineControl.RollStrength / 2;
                     EngineControl.RollResponse = EngineControl.RollResponse / 2;
-                } else if (HealthLAileron > 0 && isLAileronDead) {
+                }
+                else if (HealthLAileron > 0 && isLAileronDead)
+                {
                     isLAileronDead = false;
-                    LAileron.SetActive (true);
+                    LAileron.SetActive(true);
                 }
             }
-            if (RAileron != null) {
-                if (HealthRAileron <= 0 && isRAileronDead == false) {
-                    RAileron.SetActive (false);
+            if (RAileron != null)
+            {
+                if (HealthRAileron <= 0 && isRAileronDead == false)
+                {
+                    RAileron.SetActive(false);
                     isRAileronDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.RollStrength = EngineControl.RollStrength / 2;
                     EngineControl.RollResponse = EngineControl.RollResponse / 2;
-                } else if (HealthRAileron > 0 && isRAileronDead) {
+                }
+                else if (HealthRAileron > 0 && isRAileronDead)
+                {
                     isRAileronDead = false;
-                    RAileron.SetActive (true);
+                    RAileron.SetActive(true);
                 }
             }
-            if (LElevator != null) {
-                if (HealthLElevator <= 0 && isLElevatorDead == false) {
-                    LElevator.SetActive (false);
+            if (LElevator != null)
+            {
+                if (HealthLElevator <= 0 && isLElevatorDead == false)
+                {
+                    LElevator.SetActive(false);
                     isLElevatorDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.PitchStrength = EngineControl.PitchStrength / 2;
                     // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength / 2;
                     EngineControl.PitchResponse = EngineControl.PitchResponse / 2;
-                } else if (HealthLElevator > 0 && isLElevatorDead) {
+                }
+                else if (HealthLElevator > 0 && isLElevatorDead)
+                {
                     isLElevatorDead = false;
-                    LElevator.SetActive (true);
+                    LElevator.SetActive(true);
                 }
             }
-            if (RElevator != null) {
-                if (HealthRElevator <= 0 && isRElevatorDead == false) {
-                    RElevator.SetActive (false);
+            if (RElevator != null)
+            {
+                if (HealthRElevator <= 0 && isRElevatorDead == false)
+                {
+                    RElevator.SetActive(false);
                     isRElevatorDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.PitchStrength = EngineControl.PitchStrength / 2;
                     // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength / 2;
                     EngineControl.PitchResponse = EngineControl.PitchResponse / 2;
-                } else if (HealthRElevator > 0 && isRElevatorDead) {
+                }
+                else if (HealthRElevator > 0 && isRElevatorDead)
+                {
                     isRElevatorDead = false;
-                    RElevator.SetActive (true);
+                    RElevator.SetActive(true);
                 }
             }
-            if (LEngine != null) {
-                if (HealthLEngine <= 0 && isLEngineDead == false) {
-                    LEngine.SetActive (false);
+            if (LEngine != null)
+            {
+                if (HealthLEngine <= 0 && isLEngineDead == false)
+                {
+                    LEngine.SetActive(false);
                     isLEngineDead = true;
                     EngineControl.ThrottleStrength = EngineControl.ThrottleStrength / 2;
                     EngineControl.HasAfterburner = false;
                     EngineControl.EffectsControl.AfterburnerOn = false;
-                    Explode ();
-                } else if (HealthLEngine > 0 && isLEngineDead) {
+                    Explode();
+                }
+                else if (HealthLEngine > 0 && isLEngineDead)
+                {
                     isLEngineDead = false;
-                    LEngine.SetActive (true);
+                    LEngine.SetActive(true);
                 }
             }
-            if (REngine != null) {
-                if (HealthREngine <= 0 && isREngineDead == false) {
-                    REngine.SetActive (false);
+            if (REngine != null)
+            {
+                if (HealthREngine <= 0 && isREngineDead == false)
+                {
+                    REngine.SetActive(false);
                     isREngineDead = true;
                     EngineControl.ThrottleStrength = EngineControl.ThrottleStrength / 2;
                     EngineControl.HasAfterburner = false;
                     EngineControl.EffectsControl.AfterburnerOn = false;
-                    Explode ();
-                } else if (HealthREngine > 0 && isREngineDead) {
+                    Explode();
+                }
+                else if (HealthREngine > 0 && isREngineDead)
+                {
                     isREngineDead = false;
-                    REngine.SetActive (true);
+                    REngine.SetActive(true);
                 }
             }
-            if (LFlap != null) {
-                if (HealthLFlap <= 0 && isLFlapDead == false) {
-                    LFlap.SetActive (false);
+            if (LFlap != null)
+            {
+                if (HealthLFlap <= 0 && isLFlapDead == false)
+                {
+                    LFlap.SetActive(false);
                     isLFlapDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti / 2;
                     EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti / 2;
-                } else if (HealthLFlap > 0 && isLFlapDead) {
+                }
+                else if (HealthLFlap > 0 && isLFlapDead)
+                {
                     isLFlapDead = false;
-                    LFlap.SetActive (true);
+                    LFlap.SetActive(true);
                 }
             }
-            if (RFlap != null) {
-                if (HealthRFlap <= 0 && isRFlapDead == false) {
-                    RFlap.SetActive (false);
+            if (RFlap != null)
+            {
+                if (HealthRFlap <= 0 && isRFlapDead == false)
+                {
+                    RFlap.SetActive(false);
                     isRFlapDead = true;
-                    Explode ();
+                    Explode();
                     EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti / 2;
                     EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti / 2;
-                } else if (HealthRFlap > 0 && isRFlapDead) {
+                }
+                else if (HealthRFlap > 0 && isRFlapDead)
+                {
                     isRFlapDead = false;
-                    RFlap.SetActive (true);
+                    RFlap.SetActive(true);
                 }
             }
         }
-        else if(initd && !Networking.IsOwner(gameObject)){ 
-             if (Body != null) {
-                if (HealthBody <= 0){
-                    Body.SetActive (false);
-                } else if (HealthBody > 0 ){
-                    Body.SetActive (true);
+        else if (initd && !Networking.IsOwner(gameObject))
+        {
+            if (Body != null)
+            {
+                if (HealthBody <= 0)
+                {
+                    Body.SetActive(false);
+                }
+                else if (HealthBody > 0)
+                {
+                    Body.SetActive(true);
                 }
             }
-            if (LWing != null) {
-                if (HealthLWing <= 0 ){
-                    LWing.SetActive (false);
-                } else if (HealthLWing > 0 ){
-                    LWing.SetActive (true);
+            if (LWing != null)
+            {
+                if (HealthLWing <= 0)
+                {
+                    LWing.SetActive(false);
+                }
+                else if (HealthLWing > 0)
+                {
+                    LWing.SetActive(true);
                 }
             }
-            if (RWing != null) {
-                if (HealthRWing <= 0 ){
-                    RWing.SetActive (false);
-                } else if (HealthRWing > 0 ){
-                    RWing.SetActive (true);
+            if (RWing != null)
+            {
+                if (HealthRWing <= 0)
+                {
+                    RWing.SetActive(false);
+                }
+                else if (HealthRWing > 0)
+                {
+                    RWing.SetActive(true);
                 }
             }
-            if (LRudder != null) {
-                if (HealthLRudder <= 0 ){
-                    LRudder.SetActive (false);
-                } else if (HealthLRudder > 0 ){
-                    LRudder.SetActive (true);
+            if (LRudder != null)
+            {
+                if (HealthLRudder <= 0)
+                {
+                    LRudder.SetActive(false);
+                }
+                else if (HealthLRudder > 0)
+                {
+                    LRudder.SetActive(true);
                 }
             }
-            if (RRudder != null) {
-                if (HealthRRudder <= 0 ){
-                    RRudder.SetActive (false);
-                } else if (HealthRRudder > 0 ){
-                    RRudder.SetActive (true);
+            if (RRudder != null)
+            {
+                if (HealthRRudder <= 0)
+                {
+                    RRudder.SetActive(false);
+                }
+                else if (HealthRRudder > 0)
+                {
+                    RRudder.SetActive(true);
                 }
             }
-            if (LAileron != null) {
-                if (HealthLAileron <= 0 ){
-                    LAileron.SetActive (false);
-                } else if (HealthLAileron > 0 ){
-                    LAileron.SetActive (true);
+            if (LAileron != null)
+            {
+                if (HealthLAileron <= 0)
+                {
+                    LAileron.SetActive(false);
+                }
+                else if (HealthLAileron > 0)
+                {
+                    LAileron.SetActive(true);
                 }
             }
-            if (RAileron != null) {
-                if (HealthRAileron <= 0 ){
-                    RAileron.SetActive (false);
-                } else if (HealthRAileron > 0 ){
-                    RAileron.SetActive (true);
+            if (RAileron != null)
+            {
+                if (HealthRAileron <= 0)
+                {
+                    RAileron.SetActive(false);
+                }
+                else if (HealthRAileron > 0)
+                {
+                    RAileron.SetActive(true);
                 }
             }
-            if (LElevator != null) {
-                if (HealthLElevator <= 0 ){
-                    LElevator.SetActive (false);
-                } else if (HealthLElevator > 0 ){
-                    LElevator.SetActive (true);
+            if (LElevator != null)
+            {
+                if (HealthLElevator <= 0)
+                {
+                    LElevator.SetActive(false);
+                }
+                else if (HealthLElevator > 0)
+                {
+                    LElevator.SetActive(true);
                 }
             }
-            if (RElevator != null) {
-                if (HealthRElevator <= 0 ){
-                    RElevator.SetActive (false);
-                } else if (HealthRElevator > 0 ){
-                    RElevator.SetActive (true);
+            if (RElevator != null)
+            {
+                if (HealthRElevator <= 0)
+                {
+                    RElevator.SetActive(false);
+                }
+                else if (HealthRElevator > 0)
+                {
+                    RElevator.SetActive(true);
                 }
             }
-            if (LEngine != null) {
-                if (HealthLEngine <= 0 ){
-                    LEngine.SetActive (false);
-                    Explode ();
-                } else if (HealthLEngine > 0 ){
-                    LEngine.SetActive (true);
+            if (LEngine != null)
+            {
+                if (HealthLEngine <= 0)
+                {
+                    LEngine.SetActive(false);
+                    Explode();
+                }
+                else if (HealthLEngine > 0)
+                {
+                    LEngine.SetActive(true);
                 }
             }
-            if (REngine != null) {
-                if (HealthREngine <= 0 ){
-                    REngine.SetActive (false);
-                    Explode ();
-                } else if (HealthREngine > 0 ){
-                    REngine.SetActive (true);
+            if (REngine != null)
+            {
+                if (HealthREngine <= 0)
+                {
+                    REngine.SetActive(false);
+                    Explode();
+                }
+                else if (HealthREngine > 0)
+                {
+                    REngine.SetActive(true);
                 }
             }
-            if (LFlap != null) {
-                if (HealthLFlap <= 0 ){
-                    LFlap.SetActive (false);
-                } else if (HealthLFlap > 0 ){
-                    LFlap.SetActive (true);
+            if (LFlap != null)
+            {
+                if (HealthLFlap <= 0)
+                {
+                    LFlap.SetActive(false);
+                }
+                else if (HealthLFlap > 0)
+                {
+                    LFlap.SetActive(true);
                 }
             }
-            if (RFlap != null) {
-                if (HealthRFlap <= 0 ){
-                    RFlap.SetActive (false);
-                    Explode ();
-                } else if (HealthRFlap > 0 ){
-                    RFlap.SetActive (true);
+            if (RFlap != null)
+            {
+                if (HealthRFlap <= 0)
+                {
+                    RFlap.SetActive(false);
+                    Explode();
+                }
+                else if (HealthRFlap > 0)
+                {
+                    RFlap.SetActive(true);
                 }
             }
         }
     }
 
-    public void Explode () {
-        if (Networking.IsOwner (gameObject))
-            SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "callPublic");
-        if(EngineControl.localPlayer==null){
+    public void Explode()
+    {
+        if (Networking.IsOwner(gameObject))
+            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "callPublic");
+        if (EngineControl.localPlayer == null)
+        {
             callPublic();
         }
     }
 
-    public void callPublic () {
-        if (componentExplosionSound.Length > 0) {
-            int rand = Random.Range (0, componentExplosionSound.Length);
-            componentExplosionSound[rand].Play ();
+    public void callPublic()
+    {
+        if (componentExplosionSound.Length > 0)
+        {
+            int rand = Random.Range(0, componentExplosionSound.Length);
+            componentExplosionSound[rand].Play();
         }
     }
-    public void Respawn () {
-        if (EngineControl.localPlayer==null || Networking.IsOwner (gameObject)) {
+    public void Respawn()
+    {
+        if (EngineControl.localPlayer == null || Networking.IsOwner(gameObject))
+        {
             // isBodyDead = false;
             // isLWingDead = false;
             // isRWingDead = false;
@@ -439,6 +592,10 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour {
             HealthREngine = initHealthREngine;
             HealthLFlap = initHealthLFlap;
             HealthRFlap = initHealthRFlap;
+
+            CenterOfMassObject.position = originalCenterOfMassPosition;
+            EngineControl.VehicleRigidbody.centerOfMass = EngineControl.VehicleTransform.InverseTransformDirection(originalCenterOfMassPosition - EngineControl.VehicleTransform.position);//correct position if scaled
+            comSet = true;
 
             EngineControl.Lift = initLift;
             //Pitch
