@@ -9,6 +9,7 @@ using VRC.Udon;
 public class MissileTargeterParent : UdonSharpBehaviour {
     public MissileTrackerAndResponse Target;
     [UdonSynced (UdonSyncMode.None)] public bool noTarget = true;
+    public bool forceLocked = false;
     void Start () {
 
     }

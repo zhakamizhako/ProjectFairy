@@ -36,6 +36,7 @@ public class MissileScript : UdonSharpBehaviour
     private bool missed = false;
     private bool close = false;
     private bool missedCalled = false;
+    public float forceLockTimer = 1f;
     public float explosionParticleShortTime = 0.1f;
     public ParticleSystem ExplosionShortSystem;
     public ParticleSystem Smoke;
@@ -59,6 +60,7 @@ public class MissileScript : UdonSharpBehaviour
     private Quaternion guidedRotation;
     private Transform missileTransform;
     public AITurretScript turretScript;
+    private MissileTargeterParent ptargeter;
     void Start()
     {
         if (type == "missile")
@@ -81,9 +83,12 @@ public class MissileScript : UdonSharpBehaviour
         MissileConstantForce = MissileClass.GetComponent<ConstantForce>();
         LaunchedWP = LaunchedFrom != null ? LaunchedFrom.GetComponent<WeaponSelector>() : null;
         missileTransform = MissileClass.transform;
+        if(Target!=null){
+            ptargeter = Target.GetComponent<MissileTargeterParent>();
+        }
 
         // Debug.Log ("MissileScript Initialized");
-        if (Target != null && type!="flak")
+        if (Target != null && type != "flak")
         {
             // Debug.Log ("I Have Target!");
             if (Target.GetComponent<MissileTargeterParent>() != null)
@@ -103,7 +108,7 @@ public class MissileScript : UdonSharpBehaviour
                     // Debug.Log ("Assigned");
                 }
             }
-            else if (Target.GetComponent<AITurretScript>() != null && type!="flak")
+            else if (Target.GetComponent<AITurretScript>() != null && type != "flak")
             {
                 var b = Target.GetComponent<AITurretScript>();
                 if (b.Target != null)
@@ -223,7 +228,7 @@ public class MissileScript : UdonSharpBehaviour
         }
         if (!isExploded)
         {
-            if (type == "missile" || type=="flak")
+            if (type == "missile" || type == "flak")
                 MissileConstantForce.relativeForce = new Vector3(0, 0, missileSpeed);
 
             if (type == "bomb")
@@ -241,22 +246,27 @@ public class MissileScript : UdonSharpBehaviour
                         float angleToTarget = Mathf.Abs(Vector3.Angle(missileTransform.forward.normalized, relPos.normalized));
                         missileDist = Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position);
 
-                        if (missileDist < closeDistance && !close)
+                        if ((ptargeter!=null && ptargeter.forceLocked && MissileTimer > forceLockTimer) || (ptargeter!=null && !ptargeter.forceLocked) || (ptargeter==null))
                         {
-                            close = true;
+                            if (missileDist < closeDistance && !close)
+                            {
+                                close = true;
+                            }
+                            if (missileDist > giveupDistance && close)
+                            {
+                                missed = true;
+                            }
+                            if (missileDist < explodeAt)
+                            {
+                                ExplodeMissile();
+                            }
+                            if (angleToTarget > maxAngle)
+                            {
+                                missed = true;
+                            }
                         }
-                        if (missileDist > giveupDistance && close)
-                        {
-                            missed = true;
-                        }
-                        if (missileDist < explodeAt)
-                        {
-                            ExplodeMissile();
-                        }
-                        if (angleToTarget > maxAngle)
-                        {
-                            missed = true;
-                        }
+
+
 
                         if (!missed)
                         {
@@ -293,10 +303,13 @@ public class MissileScript : UdonSharpBehaviour
                                     }
                                     else if (targetObjectTracker.AI != null && targetObjectTracker.AI.AIClass != null && targetObjectTracker.AI.AIRigidBody != null)
                                     {
-                                        if(Networking.GetOwner(targetObjectTracker.AI.gameObject) == Networking.LocalPlayer){
+                                        if (Networking.GetOwner(targetObjectTracker.AI.gameObject) == Networking.LocalPlayer)
+                                        {
                                             V = targetObjectTracker.AI.AIRigidBody.velocity;
-                                        }else{
-                                            V = targetObjectTracker.AI.veloSync!=Vector3.zero ?targetObjectTracker.AI.veloSync : targetObjectTracker.AI.AIRigidBody.velocity;
+                                        }
+                                        else
+                                        {
+                                            V = targetObjectTracker.AI.veloSync != Vector3.zero ? targetObjectTracker.AI.veloSync : targetObjectTracker.AI.AIRigidBody.velocity;
                                         }
                                     }
                                     else

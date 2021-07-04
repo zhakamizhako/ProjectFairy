@@ -203,6 +203,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         }
 
         misTarget.noTarget = true;
+        misTarget.forceLocked = false;
         isLocking = false;
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "StopTrackingSync");
         isLocked = false;
@@ -826,6 +827,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     {
         if (EngineController.localPlayer == null || EngineController.Piloting)
         {
+            misTarget.forceLocked = false;
             prevSelected = selectedTargetIndex;
             int lastSelectedTarget = selectedTargetIndex;
             if (lastSelectedTarget != -1)
@@ -1034,15 +1036,18 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             }
         }
         misTarget.noTarget = true;
+        misTarget.forceLocked = false;
     }
 
     public void MissileFireLocked(){
-        misTarget.noTarget = false;
+        // misTarget.noTarget = false;
         MissileSync();
+        misTarget.forceLocked = true;
     }
 
     public void MissileFireUnlocked(){
-        misTarget.noTarget = true;
+        // misTarget.noTarget = true;
+        misTarget.forceLocked = false;
         MissileSync();
     }
 
