@@ -33,9 +33,6 @@ public class HitboxDamageDetector : UdonSharpBehaviour {
             }
         }
     }
-    void Start () {
-
-    }
 
     public void callDamage () {
         if (hbcontroller != null && hbcontroller.EngineControl != null && !hbcontroller.EngineControl.dead) {
