@@ -22,13 +22,16 @@ public class PilotSeat : UdonSharpBehaviour
     public OpenWorldMovementLogic OWML;
     public GameObject[] EnableObjectsOnStart;
     public bool EnableOWMLByDefault = true;
+    public bool returnToNorah = false;
     [UdonSharp.UdonSynced(UdonSyncMode.None)] public bool EnabledEngine = true;
+    public bool useUniversalCanvas = false;
     private bool sit = false;
 
     public void EnableOWML()
     {
         // if(EngineControl.Piloting || EngineControl.Passenger){
-        OWML.gameObject.SetActive(true);
+        // OWML.gameObject.SetActive(true);
+        OWML.EnableScript();
         Debug.Log("NYAHOI!");
         // }
     }
@@ -100,7 +103,7 @@ public class PilotSeat : UdonSharpBehaviour
         EngineControl.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "globalCall");
 
         if (EngineControl.hbcontroller != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.hbcontroller.gameObject); }
-        if (EngineControl.localPlayer.IsUserInVR())
+        if (EngineControl.localPlayer.IsUserInVR() || useUniversalCanvas)
         {
             if (CVHVR != null)
             {
@@ -172,6 +175,7 @@ public class PilotSeat : UdonSharpBehaviour
                     }
                 }
 
+                if(EnableOWMLByDefault)
                 OWML.ScriptEnabled = true;
             }
             else if (EngineControl.Piloting || EngineControl.Passenger)
@@ -200,7 +204,7 @@ public class PilotSeat : UdonSharpBehaviour
             SetVoiceOutside(player);
             if (EngineControl.EffectsControl != null)
             {
-                EngineControl.EffectsControl.PlaneAnimator.SetTrigger("deactivate_hud");
+                EngineControl.EffectsControl.PlaneAnimator.SetBool("activate_hud", false);
             }
             if (LeaveButton != null) { LeaveButton.SetActive(false); }
             if (Gun_pilot != null) { Gun_pilot.SetActive(false); }
@@ -248,7 +252,7 @@ public class PilotSeat : UdonSharpBehaviour
                 }
                 if (OWML != null)
                 {
-                    OWML.Map.position = Vector3.zero;
+                    if(returnToNorah) OWML.Map.position = Vector3.zero;
                 }
 
             }

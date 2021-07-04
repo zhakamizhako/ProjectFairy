@@ -316,17 +316,6 @@ public class EngineController : UdonSharpBehaviour
     //float MouseY;
     //float mouseysens = 1; //mouse input can't be used because it's used to look around even when in a seat
     //float mousexsens = 1;
-    public void FlapToggle()
-    {
-        if (EffectsControl != null)
-        {
-            if (HasFlaps)
-            {
-                EffectsControl.Flaps = !EffectsControl.Flaps;
-            }
-        }
-    }
-
     public void CanopyToggle()
     {
         if (HasCanopy)
@@ -342,17 +331,6 @@ public class EngineController : UdonSharpBehaviour
                 EffectsControl.CanopyOpen = true;
                 if (InEditor) CanopyOpening();
                 else { SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "CanopyOpening"); }
-            }
-        }
-    }
-
-    public void GearToggle()
-    {
-        if (EffectsControl != null)
-        {
-            if (HasGear)
-            {
-                EffectsControl.GearUp = !EffectsControl.GearUp;
             }
         }
     }
@@ -568,13 +546,13 @@ public class EngineController : UdonSharpBehaviour
         {
             if (!dead)
             {
-                if (CenterOfMass.position.y < SeaLevel )//kill plane if in sea
-                {
-                    if (InEditor)//editor
-                        Explode();
-                    else//VRC
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Explode");
-                }
+                // if (CenterOfMass.position.y < SeaLevel )//kill plane if in sea
+                // {
+                //     if (InEditor)//editor
+                //         Explode();
+                //     else//VRC
+                //         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Explode");
+                // }
                 //G/crash Damage
                 Health -= Mathf.Max((Gs - MaxGs) * DeltaTime * GDamage, 0f);//take damage of GDamage per second per G above MaxGs
                 if (Health <= 0f)//plane is ded
@@ -598,6 +576,7 @@ public class EngineController : UdonSharpBehaviour
             if (Piloting)
             {
                 //gotta do these this if we're piloting but they didn't get done(specifically, hovering extremely slowly in a VTOL craft will cause control issues we don't)
+                // VehicleRigidbody.centerOfMass = VehicleTransform.InverseTransformDirection(CenterOfMass.position - VehicleTransform.position);//correct position if scaled
                 if (!PlaneMoving)
                 { WindAndAoA(); }
                 if (RepeatingWorld)
@@ -1691,7 +1670,7 @@ public class EngineController : UdonSharpBehaviour
                         }
                     }
 
-                    if (Physics.Raycast(GroundDetector.position, VehicleTransform.TransformDirection(Vector3.down), 1f, ResupplyLayer))
+                    if (Physics.Raycast(GroundDetector.position, VehicleTransform.TransformDirection(Vector3.down), 1.5f, ResupplyLayer))
                     {
                         if (Time.time - LastResupplyTime > 1)
                         {
@@ -2248,7 +2227,7 @@ public class EngineController : UdonSharpBehaviour
 
     //In soundcontroller, CanopyCloseTimer < -100000 means play inside canopy sounds and between -100000 and 0 means play outside sounds.
     //The value is set above these numbers by the length of the animation, and delta time is removed from it each frame.
-    private void ToggleCanopy()
+    public void ToggleCanopy()
     {
         if (CanopyCloseTimer <= -100000 - CanopyCloseTime)
         {

@@ -43,7 +43,16 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
 
     public void EnableScript()
     {
-        ScriptEnabled = true;
+        if (EngineControl.Piloting)
+        {
+            AnchorCoordsPosition = EngineControl.VehicleMainObj.transform.position;
+            PosSync = -Map.transform.position + AnchorCoordsPosition;
+            RotSync = EngineControl.VehicleMainObj.transform.rotation;
+            startPos = EngineControl.VehicleMainObj.transform.position;
+            originalParent = EngineControl.VehicleMainObj.transform.parent;
+
+            ScriptEnabled = true;
+        }
     }
 
     public void CallForRespawn()
@@ -64,9 +73,12 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
             if (syncRotate)
                 EngineControl.VehicleMainObj.transform.rotation = RotSync;
 
-            if(UIScript!=null && UIScript.PlayerAircraft!=null){
+            if (UIScript != null && UIScript.PlayerAircraft != null)
+            {
                 EngineControl.VehicleMainObj.transform.position = PosSync + UIScript.PlayerAircraft.OWML.Map.position;
-            }else{
+            }
+            else
+            {
                 EngineControl.VehicleMainObj.transform.position = PosSync;
             }
         }
@@ -88,14 +100,24 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
                 {
                     targetParent.position = AnchorCoordsPosition;
                     EngineControl.VehicleMainObj.transform.SetParent(targetParent);
+                    EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                    Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
                     moved = true;
                 }
                 // if (!EngineControl.Taxiing)
                 // {
-                EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                if (!EngineControl.Taxiing)
+                {
+                    EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                }
+                else
+                {
+                    EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                }
+                // EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
                 Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
-                // }
                 PosSync = -Map.transform.position + AnchorCoordsPosition;
+                // PosSync = -Map.transform.position + AnchorCoordsPosition;
                 if (syncRotate)
                     RotSync = EngineControl.VehicleMainObj.transform.rotation;
             }

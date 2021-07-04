@@ -17,6 +17,7 @@ public class PassengerSeat : UdonSharpBehaviour
     public GameObject ButtonSet;
     public MissileTrackerAndResponse mistracker;
     public Transform teleportTo;
+    public bool returnToNorah = false;
     // public MissilePlaneSystem MissileControl;
     public WeaponSelector wp;
     private void Start()
@@ -138,7 +139,7 @@ public class PassengerSeat : UdonSharpBehaviour
 
                 if (EngineControl.EffectsControl != null)
                 {
-                    EngineControl.EffectsControl.PlaneAnimator.SetTrigger("deactivate_hud");
+                    EngineControl.EffectsControl.PlaneAnimator.SetBool("deactivate_hud", false);
                 }
 
                 if (EngineControl != null)
@@ -169,6 +170,9 @@ public class PassengerSeat : UdonSharpBehaviour
                 {
                     mistracker.cleanup();
                     mistracker.UIScript.PlayerAircraft = null;
+                }
+                if(EngineControl.OWML!=null){
+                    if(returnToNorah) EngineControl.OWML.Map.position = Vector3.zero;
                 }
                 // if (MissileControl != null) {
                 //     MissileControl.showTargets = false;
