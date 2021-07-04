@@ -62,8 +62,6 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public AudioSource CautionSound;
     public AudioSource MissileAlert;
     public GameObject CautionObject;
-    public GameObject CVHVR;
-    public GameObject CVH;
     public MissileScript[] TrackList;
     public GameObject[] Indicators;
     public GameObject IndicatorPrefabVR;
@@ -100,6 +98,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     private string words = "";
     public PathwaySystem pathway;
     public bool isPathway = false;
+    public bool showInRadar = true;
 
 
     [Header("Objective Markers only")]
