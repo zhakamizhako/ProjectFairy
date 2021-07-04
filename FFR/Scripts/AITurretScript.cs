@@ -222,7 +222,7 @@ public class AITurretScript : UdonSharpBehaviour
     {
         //animation syncer
         if(TurretAni!=null && !Networking.IsOwner(gameObject)){
-            TurretAni.SetBool("firecis", TurretAni);
+            TurretAni.SetBool("fireciws", TurretAni);
         }
 
         if (Health < 1 && !dead)
