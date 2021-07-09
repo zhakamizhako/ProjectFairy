@@ -176,6 +176,9 @@ public class TarpsMode : UdonSharpBehaviour
 
     public void HandleEnter(TarpsArea t)
     {
+        if(!isSelected){
+            return;
+        }
         if (t.belongsTo == CurrentTarpsTarget || CurrentTarpsTarget == null)
         {
             TarpsArea[] temp;

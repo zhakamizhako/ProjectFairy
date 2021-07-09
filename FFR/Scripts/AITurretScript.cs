@@ -52,7 +52,7 @@ public class AITurretScript : UdonSharpBehaviour
     public bool shouldFire = true;
     [System.NonSerializedAttribute] [HideInInspector] public VRCPlayerApi localPlayer;
     //Will wait for the new update to come. for now, its manual target assignment.
-    public MissileTargets TargetListTemp;
+    private MissileTargets TargetListTemp;
     [System.NonSerializedAttribute] [HideInInspector] public int currentTargetIndex = -1;
     public float timeToDisappear = 3f;
     [System.NonSerializedAttribute] [HideInInspector] [UdonSynced(UdonSyncMode.None)] public int launchArea = 0;
@@ -99,6 +99,8 @@ public class AITurretScript : UdonSharpBehaviour
         fullHealth = Health;
         localPlayer = Networking.LocalPlayer;
         initDamagable = damageable;
+
+        TargetListTemp = mainAIObject.PredefinedTargets;
         if (TrackerObject != null)
         {
             initTargetable = TrackerObject.isTargetable;
