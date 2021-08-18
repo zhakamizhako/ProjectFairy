@@ -100,6 +100,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public bool isPathway = false;
     public bool showInRadar = true;
 
+    public RadarRender[] RadarRenders;
 
     [Header("Objective Markers only")]
     public ObjectiveIndicator objectiveIndicatorPrefab;
@@ -107,7 +108,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     //ui
     public GameObject[] OBJIndicators;
     public bool isRenderedMarker = false;
-
+    public Image RadarIcon;
 
     void Start()
     {

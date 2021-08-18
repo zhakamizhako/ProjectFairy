@@ -29,6 +29,7 @@ public class TarpsMode : UdonSharpBehaviour
     private int IncrementorCheckerInt = 0;
     private bool doneIncrement = false;
     private float lastDistanceCheck = 0f;
+    
 
     void Update()
     {
@@ -45,6 +46,7 @@ public class TarpsMode : UdonSharpBehaviour
         }
 
         UITarpsAni.SetBool("TarpsMode", isSelected);
+        UITarpsAni.SetBool("isScanning", isScanning);
         if (weaponSelector.EngineController.Piloting)
         {
             inputChecker();
@@ -82,12 +84,15 @@ public class TarpsMode : UdonSharpBehaviour
             if(CurrentTarpsTarget.AfterScan!=null){
                 CurrentTarpsTarget.AfterScan.run = true;
             }
+
+            isScanning = false;
+            ScanTimer = 0;
+
         }
     }
 
     public void AnimateUI()
     {
-        UITarpsAni.SetBool("isScanning", true);
         UITarpsAni.SetFloat("ScanValue", ScanTimer / CurrentTarpsTarget.timeToScan);
     }
 
@@ -95,6 +100,8 @@ public class TarpsMode : UdonSharpBehaviour
     {
         UITarpsAni.SetBool("Fail", true);
         UITarpsAni.SetFloat("ScanValue", 0);
+        ScanTimer = 0;
+        isScanning = false;
     }
 
     public void IncrementorChecker()

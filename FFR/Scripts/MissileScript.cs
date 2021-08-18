@@ -168,6 +168,8 @@ public class MissileScript : UdonSharpBehaviour
     //The entire explosion shenanigans
     void ExplodeMissile()
     {
+        Collider disableCollider = MissileClass.GetComponent<Collider>();
+        disableCollider.enabled = false;
         MissileObject.SetActive(false);
         ExplosionEffects.SetActive(true);
         isExploded = true;
@@ -275,6 +277,12 @@ public class MissileScript : UdonSharpBehaviour
                             {
                                 indicatorCalled = true;
                                 targetObjectTracker.receiveTracker(this);
+                                if(targetObjectTracker.RadarRenders!=null){
+                                    foreach(RadarRender xx in targetObjectTracker.RadarRenders){
+                                        if(xx.gameObject.activeSelf)
+                                        xx.AddRadarObject(null, this);
+                                    }
+                                }
                             }
                             if (Targeting != null)
                             { //heatseeker

@@ -131,7 +131,7 @@ public class EffectsController : UdonSharpBehaviour
 
         if (EngineControl.Taxiing)
         {
-            if (EngineControl.CurrentVel.magnitude * 1.9438445f > 100f && EngineControl.BrakeInput == 1)
+            if (EngineControl.CurrentVel.magnitude * 1.9438445f > 50f && EngineControl.BrakeInput == 1)
             {
                 if (!GearSmokePlay)
                 {

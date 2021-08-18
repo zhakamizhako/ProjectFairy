@@ -9,6 +9,7 @@ public class PassengerSeat : UdonSharpBehaviour
     public GameObject LeaveButton;
     public GameObject SeatAdjuster;
     private LeaveVehicleButton LeaveButtonControl;
+    public GameObject[] EnableObjectsOnStart;
     private Transform PlaneMesh;
     private LayerMask Planelayer;
     public GameObject fHud;
@@ -83,6 +84,13 @@ public class PassengerSeat : UdonSharpBehaviour
         if (mistracker != null)
         {
             mistracker.UIScript.PlayerAircraft = EngineControl;
+        }
+        if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
+        {
+            foreach (GameObject x in EnableObjectsOnStart)
+            {
+                x.SetActive(true);
+            }
         }
     }
 
@@ -171,8 +179,9 @@ public class PassengerSeat : UdonSharpBehaviour
                     mistracker.cleanup();
                     mistracker.UIScript.PlayerAircraft = null;
                 }
-                if(EngineControl.OWML!=null){
-                    if(returnToNorah) EngineControl.OWML.Map.position = Vector3.zero;
+                if (EngineControl.OWML != null)
+                {
+                    if (returnToNorah) EngineControl.OWML.Map.position = Vector3.zero;
                 }
                 // if (MissileControl != null) {
                 //     MissileControl.showTargets = false;
@@ -191,6 +200,14 @@ public class PassengerSeat : UdonSharpBehaviour
                 {
                     player.TeleportTo(teleportTo.position, teleportTo.rotation);
                     player.SetVelocity(Vector3.zero);
+                }
+
+                if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
+                {
+                    foreach (GameObject x in EnableObjectsOnStart)
+                    {
+                        x.SetActive(false);
+                    }
                 }
                 // if (PlaneMesh != null) {
                 //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();

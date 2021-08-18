@@ -38,7 +38,8 @@ public class RadarRender : UdonSharpBehaviour
     public RaycastHit[] hits;
     public bool reset = false;
     public bool waitForCallback = false;
-
+    public bool renderIcons = false;
+    public bool ForceTransform = false;
     public bool parsemode = false;
     public bool removing = false;
     void Start()
@@ -94,11 +95,14 @@ public class RadarRender : UdonSharpBehaviour
 
     public void ForceDeleteRadarObjects()
     {
-        foreach (RadarObject l in List)
+        if (List.Length > 0)
         {
-            l.toDestroy();
+            foreach (RadarObject l in List)
+            {
+                l.toDestroy();
+            }
+            List = null;
         }
-        List = null;
 
     }
 
@@ -170,12 +174,7 @@ public class RadarRender : UdonSharpBehaviour
         else if (parsing != null && parsingMis == null)
         {
             Debug.Log("ppaparse");
-            // if (List.Length == 0)
-            // {
-            //     AddRadarObject(parsing, null);
-            //     parsing = null;
-            //     counterList = 0;
-            // }
+
             if (counterList < List.Length && List[counterList].Tracking == parsing)
             {
                 parsemode = false;
@@ -210,12 +209,7 @@ public class RadarRender : UdonSharpBehaviour
         else if (parsing == null && parsingMis != null)
         {
             Debug.Log("ppaparse");
-            // if (List.Length == 0)
-            // {
-            //     AddRadarObject(parsing, null);
-            //     parsing = null;
-            //     counterList = 0;
-            // }
+
             if (counterList < List.Length && List[counterList].TrackingMissile == parsingMis)
             {
                 parsemode = false;
@@ -247,30 +241,6 @@ public class RadarRender : UdonSharpBehaviour
             }
 
         }
-        // else if (parsingMis != null && parsing == null)
-        // {
-        //     if (counterList < List.Length && !found)
-        //     {
-        //         found = List[counterList].TrackingMissile == parsingMis;
-        //     }
-        //     else if (counterList >= List.Length && !found)
-        //     {
-        //         AddRadarObject(null, parsingMis);
-        //         parsingMis = null;
-        //         counterList = 0;
-        //     }
-        //     else if (found)
-        //     {
-        //         parsingMis = null;
-        //         counterList = 0;
-        //     }
-        //     if (List.Length == 0)
-        //     {
-        //         AddRadarObject(null, parsingMis);
-        //         parsingMis = null;
-        //         counterList = 0;
-        //     }
-        // }
 
     }
 
@@ -317,18 +287,14 @@ public class RadarRender : UdonSharpBehaviour
         parsing = null;
         parsingMis = null;
         parsemode = false;
-        // removing = true;
 
-        // if(parsing == bb.Tracking){
-        //     parsing = null;
-        // }else if(parsingMis == bb.TrackingMissile){
-        //     parsingMis = null;
-        // }
         waitForCallback = true;
+        int index = 0;
         for (int x = 0; x < List.Length; x++)
         {
             if (List[x] != null && List[x] == bb)
             {
+                index = x;
                 found = true;
             }
         }
@@ -339,34 +305,18 @@ public class RadarRender : UdonSharpBehaviour
             int y = 0;
             for (int x = 0; x < List.Length; x++)
             {
-                // Debug.Log("SCAN");
-                if (!removing)
+                if (x != index)
                 {
-                    if (x < List.Length && List[x] != bb)
-                    {
-                        removing = true;
-                        temp[y] = List[x];
-                        y = y + 1;
-                        removing=false;
-                        // Debug.Log("INCREMENT");
-                    }
-                    else if (x < List.Length && List[x] == bb)
-                    {
-                        List[x].toDestroy();
-                        // Destroy(Indicators[x]);
-                        Debug.Log("DESTROY");
-                    }
-                    else
-                    {
-                        Debug.Log("Array error");
-                        ForceDeleteRadarObjects();
-                    }
+                    temp[y] = List[x];
+                    y = y + 1;
                 }
             }
+            bb.toDestroy();
             // Debug.Log("C");
             List = temp;
             // Debug.Log("DONE");
         }
+        waitForCallback = false;
     }
 
 }

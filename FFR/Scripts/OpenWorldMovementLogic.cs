@@ -17,6 +17,7 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
     private Quaternion startRot;
     private Vector3 startPos;
     private bool Moved = false;
+    public bool AlwaysActive = false;
     [UdonSynced(UdonSyncMode.None)] public bool ScriptEnabled = false;
     public PlayerUIScript UIScript;
     public Transform targetParent;
@@ -68,7 +69,7 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
             return;
         }
 
-        if (EngineControl.Occupied && (EngineControl.Pilot != localPlayer && (!EngineControl.Passenger)) && !respawnCall)
+        if (EngineControl.Occupied && (!EngineControl.Piloting && (!EngineControl.Passenger)) && !respawnCall)
         {
             if (syncRotate)
                 EngineControl.VehicleMainObj.transform.rotation = RotSync;
@@ -143,6 +144,7 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
         {
             EngineControl.VehicleMainObj.transform.SetParent(originalParent);
             moved = false;
+            if(!AlwaysActive)
             ScriptEnabled = false;
         }
 

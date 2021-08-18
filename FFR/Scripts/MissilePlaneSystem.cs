@@ -9,6 +9,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
 {
     // public GameObject MissileFab;
     // public GameObject MissileSpawnArea;
+    // public bool RandomizeSpawnAreas = false;
     public GameObject[] MissileSpawnAreas; // Object array for missile spawn areas. If you have like 8 mthfking missile pods, there you have it.
     public AudioSource[] MissileFireSounds; // Object array for Missile fire sounds. Can add as many as you want 
     public GameObject MissileFab; // Object for missile object
@@ -68,6 +69,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     private bool DPAD_DOWN_last_trigger = false;
     public int Missiles = 0;
     public float[] CooldownMissiles;
+    public bool skipCooldownHUD = false;
     public GameObject[][] CooldownMissileHUD;
     public float timeToCooldown = 10;
     private int cooldownIndex = 0;
@@ -118,7 +120,14 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public string WeaponAnimatorString = "activated";
     public bool sleep = false;
 
+    public bool BurstFire = false;
+    public int FirePerBurst = 10;
+    private int burstNo = 0;
+    public float waitForBurst = .2f;
+    private float timerBurst = 0f;
+    private bool isFiringBurst = false;
     public PlayerUIScript UIScript;
+    public WeaponSelector wpss;
     void Start()
     { //Initialize Missile Packs and status
         if (LockSightHUD != null)
@@ -210,6 +219,23 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         timerLocking = 0f;
         if (locked != null) { locked.Stop(); }
         if (locking != null) { locking.Stop(); }
+
+        if(wpss!=null){
+            if(wpss.IFFIndicator!=null){
+                string x = "";
+                Color b = Color.white;
+                if(selectedTargetIndex!=-1){
+                    if(MissileTargetScript.Targets[selectedTargetIndex].isEnemy){ x = "Enemy"; b = Color.red;}
+                    if(MissileTargetScript.Targets[selectedTargetIndex].isAlly){ x = "Ally"; b = Color.white;}
+                    // if(MissileTargetScript.Targets[selectedTargetIndex].isObjective) x = "Objective";
+                    if(MissileTargetScript.Targets[selectedTargetIndex].isUnknown){ x = "Unknown"; b = Color.yellow;}
+                }else{
+                    x = "None";
+                }
+                wpss.IFFIndicator.text = x;
+                wpss.IFFIndicator.color = b;
+            }
+        }
     }
 
     public void SetLocked()
@@ -238,22 +264,30 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             }
         }
 
-        if(Networking.IsOwner(gameObject) && !selectedWeapon){
+        if (Networking.IsOwner(gameObject) && !selectedWeapon)
+        {
             gunFiring = false;
-            if(WeaponAnimator!=null){
+            if (WeaponAnimator != null)
+            {
                 WeaponActivated = false;
             }
         }
-        if(Networking.IsOwner(gameObject) && selectedWeapon){
-            if(WeaponAnimator!=null){
+        if (Networking.IsOwner(gameObject) && selectedWeapon)
+        {
+            if (WeaponAnimator != null)
+            {
                 WeaponActivated = true;
             }
         }
 
-        if(WeaponAnimator!=null){
-            if(EngineController.Occupied ||( isAnimatorLocalOnly && EngineController.Piloting) ){
+        if (WeaponAnimator != null)
+        {
+            if (EngineController.Occupied || (isAnimatorLocalOnly && EngineController.Piloting))
+            {
                 WeaponAnimator.SetBool(WeaponAnimatorString, WeaponActivated);
-            }else{
+            }
+            else
+            {
                 WeaponAnimator.SetBool(WeaponAnimatorString, false);
             }
         }
@@ -311,14 +345,14 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             {
                 if (missileindex < Missiles)
                 {
-                    if (MissileFired[missileindex] == true)
+                    if (MissileFired[missileindex] == true && !skipCooldownHUD)
                     {
                         foreach (GameObject x in CooldownMissileHUD[missileindex])
                         {
                             if (x.activeSelf) x.SetActive(false);
                         }
                     }
-                    else if (MissileFired[missileindex] == false)
+                    else if (MissileFired[missileindex] == false && !skipCooldownHUD)
                     {
                         foreach (GameObject x in CooldownMissileHUD[missileindex])
                         {
@@ -506,7 +540,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                 var TrackerObject = MissileTargetScript.Targets[bx];
                 if (TrackerObject != null)
                     TrackerObject.ShowTargets = false;
-                    // TrackerObject.GetComponent<MissileTrackerAndResponse>().ShowTargets = false;
+                // TrackerObject.GetComponent<MissileTrackerAndResponse>().ShowTargets = false;
             }
             // foreach (GameObject go in MissileTargetScript.Targets) { }
             tempShow = false;
@@ -712,17 +746,63 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                     {
                         if (Input.GetAxisRaw("Oculus_CrossPlatform_SecondaryIndexTrigger") > .5f) { buttonDown = true; }
                         if (DPAD_DOWN < 0 || DPAD_DOWN > 0) { DPAD_DOWN_last_trigger = true; }
-                        if(locked){
-                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireLocked");    
-                        }else{
-                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireUnlocked");    
+                        if (!BurstFire)
+                        {
+                            if (locked)
+                            {
+                                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireLocked");
+                            }
+                            else
+                            {
+                                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireUnlocked");
+                            }
+                        }
+                        if (BurstFire)
+                        {
+                            if (!isFiringBurst)
+                            {
+                                isFiringBurst = true;
+
+                            }
                         }
                         // SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileSync");
                         // if (EngineController.localPlayer == null) //so it works in editor
                         // {
-                            // MissileSync();
+                        // MissileSync();
                         // }
                     }
+                    if (BurstFire)
+                    {
+                        if (isFiringBurst)
+                        {
+                            if (burstNo < FirePerBurst)
+                            {
+                                if (timerBurst > waitForBurst)
+                                {
+                                    if (locked)
+                                    {
+                                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireLocked");
+                                    }
+                                    else
+                                    {
+                                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireUnlocked");
+                                    }
+                                    timerBurst = 0;
+                                    burstNo = burstNo +1;
+                                }
+                                else
+                                {
+                                    timerBurst = timerBurst + Time.deltaTime;
+                                }
+                            }
+                            else
+                            {
+                                isFiringBurst = false;
+                                burstNo = 0;
+                            }
+                        }
+                    }
+
                     if (Input.GetAxisRaw("Oculus_CrossPlatform_SecondaryIndexTrigger") < .5f && buttonDown == true)
                     {
                         buttonDown = false;
@@ -945,79 +1025,6 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "changeTargetSync");
         // Debug.DrawLine (ChangeTargetDetector.position, ChangeTargetDetector.position + ChangeTargetDetector.forward * hitDistance);
     }
-
-    // public void ChangeTargetCommand () {
-    //     if (EngineController.localPlayer == null || EngineController.Piloting) {
-    //         if (MissileTargetScript.Targets.Length > 0) {
-    //             for (;;) {
-    //                 if (selectedTargetIndex + 1 != -1 && selectedTargetIndex + 1 < MissileTargetScript.Targets.Length) {
-
-    //                     if (selectedTargetIndex + 1 != -1 && (MissileTargetScript.Targets[selectedTargetIndex + 1] != null || MissileTargetScript.Targets[selectedTargetIndex + 1].gameObject.activeInHierarchy != false) && MissileTargetScript.Targets[selectedTargetIndex + 1].GetComponent<MissileTrackerAndResponse> () != null && (MyTracker == MissileTargetScript.Targets[selectedTargetIndex + 1] || MissileTargetScript.Targets[selectedTargetIndex + 1].GetComponent<MissileTrackerAndResponse> ().isTargetable == false)) {
-    //                         if (selectedTargetIndex + 1 < MissileTargetScript.Targets.Length) {
-    //                             selectedTargetIndex = selectedTargetIndex + 1;
-    //                         } else {
-    //                             selectedTargetIndex = -2;
-    //                         }
-    //                         continue;
-    //                     } else {
-    //                         if (TargetChangeHUD != null) {
-    //                             if (NextTarget != null)
-    //                                 NextTarget.Play ();
-    //                             TargetChangeHUD.SetActive (true);
-    //                             if (SelfTarget != null)
-    //                                 SelfTarget.SetActive (false);
-    //                             cooldownhud = 0;
-    //                         }
-    //                     }
-    //                 } else {
-    //                     // selectedTargetIndex = -1;
-    //                     if (NoTargets != null)
-    //                         NoTargets.Play ();
-    //                     if (NoTargetHUD != null) {
-    //                         NoTargetHUD.SetActive (true);
-    //                         cooldownhud = 0;
-    //                     }
-    //                     if (TargetChangeHUD != null) {
-    //                         TargetChangeHUD.SetActive (false);
-    //                     }
-    //                     if (SelfTarget != null) {
-    //                         SelfTarget.SetActive (false);
-    //                     }
-    //                 }
-
-    //                 if (selectedTargetIndex + 1 < MissileTargetScript.Targets.Length) {
-    //                     selectedTargetIndex = selectedTargetIndex + 1;
-    //                 } else {
-    //                     selectedTargetIndex = -1;
-    //                 }
-
-    //                 if (selectedTargetIndex != -1) {
-    //                     break;
-    //                 } else {
-    //                     misTarget.Target = null;
-    //                     misTarget.noTarget = true;
-    //                     break;
-    //                 }
-    //             }
-
-    //             if (EngineController.localPlayer == null) //editor mode. 
-    //                 changeTargetSync ();
-    //             SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "changeTargetSync");
-
-    //             for (int i = 0; i < MissileTargetScript.Targets.Length; i++) {
-    //                 if (MissileTargetScript.Targets[i] != null && MissileTargetScript.Targets[i].GetComponent<MissileTrackerAndResponse> () != null) {
-    //                     var grender = MissileTargetScript.Targets[i].GetComponent<MissileTrackerAndResponse> ().TargetIconRender.GetComponent<Renderer> (); //If it crashes because of this, its either you haven't setup the correct tracker or the targets array.
-    //                     if (i != selectedTargetIndex) {
-    //                         grender.material.SetColor ("_Color", Color.white); //Not selected
-    //                     } else {
-    //                         grender.material.SetColor ("_Color", Color.yellow); //Selected Target
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
-
     public void StopTrackingSync()
     {
         var targetToWarn = misTarget.Target;
@@ -1039,13 +1046,15 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         misTarget.forceLocked = false;
     }
 
-    public void MissileFireLocked(){
+    public void MissileFireLocked()
+    {
         // misTarget.noTarget = false;
         MissileSync();
         misTarget.forceLocked = true;
     }
 
-    public void MissileFireUnlocked(){
+    public void MissileFireUnlocked()
+    {
         // misTarget.noTarget = true;
         misTarget.forceLocked = false;
         MissileSync();

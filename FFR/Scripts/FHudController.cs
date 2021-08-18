@@ -109,7 +109,7 @@ public class FHudController : UdonSharpBehaviour
 
     void LateUpdate()//???????????????????????????
     {
-        if (localPlayer != null && (onTesting || EngineController != null) && UIScript != null && isHeadTracked && (EngineController.Piloting || EngineController.Passenger))
+        if (localPlayer != null && UIScript != null && isHeadTracked && (EngineController!=null && ((EngineController.Piloting || EngineController.Passenger) )|| EngineController==null) )
         {
             if (parentTransform != null)
             {
@@ -246,180 +246,10 @@ public class FHudController : UdonSharpBehaviour
             if (HUDAnimator != null)
             {
                 doAnimator();
-                // float value = EngineController.VehicleMainObj.transform.position.y +
-                //        (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
-                //                 (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
-                //                 : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
-
-                // HUDAnimator.SetFloat("altimeter", (value));
-                // HUDAnimator.SetFloat("speedometer", (EngineController.CurrentVel.magnitude * 1.9438445f) * speedMultiplier);
             }
             doTexts();
             doPullup();
-            // if (Speedometer != null)
-            // {
-            //     // if (EngineController.VehicleRigidbody)
-            //     // {
-            //     //     speedometerLerp = Vector3.Lerp(speedometerLerp, new Vector3(-((EngineController.CurrentVel.magnitude * 1.9438445f) / 5.5f), 0, 0), 4f * Time.deltaTime);
-            //     //     Speedometer.localRotation = Quaternion.Euler(speedometerLerp);
-            //     // }
-            // }
-            // if (MaveFlipMode != null)
-            // {
-            //     if (EngineController != null)
-            //     {
-            //         if (EngineController.EffectsControl.Flaps)
-            //         {
-            //             if (MaveFlipMode.activeSelf)
-            //                 MaveFlipMode.SetActive(false);
-            //         }
-            //         else
-            //         {
-            //             if (!MaveFlipMode.activeSelf)
-            //                 MaveFlipMode.SetActive(true);
-            //         }
-            //     }
-            // }
-            // if (AirBrakeUI != null)
-            // {
-            //     if (EngineController.BrakeInput == 1)
-            //     {
-            //         if (!AirBrakeUI.activeSelf)
-            //             AirBrakeUI.SetActive(true);
-            //     }
-            //     else
-            //     {
-            //         if (AirBrakeUI.activeSelf)
-            //             AirBrakeUI.SetActive(false);
-            //     }
-            // }
-            // if (Altimeter != null)
-            // {
-            //     float value = EngineController.VehicleMainObj.transform.position.y +
-            //                            (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
-            //                                     (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
-            //                                     : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
 
-            //     altimeterLerp = Vector3.Lerp(altimeterLerp, new Vector3(-(value) / divisibleValue, 0, 0), 4.5f * Time.deltaTime);
-            //     Altimeter.localRotation = Quaternion.Euler(altimeterLerp);
-            // }
-            // if (HorizonTool != null)
-            // {
-            //     var hrotate = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
-            //     // float new_z = hrotate.z;
-            //     // hrotate.z = 0;
-            //     hrotate.y = 0;
-            //     hrotate.z = -hrotate.z;
-            //     HorizonTool.localRotation = Quaternion.Euler(-hrotate);
-            //     HorizonTool.localPosition = Vector3.zero;
-            // }
-            // if (LevelTool != null)
-            // {
-            //     var hrotate = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
-            //     // float new_z = hrotate.z;
-            //     hrotate.z = 0;
-            //     hrotate.x = 0;
-            //     hrotate.y = EngineController.VehicleMainObj.transform.rotation.eulerAngles.z;
-            //     LevelTool.localRotation = Quaternion.Euler(-hrotate);
-            //     LevelTool.localPosition = Vector3.zero;
-            // }
-            // if (FlapsUI != null)
-            // {
-            //     if (EngineController.EffectsControl.Flaps)
-            //     {
-            //         if (!FlapsUI.activeSelf)
-            //             FlapsUI.SetActive(true);
-            //     }
-            //     else
-            //     {
-            //         if (FlapsUI.activeSelf)
-            //             FlapsUI.SetActive(false);
-            //     }
-            // }
-            // if (HealthText != null)
-            // {
-            //     int TestHealth = Mathf.RoundToInt(EngineController.Health);
-            //     if (TestHealth != HealthTemp)
-            //     {
-            //         HealthTemp = TestHealth;
-            //         HealthText.text = string.Format("HP:{0}", HealthTemp);
-            //     }
-            // }
-            // if (CopilotHealthText != null) { CopilotHealthText.text = "HP: " + EngineController.Health.ToString("F0"); }
-
-            // if (LimiterUI != null)
-            // {
-            //     if (EngineController.FlightLimitsEnabled)
-            //     {
-            //         if (!LimiterUI.activeSelf)
-            //             LimiterUI.SetActive(true);
-            //     }
-            //     else
-            //     {
-            //         if (LimiterUI.activeSelf)
-            //             LimiterUI.SetActive(false);
-            //     }
-            // }
-
-
-            // if (GearDownUI != null)
-            // {
-            //     if (!EngineController.EffectsControl.GearUp)
-            //     {
-            //         if (!GearDownUI.activeSelf)
-            //             GearDownUI.SetActive(true);
-            //     }
-            //     else
-            //     {
-            //         if (GearDownUI.activeSelf)
-            //             GearDownUI.SetActive(false);
-            //     }
-            // }
-            // if (DangerUI != null)
-            // {
-            //     if (EngineController.Health < (EngineController.FullHealth * .25))
-            //     {
-            //         if (!DangerUI.activeSelf)
-            //             DangerUI.SetActive(true);
-            //     }
-            //     else
-            //     {
-            //         if (DangerUI.activeSelf)
-            //             DangerUI.SetActive(false);
-            //     }
-            // }
-            // if (AB != null)
-            // {
-            //     if (EngineController.EffectsControl.AfterburnerOn)
-            //     {
-            //         if (isPlayedAB == false)
-            //         {
-            //             AB.Play();
-            //             isPlayedAB = true;
-            //             if (ABUI != null)
-            //                 ABUI.SetActive(true);
-            //         }
-            //     }
-            //     else
-            //     {
-            //         isPlayedAB = false;
-            //         if (ABUI != null)
-            //             ABUI.SetActive(false);
-            //     }
-            // }
-            // if (OverGUI != null && EController != null)
-            // {
-            //     if (EngineController.Gs > ((EngineController.MaxGs) * (.60f)))
-            //     {
-            //         if (!OverGUI.activeSelf)
-            //             OverGUI.SetActive(true);
-            //     }
-            //     else
-            //     {
-            //         if (OverGUI.activeSelf)
-            //             OverGUI.SetActive(false);
-            //     }
-            // }
             if (GunHud != null)
             {
                 Vector3 tempvel;
@@ -460,11 +290,6 @@ public class FHudController : UdonSharpBehaviour
         if (EngineController != null && !EngineController.Piloting)
         {
             doPullUpCheck = false;
-            // if (Pullupaudio != null && isPlayedPullup)
-            // {
-            //     Pullupaudio.Stop();
-            //     isPlayedPullup = false;
-            // }
         }
 
     }
@@ -489,34 +314,19 @@ public class FHudController : UdonSharpBehaviour
             if (hit)
             {
                 doPullUpCheck = true;
-                // PullupUI.SetActive(true);
-                // if (Pullupaudio != null && isPlayedPullup == false)
-                // {
-                //     Pullupaudio.Play();
-                //     isPlayedPullup = true;
-                // }
+
             }
             else
             {
                 doPullUpCheck = false;
-                // PullupUI.SetActive(false);
-                // if (Pullupaudio != null && isPlayedPullup == true)
-                // {
-                //     Pullupaudio.Stop();
-                //     isPlayedPullup = false;
-                // }
+
             }
 
         }
         else
         {
             doPullUpCheck = false;
-            // PullupUI.SetActive(false);
-            // if (Pullupaudio != null && isPlayedPullup == true)
-            // {
-            //     Pullupaudio.Stop();
-            //     isPlayedPullup = false;
-            // }
+
         }
     }
 }

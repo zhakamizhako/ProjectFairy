@@ -9,6 +9,7 @@ public class SoundController : UdonSharpBehaviour
     public EngineController EngineControl;
     public AudioSource[] PlaneIdle;
     public AudioSource PlaneInside;
+    public AudioSource PlaneInsideAfterburner;
     public AudioSource PlaneDistant;
     public AudioSource[] Thrust;
     public AudioSource ABOnInside;
@@ -28,6 +29,7 @@ public class SoundController : UdonSharpBehaviour
     public AudioSource MenuSelect;
     [System.NonSerializedAttribute] public bool PlaneIdleNull;
     [System.NonSerializedAttribute] public bool PlaneInsideNull;
+    [System.NonSerializedAttribute] public bool PlaneInsideAfterburnerNull;
     [System.NonSerializedAttribute] public bool PlaneDistantNull;
     [System.NonSerializedAttribute] public bool PlaneThrustNull;
     [System.NonSerializedAttribute] public bool ABOnInsideNull;
@@ -58,6 +60,7 @@ public class SoundController : UdonSharpBehaviour
     private float PlaneThrustPitch;
     [System.NonSerializedAttribute] public float PlaneThrustVolume;
     private float PlaneInsideInitialVolume;
+    private float PlaneInsideAfterburnerInitialVolume;
     private float LastFramePlaneIdlePitch;
     private float LastFramePlaneThrustPitch;
     private float LastFrameGunPitch;
@@ -82,6 +85,7 @@ public class SoundController : UdonSharpBehaviour
     {
         Assert(EngineControl != null, "Start: EngineControl != null");
         Assert(PlaneInside != null, "Start: PlaneInside != null");
+        Assert(PlaneInsideAfterburner != null, "Start: PlaneInsideAfterburner != null");
         Assert(PlaneDistant != null, "Start: PlaneDistant != null");
         Assert(ABOnInside != null, "Start: ABOnInside != null");
         Assert(ABOnOutside != null, "Start: ABOnOutside != null");
@@ -102,6 +106,7 @@ public class SoundController : UdonSharpBehaviour
         Assert(BulletHit.Length > 0, "Start: BulletHit.Length > 0");
 
         PlaneInsideNull = (PlaneInside == null) ? true : false;
+        PlaneInsideAfterburnerNull = (PlaneInsideAfterburner == null) ? true : false;
         PlaneDistantNull = (PlaneDistant == null) ? true : false;
         ABOnInsideNull = (ABOnOutside == null) ? true : false;
         ABOnOutsideNull = (ABOnOutside == null) ? true : false;
@@ -125,6 +130,11 @@ public class SoundController : UdonSharpBehaviour
         if (!PlaneInsideNull)
         {
             PlaneInsideInitialVolume = PlaneInside.volume;
+        }
+
+        if (!PlaneInsideAfterburnerNull)
+        {
+            PlaneInsideAfterburnerInitialVolume = PlaneInside.volume;
         }
 
         //used to make it so that changing the volume in unity will do something //set 0 to avoid ear destruction
@@ -194,6 +204,7 @@ public class SoundController : UdonSharpBehaviour
                 if (!PlaneDistantNull) PlaneDistant.gameObject.SetActive(false);
                 if (!PlaneWindNull) PlaneWind.gameObject.SetActive(false);
                 if (!PlaneInsideNull) PlaneInside.gameObject.SetActive(false);
+                if (!PlaneInsideAfterburnerNull) PlaneInsideAfterburner.gameObject.SetActive(false);
                 if (!AirbrakeNull) Airbrake.gameObject.SetActive(false);
                 soundsoff = true;
             }
@@ -310,6 +321,10 @@ public class SoundController : UdonSharpBehaviour
             {
                 PlaneInside.Play();
             }
+            if ((!PlaneInsideAfterburnerNull) && !PlaneInsideAfterburner.isPlaying)
+            {
+                PlaneInsideAfterburner.Play();
+            }
             if ((!PlaneIdleNull) && PlaneIdle[0].isPlaying)
             {
                 foreach (AudioSource idle in PlaneIdle)
@@ -326,8 +341,13 @@ public class SoundController : UdonSharpBehaviour
             {
                 if (!PlaneInsideNull)
                 {
-                   PlaneInside.pitch = Mathf.Lerp(PlaneInside.pitch, (EngineControl.EngineOutput * .4f) + .8f, 2.25f * DeltaTime);
-                    PlaneInside.volume = Mathf.Lerp(PlaneInside.volume, PlaneInsideInitialVolume, .72f * DeltaTime);
+                    PlaneInside.pitch = Mathf.Lerp(PlaneInside.pitch, (EngineControl.EngineOutput * .4f) + .8f, 2.25f * DeltaTime);
+                    PlaneInside.volume = !PlaneInsideAfterburnerNull ? Mathf.Lerp(-PlaneInsideAfterburner.volume+1, PlaneInsideInitialVolume, .72f * DeltaTime):Mathf.Lerp(PlaneInside.volume, PlaneInsideInitialVolume, .72f * DeltaTime) ;
+                }
+                if (!PlaneInsideAfterburnerNull)
+                {
+                    PlaneInsideAfterburner.pitch =  Mathf.Lerp(PlaneInside.pitch, (EngineControl.EngineOutput * .4f) + .8f, 2.25f * DeltaTime);
+                    PlaneInsideAfterburner.volume =  Mathf.Lerp(PlaneInsideAfterburner.volume, (EngineControl.EngineOutput * .8f) , .72f * DeltaTime);
                 }
                 PlaneThrustVolume = Mathf.Lerp(PlaneThrustVolume, (EngineControl.EngineOutput * PlaneThrustInitialVolume) * InVehicleThrustVolumeFactor, 1.08f * DeltaTime);
             }
@@ -463,6 +483,7 @@ public class SoundController : UdonSharpBehaviour
         if (!CatapultLaunchNull) CatapultLaunch.volume /= InVehicleThrustVolumeFactor;
         if (!RollingNull) { Rolling.Stop(); }
         if (!PlaneInsideNull) { PlaneInside.Stop(); }
+        if (!PlaneInsideAfterburnerNull) { PlaneInsideAfterburner.Stop(); }
         foreach (AudioSource idle in PlaneIdle) { idle.Play(); }
         foreach (AudioSource thrust in Thrust) { thrust.Play(); }
         if (!PlaneDistantNull) PlaneDistant.Play();
@@ -548,6 +569,7 @@ public class SoundController : UdonSharpBehaviour
             idle.gameObject.SetActive(true);
         }
         if (!PlaneDistantNull) PlaneDistant.gameObject.SetActive(true);
+        if (!PlaneInsideAfterburnerNull) PlaneInsideAfterburner.gameObject.SetActive(true);
         if (!PlaneWindNull) PlaneWind.gameObject.SetActive(true);
         if (!PlaneInsideNull) PlaneInside.gameObject.SetActive(true);
         if (!AirbrakeNull) Airbrake.gameObject.SetActive(true);

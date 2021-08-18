@@ -41,6 +41,7 @@ public class WeaponSelector : UdonSharpBehaviour {
     public float afterFlareTimer = 0f;
     private bool afterFlare = false;
     private bool called = false;
+    public Text IFFIndicator;
     void Start () {
         if (FlareTexts != null && FlareTexts.Length > 0) {
             foreach(Text t in FlareTexts){

@@ -26,7 +26,6 @@ public class PilotSeat : UdonSharpBehaviour
     [UdonSharp.UdonSynced(UdonSyncMode.None)] public bool EnabledEngine = true;
     public bool useUniversalCanvas = false;
     private bool sit = false;
-
     public void EnableOWML()
     {
         // if(EngineControl.Piloting || EngineControl.Passenger){
@@ -175,8 +174,8 @@ public class PilotSeat : UdonSharpBehaviour
                     }
                 }
 
-                if(EnableOWMLByDefault)
-                OWML.ScriptEnabled = true;
+                if (EnableOWMLByDefault)
+                    OWML.ScriptEnabled = true;
             }
             else if (EngineControl.Piloting || EngineControl.Passenger)
             {
@@ -252,7 +251,15 @@ public class PilotSeat : UdonSharpBehaviour
                 }
                 if (OWML != null)
                 {
-                    if(returnToNorah) OWML.Map.position = Vector3.zero;
+                    if (returnToNorah) OWML.Map.position = Vector3.zero;
+                }
+
+                if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
+                {
+                    foreach (GameObject x in EnableObjectsOnStart)
+                    {
+                        x.SetActive(false);
+                    }
                 }
 
             }

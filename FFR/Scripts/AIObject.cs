@@ -102,6 +102,8 @@ public class AIObject : UdonSharpBehaviour
     [System.NonSerializedAttribute] [HideInInspector] bool initRendered = false;
     [System.NonSerializedAttribute] [HideInInspector] bool initDisabled = false;
     [System.NonSerializedAttribute] [HideInInspector] bool initEnableMainTurrets = false;
+    [System.NonSerializedAttribute] [HideInInspector] public float startDragSpeed = 0f;
+    [System.NonSerializedAttribute] [HideInInspector] public float startAngularDrag = 0f;
     private bool deadplay = false;
     public AudioSource[] deadSounds;
     public int[] targetIndices;
@@ -179,6 +181,19 @@ public class AIObject : UdonSharpBehaviour
     private bool triggerHalfTurretRan = false;
     private bool triggerHalfHealthRan = false;
     private bool onDestroyRan = false;
+    private bool isInFollow = false;
+    // public float output = 0f;
+    // public float output2 = 0f;
+    // public float output3 = 0f;
+    // public float output4 = 0f;
+    // public float outputSolve = 0f;
+    // public float outputSolve2 = 0f;
+    // public float outputSolve3 = 0f;
+    // public float outputSolve4 = 0f;
+
+    public float CurrentVelocity = 0f;
+    public float TargetVelocity = 0f;
+    public GameObject SmokeObject;
 
     // private bool initShouldAttack = false;
 
@@ -217,6 +232,12 @@ public class AIObject : UdonSharpBehaviour
         }
         AIClassTransform = AIClass.transform;
         GameObjectTransform = gameObject.transform;
+        if (type == "air")
+        {
+            startDragSpeed = AIRigidBody != null ? AIRigidBody.drag : 0f;
+            startAngularDrag = AIRigidBody != null ? AIRigidBody.drag : 0f;
+        }
+
     }
 
     public void removeTargets()
@@ -240,6 +261,14 @@ public class AIObject : UdonSharpBehaviour
             AIClassTransform.rotation = rotationSync;
             AIRigidBody.velocity = veloSync;
         }
+    }
+
+    public void SmokeOn(){
+        SmokeObject.SetActive(true);
+    }
+
+    public void SmokeOff(){
+        SmokeObject.SetActive(false);
     }
 
     public void fireFlare()
@@ -512,11 +541,11 @@ public class AIObject : UdonSharpBehaviour
 
                 if (shouldOnlyMoveInMaster && Networking.IsOwner(gameObject))
                 { // Finally
-                    AiConstantForce.relativeForce = new Vector3(0, 0, finalMovementSpeed);
+                    AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
                 }
                 else if (!shouldOnlyMoveInMaster)
                 {
-                    AiConstantForce.relativeForce = new Vector3(0, 0, finalMovementSpeed);
+                    AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
                 }
 
                 if (shouldPing && !useSmoothingSync)
@@ -607,28 +636,112 @@ public class AIObject : UdonSharpBehaviour
             Following = Tracker.Tailer != null ? Tracker.Tailer : Tracker.gameObject.transform;
         }
 
-        if (Vector3.Distance(AIClassTransform.position, Following.position) < formDistanceSlowdown)
+        float dist = Vector3.Distance(AIClassTransform.position, Following.position);
+        CurrentVelocity = AIRigidBody.velocity.magnitude;
+        TargetVelocity = ObjectVelocity.velocity.magnitude;
+
+        if (dist < formDistanceSlowdown && dist > targetFloatDistance)
         {
-            finalMovespeed = Mathf.Lerp(ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, finalMovespeed, Time.deltaTime * -Vector3.Distance(AIClassTransform.position, Following.position));
+            float temp = 0f;
+            if (CurrentVelocity > TargetVelocity)
+            {
+                temp = -Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f;
+            }
+            else
+            {
+                temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f; ;
+            }
+
+            finalMovespeed = Mathf.Clamp(finalMovespeed + temp, 0, maxMovementSpeed);
+            // if (currentmoveSpeed < maxMovementSpeed)
+            // {
+            // float temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.01f;
+            // float temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.1f;!!
+            // temp = +Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
+            // output = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
+            // finalMovespeed = finalMovespeed + temp;!!
+            // float force = (CurrentVelocity * AIRigidBody.mass * TargetVelocity);
+            // force = (AIRigidBody.drag * force) / (1 - 0.02f * AIRigidBody.drag);
+
+            // finalMovespeed = force;
+            // }
+            // else
+            // {
+            //     finalMovespeed = currentmoveSpeed - 2f;
+            // }
             debug_WITHINTHRESHORD = false;
             debug_INDISTANCESLOWDOWN = true;
             debug_OUTDISTANCESLOWDOWN = false;
+            // if (!isInFollow)
+            // {
+            //     AIRigidBody.angularDrag = startAngularDrag;
+            //     AIRigidBody.drag = startDragSpeed;
+            //     isInFollow = false;
+            // }
             // finalMovespeed = finalMovespeed - 10f;
         }
-        else if (Vector3.Distance(AIClassTransform.position, Following.position) > formDistanceSlowdown && finalMovespeed < maxMovementSpeed)
+        else if (dist > formDistanceSlowdown)
         {
-            finalMovespeed = Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / Vector3.Distance(AIClassTransform.position, Following.position));
+            finalMovespeed = Mathf.Clamp(Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist), 0, maxMovementSpeed);
+            // output = Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist);
+
+            // output = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
+            // output2 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, TargetVelocity - CurrentVelocity ) * (Time.deltaTime * dist * formMultiplier) * 0.1f;
+            // output3 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity ) * (Time.deltaTime * dist / formMultiplier) * 0.1f;
+            // output4 =  (finalMovespeed / CurrentVelocity ) / (TargetVelocity / 1);
+            // output3 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist * Time.deltaTime);
+            // output4 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist / Time.deltaTime);
+
+            // // outputSolve = finalMovespeed + output2;
+            // // outputSolve2 = finalMovespeed - output2;
+            // outputSolve3 = Mathf.Lerp(finalMovespeed, Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime, dist);
+
+            // float wtf = ((1/2*(AIRigidBody.mass == 0 ? 1f : AIRigidBody.mass)*finalMovespeed) / Time.deltaTime) * finalMovespeed;
+
+            // finalMovespeed = force;
+
+            // outputSolve4 = wtf;
+
             debug_WITHINTHRESHORD = false;
             debug_INDISTANCESLOWDOWN = false;
             debug_OUTDISTANCESLOWDOWN = true;
+            // if (isInFollow)
+            // {
+            //     AIRigidBody.angularDrag = startAngularDrag;
+            //     AIRigidBody.drag = startDragSpeed;
+            //     isInFollow = false;
+            // }
+
+
             // finalMovespeed = finalMovespeed + 10f;
         }
-        else if (Vector3.Distance(AIClassTransform.position, Following.position) < targetFloatDistance && (ObjectVelocity.velocity.magnitude + 10 < AIRigidBody.velocity.magnitude && ObjectVelocity.velocity.magnitude - 10 > AIRigidBody.velocity.magnitude))
+        else if (dist < targetFloatDistance && (dist < formDistanceSlowdown))
         {
-            finalMovespeed = Mathf.Lerp(ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, finalMovespeed, Time.deltaTime);
+            // finalMovespeed = Mathf.Lerp(ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, finalMovespeed, dist);
+            // output = Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist);
+            // float temp = 0f;
+
+            // Vector3 forwardSpeed = (AIRigidBody.transform.forward * desiredSpeed);
+            // float force = (CurrentVelocity * AIRigidBody.mass * TargetVelocity);
+            // force = (AIRigidBody.drag * force) / (1 - 0.02f * AIRigidBody.drag);
+
+            // finalMovespeed = force;
+
+
+            float temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.1f;
+            // temp = finalMovespeed - Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist * Time.deltaTime);
+            // output = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
+            finalMovespeed = finalMovespeed - temp;
+
             debug_WITHINTHRESHORD = true;
             debug_INDISTANCESLOWDOWN = false;
             debug_OUTDISTANCESLOWDOWN = false;
+            // if (!isInFollow)
+            // {
+            //     AIRigidBody.drag = ObjectVelocity.drag;
+            //     AIRigidBody.angularDrag = ObjectVelocity.angularDrag;
+            //     isInFollow = true;
+            // }
         }
 
         moveLogc(Following.position, Following.up);
