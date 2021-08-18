@@ -22,10 +22,16 @@ Project Fairy System is basically an Arcade Flight System that's based on Saccha
 - A general purpose tracker System that can act as IFF, Markers, Waypoints as well for damage indication, Player name, flight info, missile tracking, and formation tracking for AI. 
 - Hitbox System for destroyable parts (Ailerons, Rudder, Engines, Wings, Body)
 - Adjustable HUD
-
-Upcoming WIP's are:
 - Open World Logic (Moving the world instead of the Aircraft)
 - Aircraft Selection
+- Radar System
+
+Upcoming updates
+- Turbulence Effect
+- Scan Areas for TARPS mode
+- Scan mode for TARPS mode
+- Target information for Radar
+- Copilot controls for Target information and etc.
 - 
 
 If you are lucky enough to see this repository, you may use and reference the written codes at your own discretion. Usage of the entire system may not be advisable for you to do manually. 
