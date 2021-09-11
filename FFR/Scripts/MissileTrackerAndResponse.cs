@@ -109,6 +109,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public GameObject[] OBJIndicators;
     public bool isRenderedMarker = false;
     public Image RadarIcon;
+    private VRCPlayerApi localPlayer;
+    private float dist = 0;
 
     void Start()
     {
@@ -134,6 +136,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
         {
             IconRenderer = TargetIconRender.GetComponent<Renderer>();
         }
+
+        localPlayer = Networking.LocalPlayer;
     }
     public void receiveTracker(MissileScript misScript)
     {
@@ -372,7 +376,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     {
         if (isWaypoint)
         {
-            if (isWaypointEnabled)
+            dist = Vector3.Distance(localPlayer.GetPosition(), WaypointDetector.position);
+            if (isWaypointEnabled && dist < WaypointDetectorRange)
             {
                 RaycastHit[] hit = Physics.SphereCastAll(WaypointDetector.position, WaypointDetectorRadius, WaypointDetector.forward, WaypointDetectorRange, layermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
                                                                                                                                                                                                             // Debug.DrawLine (WaypointDetector.position, WaypointDetectorRange);
@@ -419,6 +424,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                                 }
                                 if (onEnter != null)
                                 {
+                                    Debug.Log("Enter");
                                     onEnter.run = true;
                                 }
                             }
@@ -435,6 +441,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                                 }
                                 if (onEnter != null)
                                 {
+                                    Debug.Log("Enter");
                                     onEnter.run = true;
                                 }
                             }
