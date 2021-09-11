@@ -1,6 +1,7 @@
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
+using UnityEngine.Animations;
 using VRC.Udon;
 
 public class MissileScript : UdonSharpBehaviour
@@ -15,6 +16,8 @@ public class MissileScript : UdonSharpBehaviour
     public GameObject ExplosionEffects;
     public AudioSource[] ExplosionSounds;
     public GameObject LaunchedFrom;
+    public ParentConstraint ConstraintObject;
+    public bool ReleaseObject = false;
     public bool isExploded = false;
     public float destroyTimer = 0;
     private float MissileTimer = 0;
@@ -46,6 +49,8 @@ public class MissileScript : UdonSharpBehaviour
     public float explodeAt = 50f;
     public bool hasHitIndicator = false;
     public bool indicatorCalled = false;
+    public bool isProximityWarning = false;
+    public float rangeForProximity = 12000;
     private Rigidbody MissileRigidBody;
     private ConstantForce MissileConstantForce;
     public float timerLimit = 10; //missile life in case of no targets and went through clips or sky
@@ -83,7 +88,8 @@ public class MissileScript : UdonSharpBehaviour
         MissileConstantForce = MissileClass.GetComponent<ConstantForce>();
         LaunchedWP = LaunchedFrom != null ? LaunchedFrom.GetComponent<WeaponSelector>() : null;
         missileTransform = MissileClass.transform;
-        if(Target!=null){
+        if (Target != null)
+        {
             ptargeter = Target.GetComponent<MissileTargeterParent>();
         }
 
@@ -169,7 +175,7 @@ public class MissileScript : UdonSharpBehaviour
     void ExplodeMissile()
     {
         Collider disableCollider = MissileClass.GetComponent<Collider>();
-        disableCollider.enabled = false;
+        if (disableCollider != null) disableCollider.enabled = false;
         MissileObject.SetActive(false);
         ExplosionEffects.SetActive(true);
         isExploded = true;
@@ -187,6 +193,11 @@ public class MissileScript : UdonSharpBehaviour
         MissileRigidBody.constraints = RigidbodyConstraints.FreezeRotationZ;
         MissileRigidBody.constraints = RigidbodyConstraints.FreezeRotationX;
         MissileRigidBody.constraints = RigidbodyConstraints.FreezeRotationY;
+
+        if (ConstraintObject != null && ReleaseObject)
+        {
+            ConstraintObject.constraintActive = false;
+        }
     }
 
     void Update()
@@ -220,7 +231,7 @@ public class MissileScript : UdonSharpBehaviour
         else if (missileColliderTimer > colliderOn && isSet == false)
         {
             Collider mCollider = MissileClass.GetComponent<Collider>();
-            mCollider.enabled = true;
+            if (mCollider != null) mCollider.enabled = true;
             // follow = true;
             isSet = true;
         }
@@ -248,7 +259,7 @@ public class MissileScript : UdonSharpBehaviour
                         float angleToTarget = Mathf.Abs(Vector3.Angle(missileTransform.forward.normalized, relPos.normalized));
                         missileDist = Vector3.Distance(missile.position, targetObjectTracker.gameObject.transform.position);
 
-                        if ((ptargeter!=null && ptargeter.forceLocked && MissileTimer > forceLockTimer) || (ptargeter!=null && !ptargeter.forceLocked) || (ptargeter==null))
+                        if ((ptargeter != null && ptargeter.forceLocked && MissileTimer > forceLockTimer) || (ptargeter != null && !ptargeter.forceLocked) || (ptargeter == null))
                         {
                             if (missileDist < closeDistance && !close)
                             {
@@ -272,15 +283,37 @@ public class MissileScript : UdonSharpBehaviour
 
                         if (!missed)
                         {
-                            targetObjectTracker.isChasing = true;
-                            if (!indicatorCalled)
+                            if (isProximityWarning && missileDist < rangeForProximity && missileDist != 0)
+                            {
+                                targetObjectTracker.isChasing = true;
+                                if (!indicatorCalled)
+                                {
+                                    indicatorCalled = true;
+                                    targetObjectTracker.receiveTracker(this);
+                                    if (targetObjectTracker.RadarRenders != null)
+                                    {
+                                        foreach (RadarRender xx in targetObjectTracker.RadarRenders)
+                                        {
+                                            if (xx.gameObject.activeSelf)
+                                                xx.AddRadarObject(null, this, null);
+                                        }
+                                    }
+                                }
+                            }
+                            else
+                            {
+                                targetObjectTracker.isChasing = true;
+                            }
+                            if (!indicatorCalled && !isProximityWarning)
                             {
                                 indicatorCalled = true;
                                 targetObjectTracker.receiveTracker(this);
-                                if(targetObjectTracker.RadarRenders!=null){
-                                    foreach(RadarRender xx in targetObjectTracker.RadarRenders){
-                                        if(xx.gameObject.activeSelf)
-                                        xx.AddRadarObject(null, this);
+                                if (targetObjectTracker.RadarRenders != null)
+                                {
+                                    foreach (RadarRender xx in targetObjectTracker.RadarRenders)
+                                    {
+                                        if (xx.gameObject.activeSelf)
+                                            xx.AddRadarObject(null, this, null);
                                     }
                                 }
                             }
