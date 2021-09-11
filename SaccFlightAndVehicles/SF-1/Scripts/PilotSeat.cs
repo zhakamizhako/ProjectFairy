@@ -31,7 +31,7 @@ public class PilotSeat : UdonSharpBehaviour
         // if(EngineControl.Piloting || EngineControl.Passenger){
         // OWML.gameObject.SetActive(true);
         OWML.EnableScript();
-        Debug.Log("NYAHOI!");
+        // Debug.Log("NYAHOI!");
         // }
     }
 
@@ -61,7 +61,7 @@ public class PilotSeat : UdonSharpBehaviour
 
         LeaveButtonControl = LeaveButton.GetComponent<LeaveVehicleButton>();
     }
-    private void Interact()//entering the plane
+    public void Interact()//entering the plane
     {
         if (EnabledEngine)
         {
@@ -99,7 +99,6 @@ public class PilotSeat : UdonSharpBehaviour
         }
 
         EngineControl.PilotEnterPlaneLocal();
-        EngineControl.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "globalCall");
 
         if (EngineControl.hbcontroller != null) { Networking.SetOwner(EngineControl.localPlayer, EngineControl.hbcontroller.gameObject); }
         if (EngineControl.localPlayer.IsUserInVR() || useUniversalCanvas)
@@ -126,6 +125,9 @@ public class PilotSeat : UdonSharpBehaviour
                 Networking.SetOwner(EngineControl.localPlayer, ms.gameObject);
                 Networking.SetOwner(EngineControl.localPlayer, ms.misTarget.gameObject);
             }
+            if(wp.tarps!=null){
+                Networking.SetOwner(EngineControl.localPlayer, wp.tarps.gameObject);
+            }
         }
         if (OWML != null)
         {
@@ -133,8 +135,6 @@ public class PilotSeat : UdonSharpBehaviour
             {
                 OWML.ScriptEnabled = true;
             }
-
-
         }
         if (mistracker != null)
         {
@@ -152,6 +152,7 @@ public class PilotSeat : UdonSharpBehaviour
                 x.SetActive(true);
             }
         }
+        EngineControl.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "globalCall");
         globalCall();
     }
     public override void OnStationEntered(VRCPlayerApi player)
@@ -197,10 +198,13 @@ public class PilotSeat : UdonSharpBehaviour
     public void PlayerExitPlane(VRCPlayerApi player)
     {
         LeaveButtonControl.SeatedPlayer = -1;
-        if (player != null && player.isLocal)
-        {
+        if(player!=null){
             EngineControl.PilotExitPlane(player);
             SetVoiceOutside(player);
+        }
+        if (player != null && player.isLocal)
+        {
+
             if (EngineControl.EffectsControl != null)
             {
                 EngineControl.EffectsControl.PlaneAnimator.SetBool("activate_hud", false);
@@ -252,6 +256,7 @@ public class PilotSeat : UdonSharpBehaviour
                 if (OWML != null)
                 {
                     if (returnToNorah) OWML.Map.position = Vector3.zero;
+                    OWML.ScriptEnabled = false;
                 }
 
                 if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
