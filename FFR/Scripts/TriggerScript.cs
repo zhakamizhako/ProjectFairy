@@ -16,6 +16,7 @@ public class TriggerScript : UdonSharpBehaviour
     public float timer = 0f;
     public bool[] isRunning;
     public TriggerScript AfterRun;
+    public TriggerScript[] AfterRuns;
     public PlayerUIScript UIScript;
     public bool playRegardless = false;
 
@@ -33,6 +34,7 @@ public class TriggerScript : UdonSharpBehaviour
     public bool toHide = false; // Hide Tracker Objects
     public bool toShow = true; // Show Trackker Objects
     [Header("Dialog Lines Options")]
+    public int textObjectId = 0;
     public bool isJustRandom = false;
     public int currentX = 0;
     [TextArea] public string[] DialogLines;
@@ -75,13 +77,18 @@ public class TriggerScript : UdonSharpBehaviour
     public int PlayMusicOn = 0;
     [TextArea] public string MusicDetails; //Or Chapter.
     private bool updateString = false;
-    private bool ranAfterRun = false;
-    private bool enabledGameObject = false;
+    [System.NonSerializedAttribute] public bool ranAfterRun = false;
+    [System.NonSerializedAttribute] public bool enabledGameObject = false;
 
     public Animator aniTrigger;
     public string AnimatorString;
     public bool AnimatorArgument;
     public int RunAnimatorOn = 0;
+    public bool isSameAsEn = false;
+
+    public SceneAdaptor sceneAdaptorToRun; // Scene Adaptor to run after the dialogues run.
+    public bool runSceneAdaptor = false;
+    [System.NonSerializedAttribute] public bool ranSceneAdaptor = false;
 
     void Start()
     {
@@ -91,11 +98,20 @@ public class TriggerScript : UdonSharpBehaviour
             isRunning[x] = false;
         }
         Assert(UIScript != null, "Start: UISCRIPT MUST NOT BE null");
+
     }
 
     public void callRunSync()
     {
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runSync");
+    }
+
+    public void resetScript(){
+        stopped = false;
+        ranAfterRun = false;
+        enabledGameObject = false;
+        currentX = 0;
+        runSceneAdaptor = false;
     }
 
     public void runSync()
@@ -105,7 +121,7 @@ public class TriggerScript : UdonSharpBehaviour
             // if (!Networking.IsOwner (gameObject)){
             run = true;
             ran = true;
-            UIScript.ReceiveTrigger(this);
+            UIScript.ReceiveTrigger(this, textObjectId);
             // }
         }
     }
@@ -128,15 +144,15 @@ public class TriggerScript : UdonSharpBehaviour
         if (run && runInSync == false && ran == false && !stopped)
         { // If global event..
             ran = true;
-            if(!playRegardless)
-            UIScript.ReceiveTrigger(this);
+            if (!playRegardless)
+                UIScript.ReceiveTrigger(this, textObjectId);
             // runScript ();
         }
         else if (run && runInSync && ran == false && !stopped)
         { // If LocalPlayer event only...
             // ranSync = true;
             // ran = true;
-            if (Networking.LocalPlayer == null) { UIScript.ReceiveTrigger(this); }
+            if (Networking.LocalPlayer == null) { UIScript.ReceiveTrigger(this, textObjectId); }
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runSync");
             ran = true;
         }
@@ -145,7 +161,7 @@ public class TriggerScript : UdonSharpBehaviour
             stopped = false;
         }
 
-        if (ran & !stopped && ((!playRegardless && UIScript.TriggerScripts.Length > 0 && UIScript.TriggerScripts[0] == this) || playRegardless))
+        if (ran & !stopped && ((!playRegardless && UIScript.TriggerScripts.Length > 0 && UIScript.TriggerScripts[textObjectId] != null && UIScript.TriggerScripts[textObjectId].Length > 0 && UIScript.TriggerScripts[textObjectId][0] == this) || playRegardless))
         {
             // if ((ran) && !stopped) {
             if (isEvent && eventManager != null && !isCalledEvent)
@@ -161,30 +177,30 @@ public class TriggerScript : UdonSharpBehaviour
             if (!isRunning[currentX])
             {
                 isRunning[currentX] = true;
-                if (!UIScript.isEnglishOrJapanese)
+                if (isSameAsEn || (!isSameAsEn && !UIScript.isEnglishOrJapanese))//en
                 {
-                    if (UIScript.textObject != null && !updateString)
+                    if (UIScript.textObject[textObjectId] != null && !updateString)
                     {
-                        UIScript.textObject.text = DialogLines[currentX];
+                        UIScript.textObject[textObjectId].text = DialogLines[currentX];
                     }
-                    if (UIScript.textObjectVR != null && !updateString)
+                    if (UIScript.textObjectVR[textObjectId] != null && !updateString)
                     {
-                        UIScript.textObjectVR.text = DialogLines[currentX];
+                        UIScript.textObjectVR[textObjectId].text = DialogLines[currentX];
                     }
                     if (DialogSounds[currentX] != null)
                     {
                         DialogSounds[currentX].Play();
                     }
                 }
-                if (UIScript.isEnglishOrJapanese)
+                if (!isSameAsEn && UIScript.isEnglishOrJapanese)//jp
                 {
-                    if (UIScript.textObject != null && !updateString)
+                    if (UIScript.textObject[textObjectId] != null && !updateString)
                     {
-                        UIScript.textObject.text = DialogLinesJP[currentX];
+                        UIScript.textObject[textObjectId].text = DialogLinesJP[currentX];
                     }
-                    if (UIScript.textObjectVR != null && !updateString)
+                    if (UIScript.textObjectVR[textObjectId] != null && !updateString)
                     {
-                        UIScript.textObjectVR.text = DialogLinesJP[currentX];
+                        UIScript.textObjectVR[textObjectId].text = DialogLinesJP[currentX];
                     }
                     if (DialogSoundsJP[currentX] != null)
                     {
@@ -225,6 +241,7 @@ public class TriggerScript : UdonSharpBehaviour
                 {
                     x.SetActive(EnableOrDisable);
                 }
+                enabledGameObject = true;
             }
 
 
@@ -252,13 +269,13 @@ public class TriggerScript : UdonSharpBehaviour
                         run = false;
                         ran = false;
                         stopped = true;
-                        UIScript.RemoveTrigger(this);
+                        UIScript.RemoveTrigger(this, textObjectId);
                         // ranSync = false;
-                        if (clearBetweenDialogues)
-                        {
-                            UIScript.textObject.text = "";
-                            UIScript.textObjectVR.text = "";
-                        }
+                        // if (clearBetweenDialogues)
+                        // {
+                        UIScript.textObject[textObjectId].text = "";
+                        UIScript.textObjectVR[textObjectId].text = "";
+                        // }
                         for (int x = 0; x < isRunning.Length; x++)
                         {
                             isRunning[x] = false;
@@ -267,8 +284,20 @@ public class TriggerScript : UdonSharpBehaviour
                         updateString = false;
                         if (AfterRun != null && !ranAfterRun)
                         {
+
                             AfterRun.run = true;
                             ranAfterRun = true;
+                        }
+                        if (AfterRuns != null)
+                        {
+                            foreach (TriggerScript x in AfterRuns)
+                            {
+                                x.run = true;
+                            }
+                            ranAfterRun = true;
+                        }
+                        if(runSceneAdaptor){
+                            sceneAdaptorToRun.startScene();
                         }
                     }
                     else
@@ -279,13 +308,13 @@ public class TriggerScript : UdonSharpBehaviour
                 }
                 if (clearBetweenDialogues)
                 {
-                    if (UIScript.textObject != null)
+                    if (UIScript.textObject[textObjectId] != null)
                     {
-                        UIScript.textObject.text = "";
+                        UIScript.textObject[textObjectId].text = "";
                     }
-                    if (UIScript.textObjectVR != null)
+                    if (UIScript.textObjectVR[textObjectId] != null)
                     {
-                        UIScript.textObjectVR.text = "";
+                        UIScript.textObjectVR[textObjectId].text = "";
                     }
                 }
             }
