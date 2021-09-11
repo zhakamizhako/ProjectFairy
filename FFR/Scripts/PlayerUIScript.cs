@@ -30,17 +30,17 @@ public class PlayerUIScript : UdonSharpBehaviour
     public bool preview;
     public GameObject PreviewHUD;
     public GameObject PreviewHUD2;
-    public TriggerScript[] TriggerScripts;
+    public TriggerScript[][] TriggerScripts;
     public VRCPlayerApi localPlayer;
     private float startVRDistance;
     private float startVRDistance2;
     private float startVRSize;
     private float startVRSize2;
     private float startIconSize;
-    public Text textObject; //This is where all the texts are drawn. Maybe stick it with a player's Head.
-    public Text textObjectVR; //Automatically disabled if on VR
-    public Text ChapterTitleText;
-    public Text ChapterTitleTextVr;
+    public Text[] textObject; //This is where all the texts are drawn. Maybe stick it with a player's Head.
+    public Text[] textObjectVR; //Automatically disabled if on VR
+    public Renderer IconRenderer;
+    public Renderer UIPhotoRenderer;
     public Transform parentHolderTexts;
     private Vector3 startsizeTextVR;
     private Vector3 startsizeTextDesktop;
@@ -70,6 +70,14 @@ public class PlayerUIScript : UdonSharpBehaviour
     // public float triggerScriptTimeout = 15f;
     public EngineController PlayerAircraft;
     public MissileTrackerAndResponse sampleThing;
+    public Material Skybox;
+    public float baseAtmos = 1f;
+    public float AtmosphereDarkStart = 30000;
+    public float AtmosphereDarkMax = 50000;
+    public bool disabletexts = false;
+    public bool inited = false;
+    public int framesBeforeCheck = 10;
+    private int framePass = 0;
 
     void Start()
     {
@@ -91,22 +99,17 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             startVRDistance2 = VRDistanceSlider2.value;
         }
+        //---------------------
         if (textObject != null)
         {
-            startsizeTextDesktop = textObject.transform.localScale;
+            startsizeTextDesktop = textObject[0].transform.localScale;
         }
         if (textObjectVR != null)
         {
-            startsizeTextVR = textObjectVR.transform.localScale;
+            startsizeTextVR = textObjectVR[0].transform.localScale;
         }
-        if (ChapterTitleText != null)
-        {
-            ChapterTitleText.text = "";
-        }
-        if (ChapterTitleTextVr = null)
-        {
-            ChapterTitleTextVr.text = "";
-        }
+        //---------------------
+
         if (IconSliderText != null)
         {
             IconSliderText.text = "";
@@ -120,6 +123,16 @@ public class PlayerUIScript : UdonSharpBehaviour
             MusicVolumeValue = MusicVolume.value;
             MusicVolumeText.text = MusicVolumeValue + "";
         }
+        if (Skybox != null)
+        {
+            // baseAtmos = Skybox.GetFloat("_AtmosphereThickness");
+            Skybox.SetFloat("_AtmosphereThickness", baseAtmos);
+        }
+        if (UIPhotoRenderer != null)
+        {
+            IconRenderer = UIPhotoRenderer.GetComponent<Renderer>();
+        }
+        //Set TextObjects
         Assert(textObject != null, "Start: TextObject MUST NOT BE null");
         Assert(textObjectVR != null, "Start: textobjectvr MUST NOT BE null");
         Assert(parentHolderTexts != null, "Start: parentholder MUST NOT BE null");
@@ -136,6 +149,51 @@ public class PlayerUIScript : UdonSharpBehaviour
 
     void Update()
     {
+        if (!inited)
+        {
+            if (framePass < framesBeforeCheck)
+            {
+                framePass = framePass+1;
+            }
+            else
+            {
+                if (localPlayer != null)
+                {
+                    if (localPlayer.IsUserInVR())
+                    {
+                        foreach (Text x in textObject)
+                        {
+                            x.gameObject.SetActive(false);
+                        }
+                        foreach (Text x in textObjectVR)
+                        {
+                            x.gameObject.SetActive(true);
+                        }
+                        // Debug.Log("USER IN VR");
+                    }
+                    else
+                    {
+                        foreach (Text x in textObject)
+                        {
+                            x.gameObject.SetActive(true);
+                        }
+                        foreach (Text x in textObjectVR)
+                        {
+                            x.gameObject.SetActive(false);
+                        }
+                        // Debug.Log("USER NOT IN VR");
+                    }
+                }
+                inited = true;
+            }
+            Debug.Log(framePass);
+        }
+
+        // if (!inited)
+        // {
+
+        // inited = true;
+        // }
         if (VRDistanceSlider != null && vrDistanceText != null && vrDistance != VRDistanceSlider.value)
         {
             vrDistance = VRDistanceSlider.value;
@@ -171,12 +229,15 @@ public class PlayerUIScript : UdonSharpBehaviour
                 CurrentPlayingMusic.volume = MusicVolumeValue;
             }
         }
-        if(LanguageEn!=null && LanguageJP!=null){
-            if(LanguageEn.isOn){
+        if (LanguageEn != null && LanguageJP != null)
+        {
+            if (LanguageEn.isOn)
+            {
                 isEnglishOrJapanese = false;
                 LanguageJP.isOn = false;
             }
-            if(LanguageJP.isOn){
+            if (LanguageJP.isOn)
+            {
                 isEnglishOrJapanese = true;
                 LanguageEn.isOn = false;
             }
@@ -192,8 +253,8 @@ public class PlayerUIScript : UdonSharpBehaviour
 
             if (preview)
             {
-                textObjectVR.text = "<<MESSAGE>>\nPreview Message";
-                textObject.text = "<<MESSAGE>>\nPreview Message";
+                textObjectVR[0].text = "<<MESSAGE>>\nPreview Message";
+                textObject[0].text = "<<MESSAGE>>\nPreview Message";
                 PreviewHUD.SetActive(true);
                 if (PreviewHUD2 != null)
                 {
@@ -209,8 +270,8 @@ public class PlayerUIScript : UdonSharpBehaviour
                 else if (!triggerEmpty)
                 {
                     //if none, cleanup.
-                    textObjectVR.text = "";
-                    textObject.text = "";
+                    textObjectVR[0].text = "";
+                    textObject[0].text = "";
                     triggerEmpty = true;
                 }
                 if (PreviewHUD.activeSelf)
@@ -221,6 +282,26 @@ public class PlayerUIScript : UdonSharpBehaviour
                 {
                     PreviewHUD2.SetActive(false);
                 }
+            }
+        }
+
+        if (Skybox != null && PlayerAircraft != null)
+        {
+            if (PlayerAircraft.OWML != null && PlayerAircraft.OWML.ScriptEnabled)
+            {
+                float x = (PlayerAircraft.OWML.AnchorCoordsPosition.y - PlayerAircraft.OWML.Map.position.y) + PlayerAircraft.SeaLevel * 3.28084f;
+                if (x > AtmosphereDarkStart)
+                {
+                    Skybox.SetFloat("_AtmosphereThickness", baseAtmos - ((x - AtmosphereDarkStart) / AtmosphereDarkMax));
+                }
+                else
+                {
+                    Skybox.SetFloat("_AtmosphereThickness", 1);
+                }
+            }
+            if (PlayerAircraft.OWML == null)
+            {
+                Skybox.SetFloat("_AtmosphereThickness", 1);
             }
         }
     }
@@ -237,8 +318,6 @@ public class PlayerUIScript : UdonSharpBehaviour
             isPlayingIntro = false;
             tempMusicText = Title;
         }
-
-        Debug.Log("eh?");
     }
 
     public void StopMusic()
@@ -252,41 +331,51 @@ public class PlayerUIScript : UdonSharpBehaviour
     public void ForceCleanupUI()
     {
         TriggerScript[] temp = new TriggerScript[0];
-        if (textObject != null) textObject.text = "";
-        if (textObjectVR != null) textObjectVR.text = "";
+        if (textObject != null) foreach (Text x in textObject) { x.text = ""; }
+        if (textObjectVR != null) foreach (Text x in textObjectVR) { x.text = ""; }
     }
 
-    public void ReceiveTrigger(TriggerScript x)
+    public void ReceiveTrigger(TriggerScript x, int id)
     {
-        if(x.stopped){
+        Debug.LogError("ReceiveTriggerCalled");
+        if (x.stopped)
+        {
             return;
         }
 
-        for(int y = 0; y < TriggerScripts.Length; y++){
-            if(TriggerScripts[y]==x){
+        for (int y = 0; y < TriggerScripts[id].Length; y++)
+        {
+            if (TriggerScripts[id][y] == x)
+            {
                 return;
             }
         }
 
-        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length + 1];
-        TriggerScripts.CopyTo(temp, 0);
+        TriggerScript[] temp = new TriggerScript[TriggerScripts[id].Length + 1];
+        TriggerScripts[id].CopyTo(temp, 0);
         temp[temp.Length - 1] = x;
-        TriggerScripts = temp;
+        TriggerScripts[id] = temp;
     }
 
-    public void RemoveTrigger(TriggerScript x)
+    public void RemoveTrigger(TriggerScript x, int id)
     {
-        TriggerScript[] temp = new TriggerScript[TriggerScripts.Length - 1];
+        Debug.LogError("RemoveTriggerCalled");
+        TriggerScript[] temp = new TriggerScript[TriggerScripts[id].Length - 1];
         int b = 0;
-        for (int y = 0; y < TriggerScripts.Length; y++)
+        for (int y = 0; y < TriggerScripts[id].Length; y++)
         {
-            if (TriggerScripts[y] != x)
+            if (TriggerScripts[id][y] != x)
             {
-                temp[b] = TriggerScripts[y];
+                temp[b] = TriggerScripts[id][y];
                 b = b + 1;
             }
         }
-        TriggerScripts = temp;
+        TriggerScripts[id] = temp;
+    }
+
+    void checkEmpty()
+    {
+
     }
 
     void LateUpdate()
@@ -294,37 +383,25 @@ public class PlayerUIScript : UdonSharpBehaviour
         if (parentHolderTexts != null && textObject != null && textObjectVR != null && textObject != null && TriggerScripts.Length > 0)
         {
             triggerEmpty = false;
-            if (localPlayer != null)
-            {
-                if (localPlayer.IsUserInVR())
-                {
-                    if (textObject.gameObject.activeSelf)
-                        textObject.gameObject.SetActive(false);
-                    if (!textObjectVR.gameObject.activeSelf)
-                        textObjectVR.gameObject.SetActive(true);
-                }
-                else
-                {
-                    if (!textObject.gameObject.activeSelf)
-                        textObject.gameObject.SetActive(true);
-                    if (textObjectVR.gameObject.activeSelf)
-                        textObjectVR.gameObject.SetActive(false);
-                }
-            }
             parentHolderTexts.position = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero;
             parentHolderTexts.rotation = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
             parentHolderTexts.transform.position = parentHolderTexts.position;
-            parentHolderTexts.transform.position += textObjectVR.transform.forward * vrDistance;
+            parentHolderTexts.transform.position += textObjectVR[0].transform.forward * vrDistance;
             parentHolderTexts.transform.rotation = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
             parentHolderTexts.transform.localScale = startsizeTextVR * vrSize;
-            // textObject.transform.position = parentHolderTexts.position;
-            // textObject.transform.position += textObject.transform.forward * vrDistance;
-            // textObject.transform.localScale = startsizeTextDesktop * vrSize;
+            // foreach (Text x in textObject)
+            // {
+            //     x.transform.position = parentHolderTexts.position;
+            //     x.transform.position += x.transform.forward * vrDistance;
+            //     x.transform.localScale = startsizeTextDesktop * vrSize;
+            // }
+
         }
         else if (TriggerScripts == null || TriggerScripts.Length < 1)
         { //disable to cleanup gc?
-            if (textObject.gameObject.activeSelf) textObject.gameObject.SetActive(false);
-            if (textObjectVR.gameObject.activeSelf) textObjectVR.gameObject.SetActive(false);
+            // if (textObject.gameObject.activeSelf) textObject[0].gameObject.SetActive(false);
+            // if (textObjectVR.gameObject.activeSelf) textObjectVR[0].gameObject.SetActive(false);
+
             triggerEmpty = true;
         }
         if (timerStarted && timer < TimeToFade)
