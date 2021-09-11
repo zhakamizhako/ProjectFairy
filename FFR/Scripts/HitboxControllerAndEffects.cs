@@ -15,7 +15,10 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
     public GameObject LElevator;
     public GameObject RElevator;
     public GameObject LEngine;
+    // public GameObject[] LEngineParts;
     public GameObject REngine;
+    // public GameObject[] REngineParts;
+    public GameObject[] BEngineParts;
     public GameObject LFlap;
     public GameObject RFlap;
 
@@ -26,6 +29,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
     private Vector3 originalCenterOfMassPosition;
 
     public float damageStrength = 4;
+    public float engineDamageStrength = 15;
 
     [System.NonSerializedAttribute] public bool isBodyDead = false;
     [System.NonSerializedAttribute] public bool isLWingDead = false;
@@ -86,6 +90,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
     [System.NonSerializedAttribute] public bool initHasAfterburner = false;
     [System.NonSerializedAttribute] public bool initd = false; // execution order stuff.
     private bool comSet = false;
+    private bool BEngineDead = false;
 
     public AudioSource[] componentExplosionSound;
     // public Animator DamageIndicatorAnimator;
@@ -132,7 +137,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
         initHealthREngine = HealthREngine;
         initHealthLFlap = HealthLFlap;
         initHealthRFlap = HealthRFlap;
-        originalCenterOfMassPosition = CenterOfMassObject.position;
+        originalCenterOfMassPosition = CenterOfMassObject.localPosition;
         comSet = true;
 
     }
@@ -164,7 +169,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.Lift = EngineControl.Lift / 4;
                     EngineControl.RollFriction = EngineControl.RollFriction / 4;
-                    EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch/ damageStrength;
+                    EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch / damageStrength;
                     comSet = false;
                 }
                 else if (HealthLWing > 0 && isLWingDead)
@@ -174,7 +179,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 }
             }
 
-            if (LWingDamagePosition != null && RWingDamagePosition != null && CenterOfMassObject != null && BothDamagePosition!=null && !comSet)
+            if (LWingDamagePosition != null && RWingDamagePosition != null && CenterOfMassObject != null && BothDamagePosition != null && !comSet)
             {
                 if (isLWingDead && !isRWingDead)
                 {
@@ -190,6 +195,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     CenterOfMassObject.position = BothDamagePosition.position;
                     comSet = true;
+                    EngineControl.Lift = EngineControl.Lift / damageStrength;
                 }
                 if (!isRWingDead && !isLWingDead)
                 {
@@ -206,9 +212,9 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     RWing.SetActive(false);
                     isRWingDead = true;
                     Explode();
-                    EngineControl.Lift = EngineControl.Lift/ damageStrength;
-                    EngineControl.RollFriction = EngineControl.RollFriction/ damageStrength;
-                    EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch/ damageStrength;
+                    EngineControl.Lift = EngineControl.Lift / damageStrength;
+                    EngineControl.RollFriction = EngineControl.RollFriction / damageStrength;
+                    EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch / damageStrength;
                     comSet = false;
 
                 }
@@ -225,8 +231,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     LRudder.SetActive(false);
                     isLRudderDead = true;
                     Explode();
-                    EngineControl.YawStrength = EngineControl.YawStrength/ damageStrength;
-                    EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw/ damageStrength;
+                    EngineControl.YawStrength = EngineControl.YawStrength / damageStrength;
+                    EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw / damageStrength;
                 }
                 else if (HealthLRudder > 0 && isLRudderDead)
                 {
@@ -241,8 +247,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     RRudder.SetActive(false);
                     isRRudderDead = true;
                     Explode();
-                    EngineControl.YawStrength = EngineControl.YawStrength/ damageStrength;
-                    EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw/ damageStrength;
+                    EngineControl.YawStrength = EngineControl.YawStrength / damageStrength;
+                    EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw / damageStrength;
                 }
                 else if (HealthRRudder > 0 && isRRudderDead)
                 {
@@ -257,8 +263,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     LAileron.SetActive(false);
                     isLAileronDead = true;
                     Explode();
-                    EngineControl.RollStrength = EngineControl.RollStrength/ damageStrength;
-                    EngineControl.RollResponse = EngineControl.RollResponse/ damageStrength;
+                    EngineControl.RollStrength = EngineControl.RollStrength / damageStrength;
+                    EngineControl.RollResponse = EngineControl.RollResponse / damageStrength;
                 }
                 else if (HealthLAileron > 0 && isLAileronDead)
                 {
@@ -273,8 +279,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     RAileron.SetActive(false);
                     isRAileronDead = true;
                     Explode();
-                    EngineControl.RollStrength = EngineControl.RollStrength/ damageStrength;
-                    EngineControl.RollResponse = EngineControl.RollResponse/ damageStrength;
+                    EngineControl.RollStrength = EngineControl.RollStrength / damageStrength;
+                    EngineControl.RollResponse = EngineControl.RollResponse / damageStrength;
                 }
                 else if (HealthRAileron > 0 && isRAileronDead)
                 {
@@ -289,9 +295,9 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     LElevator.SetActive(false);
                     isLElevatorDead = true;
                     Explode();
-                    EngineControl.PitchStrength = EngineControl.PitchStrength/ damageStrength;
+                    EngineControl.PitchStrength = EngineControl.PitchStrength / damageStrength;
                     // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength/ damageStrength;
-                    EngineControl.PitchResponse = EngineControl.PitchResponse/ damageStrength;
+                    EngineControl.PitchResponse = EngineControl.PitchResponse / damageStrength;
                 }
                 else if (HealthLElevator > 0 && isLElevatorDead)
                 {
@@ -306,9 +312,9 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     RElevator.SetActive(false);
                     isRElevatorDead = true;
                     Explode();
-                    EngineControl.PitchStrength = EngineControl.PitchStrength/ damageStrength;
+                    EngineControl.PitchStrength = EngineControl.PitchStrength / damageStrength;
                     // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength/ damageStrength;
-                    EngineControl.PitchResponse = EngineControl.PitchResponse/ damageStrength;
+                    EngineControl.PitchResponse = EngineControl.PitchResponse / damageStrength;
                 }
                 else if (HealthRElevator > 0 && isRElevatorDead)
                 {
@@ -322,7 +328,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     LEngine.SetActive(false);
                     isLEngineDead = true;
-                    EngineControl.ThrottleStrength = EngineControl.ThrottleStrength/ damageStrength;
+                    EngineControl.ThrottleStrength = EngineControl.ThrottleStrength / engineDamageStrength;
                     EngineControl.HasAfterburner = false;
                     EngineControl.EffectsControl.AfterburnerOn = false;
                     Explode();
@@ -339,7 +345,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     REngine.SetActive(false);
                     isREngineDead = true;
-                    EngineControl.ThrottleStrength = EngineControl.ThrottleStrength/ damageStrength;
+                    EngineControl.ThrottleStrength = EngineControl.ThrottleStrength / engineDamageStrength;
                     EngineControl.HasAfterburner = false;
                     EngineControl.EffectsControl.AfterburnerOn = false;
                     Explode();
@@ -350,8 +356,21 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     REngine.SetActive(true);
                 }
             }
-            if(isREngineDead && isLEngineDead){
+            if (isREngineDead && isLEngineDead && !BEngineDead)
+            {
                 EngineControl.ThrottleStrength = 0;
+                if (BEngineParts != null) foreach (GameObject x in BEngineParts)
+                    {
+                        x.SetActive(false);
+                    }
+            }
+            if ((!isREngineDead || isLEngineDead) && BEngineDead)
+            {
+                BEngineDead = false;
+                if (BEngineParts != null) foreach (GameObject x in BEngineParts)
+                    {
+                        x.SetActive(true);
+                    }
             }
             if (LFlap != null)
             {
@@ -360,8 +379,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     LFlap.SetActive(false);
                     isLFlapDead = true;
                     Explode();
-                    EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti/ damageStrength;
-                    EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti/ damageStrength;
+                    EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti / damageStrength;
+                    EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti / damageStrength;
                 }
                 else if (HealthLFlap > 0 && isLFlapDead)
                 {
@@ -376,8 +395,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     RFlap.SetActive(false);
                     isRFlapDead = true;
                     Explode();
-                    EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti/ damageStrength;
-                    EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti/ damageStrength;
+                    EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti / damageStrength;
+                    EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti / damageStrength;
                 }
                 else if (HealthRFlap > 0 && isRFlapDead)
                 {
@@ -511,6 +530,28 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     REngine.SetActive(true);
                 }
             }
+            if (BEngineParts != null && BEngineParts.Length > 0 && isLEngineDead && isREngineDead)
+            {
+                if (!BEngineDead)
+                {
+                    if (BEngineParts != null) foreach (GameObject x in BEngineParts)
+                        {
+                            x.SetActive(false);
+                        }
+                        BEngineDead = true;
+                }
+            }
+            if (BEngineParts != null && BEngineParts.Length > 0 && !isLEngineDead && !isREngineDead)
+            {
+                if (BEngineDead)
+                {
+                    if (BEngineParts != null) foreach (GameObject x in BEngineParts)
+                        {
+                            x.SetActive(true);
+                        }
+                        BEngineDead = false;
+                }
+            }
             if (LFlap != null)
             {
                 if (HealthLFlap <= 0)
@@ -586,8 +627,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
             HealthLFlap = initHealthLFlap;
             HealthRFlap = initHealthRFlap;
 
-            CenterOfMassObject.position = originalCenterOfMassPosition;
-            EngineControl.VehicleRigidbody.centerOfMass = EngineControl.VehicleTransform.InverseTransformDirection(originalCenterOfMassPosition - EngineControl.VehicleTransform.position);//correct position if scaled
+            CenterOfMassObject.localPosition = originalCenterOfMassPosition;
+            EngineControl.VehicleRigidbody.centerOfMass = EngineControl.VehicleTransform.InverseTransformDirection(CenterOfMassObject.position - EngineControl.VehicleTransform.position);//correct position if scaled
             comSet = true;
 
             EngineControl.Lift = initLift;
