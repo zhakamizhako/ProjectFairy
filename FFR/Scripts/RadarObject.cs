@@ -9,6 +9,7 @@ public class RadarObject : UdonSharpBehaviour
 {
     public MissileTrackerAndResponse Tracking;
     public MissileScript TrackingMissile;
+    public TarpsArea TrackingTarps;
     public RadarRender ParentRender;
     private MeshRenderer Rend;
     private Renderer matmat;
@@ -17,6 +18,12 @@ public class RadarObject : UdonSharpBehaviour
     public bool toRemove = false;
     public Text TextObject;
     public Image IconRenderer;
+    private Transform transformReference;
+    public float r = 5;
+    public float g = 3;
+    public float b = 0;
+    private float WaitForCallBackTimeout = 4f;
+    private float WaitForCallBackTimer_current = 0f;
 
     public void Remove()
     {
@@ -49,12 +56,20 @@ public class RadarObject : UdonSharpBehaviour
     {
         if (toRemove)
         {
+            // if(ParentRender.waitForCallback){
+                if(WaitForCallBackTimer_current > WaitForCallBackTimeout){
+                    Destroy(gameObject);
+                }else{
+                    WaitForCallBackTimer_current = WaitForCallBackTimer_current + Time.deltaTime;
+                }
+            // }
             return;
         }
         if (!isAssigned)
         {
             TrackingMissile = ParentRender.ToAssignMissile;
             Tracking = ParentRender.ToAssignTracker;
+            TrackingTarps = ParentRender.ToAssignTarpsArea;
 
             if (Tracking != null)
             {
@@ -63,13 +78,23 @@ public class RadarObject : UdonSharpBehaviour
                 //     IconRenderer.gameObject.SetActive(false);
                 // }
 
+                if (Tracking.AI != null)
+                {
+                    transformReference = Tracking.AI.AIRigidBody.transform;
+                }
+                else if (Tracking.EngineController != null)
+                {
+                    transformReference = Tracking.EngineController.VehicleMainObj.transform;
+                }
+                else { transformReference = Tracking.MainObject.transform; }
+
                 if (ParentRender.renderIcons && Tracking.RadarIcon != null && Tracking.RadarIcon.material != null && IconRenderer != null)
                 {
                     IconRenderer.gameObject.SetActive(true);
                     IconRenderer.material = Tracking.RadarIcon.material;
                     Rend.enabled = false;
 
-                     if (Tracking.isEnemy)
+                    if (Tracking.isEnemy)
                     {
                         IconRenderer.color = Color.magenta;
                     }
@@ -90,7 +115,7 @@ public class RadarObject : UdonSharpBehaviour
 
 
 
-            if (Tracking != null || TrackingMissile != null)
+            if (Tracking != null || TrackingMissile != null || TrackingTarps != null)
             {
                 isAssigned = true;
                 ParentRender.Assigned(this);
@@ -103,26 +128,58 @@ public class RadarObject : UdonSharpBehaviour
         }
         else if (!toRemove)
         {
-            var vv = (ParentRender.ReferenceArea.position) - (ParentRender.ReferenceArea.position);
+            //Object Movement Logic. positioning Data.
+            var vv = ParentRender.ReferenceArea.position;
             Vector3 xx = Vector3.zero;
             if (Utilities.IsValid(Tracking)) { xx = Tracking.transform.position; }
             else if (Utilities.IsValid(TrackingMissile)) { xx = TrackingMissile.transform.position; }
+            else if (Utilities.IsValid(TrackingTarps)) { xx = TrackingTarps.transform.position; }
             else
             {
                 Remove();
             }
             // var xx = Tracking != null ? Tracking.transform.position : TrackingMissile.transform.position;
             // Vector3 pos = ParentRender.ReferenceArea.TransformDirection(xx);
-            Vector3 pos = xx + vv;
+            Vector3 pos = xx - vv;
+            //Test
+
             if (!ParentRender.use3d)
             {
                 pos = new Vector3(pos.x, 0, pos.z) * ParentRender.scale;
+
+
+
+                // float angleToTarget = Mathf.Atan2(xx.x, xx.z) * Mathf.Rad2Deg;
+                // float anglePlayer = ParentRender.ReferenceArea.eulerAngles.y;
+                // float angleRadarDegrees = angleToTarget - anglePlayer - 90;
+                // float normalisedDistanceToTarget = pos.magnitude;
+                // float angleRadians = angleRadarDegrees * Mathf.Deg2Rad;
+                // float blipX = normalisedDistanceToTarget * Mathf.Cos(angleRadians);
+                // float blipY = normalisedDistanceToTarget * Mathf.Sin(angleRadians);
+
+                // Vector2 xxPos = new Vector2(xx.x, xx.y);
+                // Vector2 vvPos = new Vector2(vv.x, vv.y);
+
+                // Vector2 direction = xxPos - vvPos.normalized;
+
+                // float angleV2 = Vector2.Angle(direction, vvPos);
+
+                // //  float angle = Vector3.Angle(ParentRender.ReferenceArea.position, ParentRender.ReferenceArea.position - xx);
+                //  float distance = Vector2.Distance(xxPos, vvPos);
+                // //  Vector3 x = angle * ParentRender.ReferenceArea.forward * distance;
+                // Vector2 blipObject = new Vector2(Mathf.Cos(angleV2), Mathf.Sin(angleV2));
+
+                //  pos = new Vector3(blipObject.x + distance, 0, blipObject.y + distance) * ParentRender.scale;
+                 
+                // pos = new Vector3(blipX, 0, blipY) * ParentRender.scale;
             }
             else
             {
                 pos = pos * ParentRender.scale;
             }
             gameObject.transform.localPosition = pos;
+
+            //End Object Movement logic
 
             distance = Vector3.Distance(vv, xx);
             if (distance > ParentRender.range)
@@ -143,19 +200,28 @@ public class RadarObject : UdonSharpBehaviour
                 Remove();
             }
 
+            if (TrackingTarps != null && !TrackingTarps.belongsTo.isEnabed)
+            {
+                Remove();
+            }
+            if (TrackingTarps != null && ParentRender.wp != null && ParentRender.wp.tarps != null && !ParentRender.wp.tarps.isSelected && isAssigned)
+            {
+                Remove();
+            }
+
 
             if (Tracking != null)
             {
                 if (ParentRender.ForceTransform)
                 {
-                    gameObject.transform.localRotation = Tracking.MainObject.transform.localRotation;
+                    gameObject.transform.localRotation = transformReference.localRotation;
                 }
                 if (TextObject != null)
                 {
                     string builder = Tracking.MainObject.name;
                     // string agl = "\nAGL:";
                     // string health = "HP:";
-                    if (Tracking.EngineController != null) builder += "\n" + Tracking.EngineController.PilotName;
+                    if (Tracking.EngineController != null && Tracking.EngineController.Occupied) builder += "\n" + Tracking.EngineController.PilotName;
 
                     if (Tracking.EngineController != null) builder += "\nAGL:" + (Tracking.EngineController.VehicleMainObj.transform.position.y + Tracking.EngineController.SeaLevel * 3.28084f);
                     if (Tracking.AI != null) builder += "\nAGL:" + Tracking.AI.AIRigidBody.transform.position.y * 3.28084f;
@@ -168,6 +234,14 @@ public class RadarObject : UdonSharpBehaviour
                     if (Tracking.AI != null) builder += "\nVel:" + (Tracking.AI.AIRigidBody ? Tracking.AI.AIRigidBody.velocity.magnitude * 1.9438445f : 0f);
 
                     TextObject.text = builder;
+
+                    if (ParentRender.UseOnBoardText && Tracking.isSelected)
+                    {
+                        if (ParentRender.useOnlyOne && ParentRender.OnBoardText != null)
+                        {
+                            ParentRender.OnBoardText.text = builder;
+                        }
+                    }
                 }
 
                 if (Tracking.isSelected)
@@ -199,6 +273,21 @@ public class RadarObject : UdonSharpBehaviour
             if (TrackingMissile != null)
             {
                 matmat.material.SetColor("_Color", Color.red);
+                if (TextObject != null)
+                {
+                    TextObject.gameObject.SetActive(false);
+                }
+
+            }
+
+            if (TrackingTarps != null)
+            {
+                // matmat.material.SetColor("_Color", new Color(255, 102, 0));
+                matmat.material.SetColor("_Color", new Color(r, g, b));
+                if (TextObject != null)
+                {
+                    TextObject.text = "Scan Area";
+                }
             }
 
 
