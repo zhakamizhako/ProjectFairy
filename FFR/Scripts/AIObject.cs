@@ -6,6 +6,25 @@ using VRC.Udon;
 public class AIObject : UdonSharpBehaviour
 {
     // public GameObject MainBody;
+    [Header("AI Options")]
+    [UdonSynced(UdonSyncMode.None)] public float Health = 100;
+    [System.NonSerializedAttribute] [HideInInspector] public float fullHealth = 0;
+    [UdonSynced(UdonSyncMode.None)] public bool disabled = false;
+    public Rigidbody AIRigidBody;
+    public bool dead = false;
+    public float disappearTrackerOn = 3f;
+    public AudioSource[] deadSounds;
+    public GameObject AIClass;
+    public bool damageable = false;
+    private float timerDead = 0;
+    public bool revive = false;
+    public string type = "static"; //[ship, heavyair, air, static]
+    private float startmass = 0;
+    public float deadMass = 0;
+    public bool disableAfterDead = false;
+    private float disableTimer = 0;
+    public float disableTime = 15f;
+    public bool disableTurretsOnStandby = true;
     public AITurretScript[] TurretScripts; // These are Targetable Turrets, and may and may not be destroyable.
     public AITurretScript[] MainTurrets; // These are non Targetable Turrets, and undestroyable unless if the aiobject is dead.
     [UdonSynced(UdonSyncMode.None)] public bool enableMainTurrets = true;
@@ -14,6 +33,16 @@ public class AIObject : UdonSharpBehaviour
     public bool setDamagableOnOutOfTurrets = true;
     public Transform TargetDetector;
     public MissileTargets PredefinedTargets;
+    public Animator AIObjectAnimator;
+    public MissileTrackerAndResponse TrackerObject;
+    [HideInInspector] public bool updated = true;
+    public float RotSpeed = 15;
+    public GameObject deadParticle;
+
+    public GameObject SmokeObject;
+
+
+    [Header("Trigger Scripts")]
     public TriggerScript onDestroy;
     public TriggerScript onHalfHealth;
     public TriggerScript onHalfTurrets;
@@ -22,10 +51,69 @@ public class AIObject : UdonSharpBehaviour
     public TriggerScript[] EngageTriggers;
     public TriggerScript[] onDestroys;
 
-    public Animator AIObjectAnimator;
-    public MissileTrackerAndResponse TrackerObject;
+    [Header("Targeting Options")]
+    [UdonSynced(UdonSyncMode.None)] public string TargetString = "";
+    public int[] targetIndices;
+    public float targetChangeTime = 5;
+    public float targetChangeTimer = 0;
+    public LayerMask TargetingLayermask;
+    public float radius = 7000;
+    public float updateTendency = 0.5f;
+    public float updateTimer = 0f;
+    private int targetUpdateIndex = 0;
+    private int targetUpdateIndex2 = 0;
+    public bool isSingleTargetOnly = false;
+    bool notargetsCheck = false;
+    bool isTargetableCheck = false;
+    public RaycastHit[] TargetDetectionList;
+    public GameObject[] debugTargets;
+
+    [Header("Movement Update Setings")]
+    public float updateMovementTendency = 0.5f;
+    public float updateMovementTimer = 0f;
+    public Transform RespawnArea; //Only valid for Flying. maybe.
+    public bool isRespawnable;
+    public float RespawnTime = 10f;
+    private float RespawnTimer = 0f;
+    public bool isCrashing = false;
+    public bool hasCrashed = false;
+    public bool useTranslate = false;
+    public bool dontchaseTarget = false;
+    public bool shouldAttackOnSight = false;
+    private int dirB = 0;
+    public float rollRate = 0.02f;
+    public bool shouldAttack = false;
+    private bool shouldEvade = false;
+    private float attackRange = 1000f;
+    public float movementSpeed = 200f;
+    public float maxMovementSpeed = 300f;
+
+
+    [Header("Formation Settings")]
+    public bool shouldFollowLeft = false;
+    public bool shouldFollowRight = false;
+    public float formDistanceSlowdown = 100f;
+    public float currentmoveSpeed = 0f;
+    public float targetFloatDistance = 40f;
+    public float formMultiplier = 4f;
+    public float distanceTooClose = 100f;
+    public float distanceTooCloseGround = 800f;
+    public float distanceExit = 800f;
+    public Transform GroundOffset;
+    public bool tooClose = false;
+    public bool cleanupFollowObjectWhenDead = true;
+    public MissileTrackerAndResponse FollowObject;
+
+    [Header("Formation Debugging")]
+    public bool debug_INDISTANCESLOWDOWN = false;
+    public bool debug_OUTDISTANCESLOWDOWN = false;
+    public bool debug_WITHINTHRESHORD = false;
+    public float CurrentVelocity = 0f;
+    public float TargetVelocity = 0f;
+
     [Header("Waypoint Settings")]
     public GameObject[] Waypoints; //????????????
+    public float distanceToChangeWaypoint = 50f;
     public bool shouldGoNextWaypoint = true;
     public bool AIPathGobackToOrigin = false; //useful for patrolling AI objects.
     [UdonSynced(UdonSyncMode.None)] public int currentWaypointIndex = 0;
@@ -33,39 +121,19 @@ public class AIObject : UdonSharpBehaviour
     // public int[] TriggerWaypoints; // index - ?, entry - Waypoint number
     // public TriggerScript[] WaypointTrigger; // index - TriggerWaypoint rep, Trigger action
 
-    [UdonSynced(UdonSyncMode.None)] public float Health = 100;
-    [System.NonSerializedAttribute] [HideInInspector] public float fullHealth = 0;
-    public float radius = 7000;
-    [UdonSynced(UdonSyncMode.None)] public bool disabled = false;
-    public bool dead = false;
-    public bool damageable = false;
-    [UdonSynced(UdonSyncMode.None)] public string TargetString = "";
-    private float timerDead = 0;
-    public bool revive = false;
-    public LayerMask TargetingLayermask;
-    public string type = "static"; //[ship, heavyair, air, static]
-    public float disappearTrackerOn = 3f;
-    public GameObject[] debugTargets;
-    public Rigidbody AIRigidBody;
+
+
+    //To add flares.
+
     // public GameObject Flare;
     // public float FlareCooldown = 15f;
     // public float FlareTimer = 0f;
     // public bool hasFlares = true;
     // private bool flareReady = true;
     //Air AI Behaviour
-    private float startmass = 0;
-    public float deadMass = 0;
-    public bool disableAfterDead = false;
-    private float disableTimer = 0;
-    public float disableTime = 15f;
-    public bool shouldAttack = false;
-    private bool shouldEvade = false;
-    private float attackRange = 1000f;
-    public float movementSpeed = 200f;
-    public float maxMovementSpeed = 300f;
-    public float RotSpeed = 15;
-    public float distanceToChangeWaypoint = 50f;
-    public MissileTrackerAndResponse FollowObject;
+
+
+
     // public bool AirHasTarget = false;
     // private bool isTurning = false;
     //Add variable speed
@@ -88,15 +156,15 @@ public class AIObject : UdonSharpBehaviour
     //flare if missile'd
     //flare cooldown
     //Add weird behaviours for a 'heavy' aircraft. Possibly the same shit + turrets.
-    [UdonSynced(UdonSyncMode.Smooth)] public Vector3 posSync;
-    [UdonSynced(UdonSyncMode.Smooth)] public Quaternion rotationSync;
-    [UdonSynced(UdonSyncMode.Smooth)] public Vector3 veloSync;
+
+    [System.NonSerializedAttribute] [UdonSynced(UdonSyncMode.Smooth)] public Vector3 posSync;
+
+    [System.NonSerializedAttribute] [UdonSynced(UdonSyncMode.Smooth)] public Quaternion rotationSync;
+
+    [System.NonSerializedAttribute] [UdonSynced(UdonSyncMode.Smooth)] public Vector3 veloSync;
     private Vector3 rotLerp = new Vector3(0, 0, 0);
     // private float b = 0f;
-    public float pingPosEvery = 15f;
-    private float pingPosTimer = 0f;
-    private int dirB = 0;
-    public float rollRate = 0.02f;
+
     [System.NonSerializedAttribute] [HideInInspector] bool initDamagable = false;
     [System.NonSerializedAttribute] [HideInInspector] bool initTargetable = false;
     [System.NonSerializedAttribute] [HideInInspector] bool initRendered = false;
@@ -105,77 +173,35 @@ public class AIObject : UdonSharpBehaviour
     [System.NonSerializedAttribute] [HideInInspector] public float startDragSpeed = 0f;
     [System.NonSerializedAttribute] [HideInInspector] public float startAngularDrag = 0f;
     private bool deadplay = false;
-    public AudioSource[] deadSounds;
-    public int[] targetIndices;
-    public float targetChangeTime = 5;
-    public float targetChangeTimer = 0;
-    public bool isSingleTargetOnly = false;
-    bool notargetsCheck = false;
-    bool isTargetableCheck = false;
-    public GameObject AIClass;
+
     // public float LockAngle = 180;
-    [Header("Target Update Settings")]
-    public float updateTendency = 0.5f;
-    public float updateTimer = 0f;
-    [Header("Movement Update Setings")]
-    public float updateMovementTendency = 0.5f;
-    public float updateMovementTimer = 0f;
-    public Transform RespawnArea; //Only valid for Flying. maybe.
-    public bool isRespawnable;
-    public float RespawnTime = 10f;
-    private float RespawnTimer = 0f;
-    public bool isCrashing = false;
-    public bool hasCrashed = false;
-    public GameObject deadParticle;
-    public bool dontchaseTarget = false;
-    public bool shouldAttackOnSight = false;
+
+
     [Header("Sync Options")]
     [Header("Enable Sync Object Position in Udon when disabling shouldPing and enable Move in master.")]
     public bool shouldOnlyMoveInMaster = false;
     public bool shouldPing = true;
     public bool useSmoothingSync = false;
     public bool uselocalPosition = false;
-
-    public bool shouldFollowLeft = false;
-    public bool shouldFollowRight = false;
-    public float formDistanceSlowdown = 100f;
-    public float currentmoveSpeed = 0f;
-    public float targetFloatDistance = 40f;
-    public float formMultiplier = 4f;
-
-    public bool debug_INDISTANCESLOWDOWN = false;
-    public bool debug_OUTDISTANCESLOWDOWN = false;
-    public bool debug_WITHINTHRESHORD = false;
-
-    public bool updated = true;
-    private int targetUpdateIndex = 0;
-    private int targetUpdateIndex2 = 0;
-    public RaycastHit[] TargetDetectionList;
+    public float pingPosEvery = 15f;
+    private float pingPosTimer = 0f;
     private ConstantForce AiConstantForce;
     private bool turretStandby = false;
-    public bool disableTurretsOnStandby = true;
 
     //Cost saving measure in order to save for other turrets.
-    public GameObject MissileFab;
-    public Transform[] MissileSpawnArea;
-
-    public float distanceTooClose = 100f;
-    public float distanceTooCloseGround = 800f;
-    public float distanceExit = 800f;
-    public Transform GroundOffset;
-    public bool tooClose = false;
-    public bool cleanupFollowObjectWhenDead = true;
+    // public GameObject MissileFab;
+    // public Transform[] MissileSpawnArea;
 
     private bool ranTriggerHalf = false;
     private bool ranTriggerDead = false;
     private bool ranTriggerDeadTurrets = false;
 
-    public int aliveTurretsPrivate = 0;
-    public int turretindex = 0;
+    [System.NonSerializedAttribute] public int aliveTurretsPrivate = 0;
+    [System.NonSerializedAttribute] public int turretindex = 0;
     // public bool turretCheck = false;
     private float damageReceived = 0f;
-    private Transform AIClassTransform;
-    private Transform GameObjectTransform;
+    [System.NonSerializedAttribute] public Transform AIClassTransform;
+    [System.NonSerializedAttribute] public Transform GameObjectTransform;
     private bool triggerDeadTurretsRan = false;
     private bool triggerDeadTriggerRan = false;
     private bool triggerHalfTurretRan = false;
@@ -191,13 +217,15 @@ public class AIObject : UdonSharpBehaviour
     // public float outputSolve3 = 0f;
     // public float outputSolve4 = 0f;
 
-    public float CurrentVelocity = 0f;
-    public float TargetVelocity = 0f;
-    public GameObject SmokeObject;
+
+
+    [System.NonSerializedAttribute] public Vector3 startArea;
+    [System.NonSerializedAttribute] public Quaternion startAreaRotation;
 
     // private bool initShouldAttack = false;
 
     [System.NonSerializedAttribute] [HideInInspector] public VRCPlayerApi localPlayer;
+    public bool inited = false;
     void Start()
     {
         fullHealth = Health;
@@ -238,6 +266,12 @@ public class AIObject : UdonSharpBehaviour
             startAngularDrag = AIRigidBody != null ? AIRigidBody.drag : 0f;
         }
 
+        startArea = AIClassTransform.transform.localPosition;
+        startAreaRotation = AIClassTransform.transform.localRotation;
+        inited = true;
+
+        // EngineController x;
+        // x.VehicleRigidbody.angularVelocity
     }
 
     public void removeTargets()
@@ -263,11 +297,13 @@ public class AIObject : UdonSharpBehaviour
         }
     }
 
-    public void SmokeOn(){
+    public void SmokeOn()
+    {
         SmokeObject.SetActive(true);
     }
 
-    public void SmokeOff(){
+    public void SmokeOff()
+    {
         SmokeObject.SetActive(false);
     }
 
@@ -439,117 +475,137 @@ public class AIObject : UdonSharpBehaviour
             {
                 float finalMovementSpeed = currentmoveSpeed;
 
-                // Chase Target Logic
-                if (shouldAttack && !dontchaseTarget && debugTargets.Length > 0)
-                { //Attack Logic
-                    shouldFollowLeft = false;
-                    shouldFollowRight = false;
-                    Vector3 finalVectors;
-                    Vector3 V;
-                    Vector3 targetPos;
-                    // Transform targetTransform;
-                    if (debugTargets[0].gameObject.GetComponent<HitDetector>() != null)
-                    {
-                        V = debugTargets[0].gameObject.GetComponent<HitDetector>().EngineControl.CurrentVel;
-                        targetPos = debugTargets[0].gameObject.GetComponent<HitDetector>().Tracker.Tailer.position;
-                    }
-                    else if (debugTargets[0].gameObject.GetComponent<AIObject>() != null && debugTargets[0].gameObject.GetComponent<AIObject>().AIClass != null && debugTargets[0].gameObject.GetComponent<AIObject>().AIRigidBody != null)
-                    {
-                        V = debugTargets[0].gameObject.GetComponent<AIObject>().AIRigidBody.velocity;
-                        targetPos = debugTargets[0].gameObject.GetComponent<AIObject>().TrackerObject.Tailer.transform.position;
-                    }
-                    else
-                    {
-                        V = Vector3.zero;
-                        targetPos = debugTargets[0].gameObject.transform.position;
-                    }
-                    if ((AIClassTransform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) < distanceTooCloseGround) || Vector3.Distance(AIClassTransform.position, targetPos) < distanceTooClose)
-                    {
-                        tooClose = true;
-                    }
-                    else if (tooClose && ((AIClassTransform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) > distanceExit) || Vector3.Distance(AIClassTransform.position, targetPos) > distanceExit))
-                    {
-                        tooClose = false;
-                    }
-
-
-                    finalVectors = !tooClose ? FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, targetPos, V) : FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, new Vector3(AIClass.gameObject.transform.position.x, 10000f, AIClass.gameObject.transform.position.z), AIRigidBody.velocity);
-                    moveLogc(finalVectors, finalVectors);
-                }
-
-                if ((!shouldAttack || (shouldAttack && dontchaseTarget)) && Waypoints != null && Waypoints.Length > 0 && FollowObject == null)
-                { // Waypoint Logic
-                    shouldFollowLeft = false;
-                    shouldFollowRight = false;
-                    moveLogc(Waypoints[currentWaypointIndex].gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position);
-                    if (shouldGoNextWaypoint)
-                    { // if false, circle around the waypoint. 
-                        if (Vector3.Distance(gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position) < distanceToChangeWaypoint)
+                if (Networking.IsOwner(gameObject) || (!Networking.IsOwner(gameObject) && !shouldOnlyMoveInMaster))
+                {
+                    if (shouldAttack && !dontchaseTarget && debugTargets.Length > 0)
+                    { //Attack Logic
+                        shouldFollowLeft = false;
+                        shouldFollowRight = false;
+                        Vector3 finalVectors;
+                        Vector3 V;
+                        Vector3 targetPos;
+                        // Transform targetTransform;
+                        if (debugTargets[0].gameObject.GetComponent<HitDetector>() != null)
                         {
-                            if (currentWaypointIndex + 1 < Waypoints.Length)
+                            V = debugTargets[0].gameObject.GetComponent<HitDetector>().EngineControl.CurrentVel;
+                            targetPos = debugTargets[0].gameObject.GetComponent<HitDetector>().Tracker.Tailer.position;
+                        }
+                        else if (debugTargets[0].gameObject.GetComponent<AIObject>() != null && debugTargets[0].gameObject.GetComponent<AIObject>().AIClass != null && debugTargets[0].gameObject.GetComponent<AIObject>().AIRigidBody != null)
+                        {
+                            V = debugTargets[0].gameObject.GetComponent<AIObject>().AIRigidBody.velocity;
+                            targetPos = debugTargets[0].gameObject.GetComponent<AIObject>().TrackerObject.Tailer.transform.position;
+                        }
+                        else
+                        {
+                            V = Vector3.zero;
+                            targetPos = debugTargets[0].gameObject.transform.position;
+                        }
+                        if ((AIClassTransform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) < distanceTooCloseGround) || Vector3.Distance(AIClassTransform.position, targetPos) < distanceTooClose)
+                        {
+                            tooClose = true;
+                        }
+                        else if (tooClose && ((AIClassTransform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) > distanceExit) || Vector3.Distance(AIClassTransform.position, targetPos) > distanceExit))
+                        {
+                            tooClose = false;
+                        }
+
+
+                        finalVectors = !tooClose ? FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, targetPos, V) : FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, new Vector3(AIClass.gameObject.transform.position.x, 10000f, AIClass.gameObject.transform.position.z), AIRigidBody.velocity);
+                        moveLogc(finalVectors, finalVectors);
+                    }
+
+                    if ((!shouldAttack || (shouldAttack && dontchaseTarget)) && Waypoints != null && Waypoints.Length > 0 && FollowObject == null)
+                    { // Waypoint Logic
+                        shouldFollowLeft = false;
+                        shouldFollowRight = false;
+                        moveLogc(Waypoints[currentWaypointIndex].gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position);
+                        if (shouldGoNextWaypoint)
+                        { // if false, circle around the waypoint. 
+                            if (Vector3.Distance(gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position) < distanceToChangeWaypoint)
                             {
-                                currentWaypointIndex = currentWaypointIndex + 1;
-                            }
-                            else
-                            {
-                                if (AIPathGobackToOrigin)
+                                if (currentWaypointIndex + 1 < Waypoints.Length)
                                 {
-                                    currentWaypointIndex = 0;
+                                    currentWaypointIndex = currentWaypointIndex + 1;
                                 }
+                                else
+                                {
+                                    if (AIPathGobackToOrigin)
+                                    {
+                                        currentWaypointIndex = 0;
+                                    }
+                                }
+                                if (Networking.IsOwner(gameObject))
+                                {
+                                    // SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "pingPos");
+                                }
+                                // isTurning = false;
                             }
-                            if (Networking.IsOwner(gameObject))
+                        }
+                    }
+                    else if (!shouldAttack && FollowObject && !dontchaseTarget)
+                    { //Follow Object Logic
+                        if (shouldFollowLeft == false && shouldFollowRight == false)
+                        { //decide whether to follow left or right
+                            int xb = Random.Range(0, 1);
+                            if (xb == 0)
                             {
-                                // SendCustomNetworkEvent (VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "pingPos");
+                                shouldFollowLeft = true;
+                                shouldFollowRight = false;
                             }
-                            // isTurning = false;
+                            if (xb == 1)
+                            {
+                                shouldFollowLeft = false;
+                                shouldFollowRight = true;
+                            }
                         }
-                    }
-                }
-                else if (!shouldAttack && FollowObject && !dontchaseTarget)
-                { //Follow Object Logic
-                    if (shouldFollowLeft == false && shouldFollowRight == false)
-                    { //decide whether to follow left or right
-                        int xb = Random.Range(0, 1);
-                        if (xb == 0)
+                        if (FollowObject.AI != null)
                         {
-                            shouldFollowLeft = true;
-                            shouldFollowRight = false;
+                            finalMovementSpeed = followLogic(FollowObject.AI.AIRigidBody, FollowObject);
                         }
-                        if (xb == 1)
+                        else if (FollowObject.EngineController != null)
                         {
-                            shouldFollowLeft = false;
-                            shouldFollowRight = true;
+                            finalMovementSpeed = followLogic(FollowObject.EngineController.VehicleRigidbody, FollowObject);
                         }
-                    }
-                    if (FollowObject.AI != null)
-                    {
-                        finalMovementSpeed = followLogic(FollowObject.AI.AIRigidBody, FollowObject);
-                    }
-                    else if (FollowObject.EngineController != null)
-                    {
-                        finalMovementSpeed = followLogic(FollowObject.EngineController.VehicleRigidbody, FollowObject);
-                    }
-                    currentmoveSpeed = finalMovementSpeed;
+                        currentmoveSpeed = finalMovementSpeed;
 
-                    if (cleanupFollowObjectWhenDead && (FollowObject.AI != null && FollowObject.AI.Health < 1) || (FollowObject.EngineController != null && (FollowObject.EngineController.dead || FollowObject.EngineController.Health < 0)))
-                    {
-                        FollowObject = null;
+                        if (cleanupFollowObjectWhenDead && (FollowObject.AI != null && FollowObject.AI.Health < 1) || (FollowObject.EngineController != null && (FollowObject.EngineController.dead || FollowObject.EngineController.Health < 0)))
+                        {
+                            FollowObject = null;
+                        }
                     }
                 }
+                // Chase Target Logic
+
 
                 //Finally, Move the object
 
                 if (shouldOnlyMoveInMaster && Networking.IsOwner(gameObject))
                 { // Finally
-                    AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
+                    if (!useTranslate)
+                    {
+                        AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
+                    }
+                    else
+                    {
+                        AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed));//Something for the future.
+                    }
                 }
                 else if (!shouldOnlyMoveInMaster)
                 {
-                    AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
+                    if (!useTranslate)
+                    {
+                        AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
+                    }
+                    else
+                    {
+                        AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed));//Something for the future update. 
+                    }
                 }
 
-                if (shouldPing && !useSmoothingSync)
-                { // Ping Object's Location
+                //Update Sync Values
+
+                if (Networking.IsOwner(gameObject) && (shouldPing || useSmoothingSync))
+                {
                     if (uselocalPosition)
                     {
                         posSync = GameObjectTransform.localPosition;
@@ -558,32 +614,29 @@ public class AIObject : UdonSharpBehaviour
                     {
                         posSync = GameObjectTransform.position;
                     }
-                    rotationSync = GameObjectTransform.rotation;
-                    veloSync = AIRigidBody.velocity;
 
-                    if (pingPosTimer < pingPosEvery)
+                    if (shouldPing)
                     {
-                        pingPosTimer = pingPosTimer + Time.deltaTime;
-                    }
-                    if (pingPosTimer > pingPosEvery)
-                    {
-                        pingPosTimer = 0f;
-                        if (Networking.IsOwner(gameObject))
+                        if (pingPosTimer < pingPosEvery)
                         {
-                            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "pingPos");
+                            pingPosTimer = pingPosTimer + Time.deltaTime;
+                        }
+                        if (pingPosTimer > pingPosEvery)
+                        {
+                            pingPosTimer = 0f;
+                            if (Networking.IsOwner(gameObject))
+                            {
+                                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "pingPos");
+                            }
                         }
                     }
-
+                    if (useSmoothingSync)
+                    {
+                        posSync = uselocalPosition ? GameObjectTransform.localPosition : GameObjectTransform.position;
+                        rotationSync = GameObjectTransform.localRotation;
+                        veloSync = AIRigidBody.velocity;
+                    }
                 }
-                if (useSmoothingSync && shouldPing)
-                {
-                    posSync = uselocalPosition ? GameObjectTransform.localPosition : GameObjectTransform.position;
-                    rotationSync = GameObjectTransform.rotation;
-                    veloSync = AIRigidBody.velocity;
-                }
-
-                veloSync = AIRigidBody.velocity;
-
             }
         }
 
@@ -796,6 +849,24 @@ public class AIObject : UdonSharpBehaviour
             else
             {
                 updateMovementTimer = updateMovementTimer + Time.deltaTime;
+            }
+
+
+            if (Networking.GetOwner(gameObject) != Networking.LocalPlayer)
+            {
+                if (useSmoothingSync)
+                {
+                    if (uselocalPosition)
+                    {
+                        AIClassTransform.localPosition = posSync;
+                    }
+                    else
+                    {
+                        AIClassTransform.position = posSync;
+                    }
+                    AIClassTransform.localRotation = rotationSync;
+                }
+                AIRigidBody.velocity = veloSync;
             }
         }
 

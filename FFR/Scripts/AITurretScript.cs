@@ -110,6 +110,9 @@ public class AITurretScript : UdonSharpBehaviour
         if(turretType=="FLAK" && MissileFab!=null){
             speedflak = MissileFab.GetComponent<MissileScript>().missileSpeed;
         }
+        isFiring = false;
+        isFiringCiws = false;
+
     }
 
     public void syncFireCIWS()
@@ -224,7 +227,7 @@ public class AITurretScript : UdonSharpBehaviour
     {
         //animation syncer
         if(TurretAni!=null && !Networking.IsOwner(gameObject)){
-            TurretAni.SetBool("fireciws", TurretAni);
+            TurretAni.SetBool("fireciws", isFiringCiws);
         }
 
         if (Health < 1 && !dead)
