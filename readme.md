@@ -25,13 +25,15 @@ Project Fairy System is basically an Arcade Flight System that's based on Saccha
 - Open World Logic (Moving the world instead of the Aircraft)
 - Aircraft Selection
 - Radar System
-
-Upcoming updates
-- Turbulence Effect
 - Scan Areas for TARPS mode
 - Scan mode for TARPS mode
 - Target information for Radar
+
+Upcoming updates
+- Turbulence Effect
 - Copilot controls for Target information and etc.
-- 
+
 
 If you are lucky enough to see this repository, you may use and reference the written codes at your own discretion. Usage of the entire system may not be advisable for you to do manually. 
+
+If you want to use this code or need guides, please contact me via Discord: ZhakamiZhako#2147 or via Twitter @ZZhako
