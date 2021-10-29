@@ -71,6 +71,13 @@ public class RadarObject : UdonSharpBehaviour
             Tracking = ParentRender.ToAssignTracker;
             TrackingTarps = ParentRender.ToAssignTarpsArea;
 
+            if(WaitForCallBackTimer_current > WaitForCallBackTimeout){
+                WaitForCallBackTimer_current = 0f;
+                toRemove = true;
+            }else{
+                WaitForCallBackTimer_current = WaitForCallBackTimer_current + Time.deltaTime;
+            }
+
             if (Tracking != null)
             {
                 // if (!ParentRender.renderIcons && IconRenderer != null)
@@ -80,7 +87,7 @@ public class RadarObject : UdonSharpBehaviour
 
                 if (Tracking.AI != null)
                 {
-                    transformReference = Tracking.AI.AIRigidBody.transform;
+                    transformReference = Tracking.AI.AIClassTransform.transform;
                 }
                 else if (Tracking.EngineController != null)
                 {
@@ -146,32 +153,6 @@ public class RadarObject : UdonSharpBehaviour
             if (!ParentRender.use3d)
             {
                 pos = new Vector3(pos.x, 0, pos.z) * ParentRender.scale;
-
-
-
-                // float angleToTarget = Mathf.Atan2(xx.x, xx.z) * Mathf.Rad2Deg;
-                // float anglePlayer = ParentRender.ReferenceArea.eulerAngles.y;
-                // float angleRadarDegrees = angleToTarget - anglePlayer - 90;
-                // float normalisedDistanceToTarget = pos.magnitude;
-                // float angleRadians = angleRadarDegrees * Mathf.Deg2Rad;
-                // float blipX = normalisedDistanceToTarget * Mathf.Cos(angleRadians);
-                // float blipY = normalisedDistanceToTarget * Mathf.Sin(angleRadians);
-
-                // Vector2 xxPos = new Vector2(xx.x, xx.y);
-                // Vector2 vvPos = new Vector2(vv.x, vv.y);
-
-                // Vector2 direction = xxPos - vvPos.normalized;
-
-                // float angleV2 = Vector2.Angle(direction, vvPos);
-
-                // //  float angle = Vector3.Angle(ParentRender.ReferenceArea.position, ParentRender.ReferenceArea.position - xx);
-                //  float distance = Vector2.Distance(xxPos, vvPos);
-                // //  Vector3 x = angle * ParentRender.ReferenceArea.forward * distance;
-                // Vector2 blipObject = new Vector2(Mathf.Cos(angleV2), Mathf.Sin(angleV2));
-
-                //  pos = new Vector3(blipObject.x + distance, 0, blipObject.y + distance) * ParentRender.scale;
-                 
-                // pos = new Vector3(blipX, 0, blipY) * ParentRender.scale;
             }
             else
             {
@@ -208,6 +189,9 @@ public class RadarObject : UdonSharpBehaviour
             {
                 Remove();
             }
+            if(TrackingTarps==null && TrackingMissile == null && Tracking == null){
+                Remove();
+            }
 
 
             if (Tracking != null)
@@ -224,7 +208,7 @@ public class RadarObject : UdonSharpBehaviour
                     if (Tracking.EngineController != null && Tracking.EngineController.Occupied) builder += "\n" + Tracking.EngineController.PilotName;
 
                     if (Tracking.EngineController != null) builder += "\nAGL:" + (Tracking.EngineController.VehicleMainObj.transform.position.y + Tracking.EngineController.SeaLevel * 3.28084f);
-                    if (Tracking.AI != null) builder += "\nAGL:" + Tracking.AI.AIRigidBody.transform.position.y * 3.28084f;
+                    if (Tracking.AI != null) builder += "\nAGL:" + Tracking.AI.AIClassTransform.position.y * 3.28084f;
 
                     if (Tracking.EngineController != null) builder += "\nHP:" + Tracking.EngineController.Health;
                     if (Tracking.AI != null) builder += "\nHP:" + Tracking.AI.Health;

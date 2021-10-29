@@ -114,13 +114,16 @@ public class FHudController : UdonSharpBehaviour
             if (parentTransform != null)
             {
                 float offset = UIScript.vrDistance2;
+                float offset2 = UIScript.verticalDistanceHud;
                 float size = UIScript.vrSize2;
                 if (localPlayer != null)
                 {
 
                     var PrePos = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position;
+                    
+                    PrePos += parentTransform.forward * offset;
+                    PrePos += parentTransform.up * offset2;
                     parentTransform.position = PrePos;
-                    parentTransform.position += parentTransform.forward * offset;
                     parentTransform.rotation = localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation;
                     gameObject.transform.localScale = startSize * size;
                 }

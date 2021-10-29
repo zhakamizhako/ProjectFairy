@@ -19,7 +19,7 @@ public class CanvasHud : UdonSharpBehaviour
     // public FHudController fhud;
     // public LayerMask UILayer;
     public GameObject cockpitcam;
-    public bool debugIsEnabled = false;
+    private bool ThirdEnabled = false;
     public bool isVR = false;
     public float SpeedDivisor1 = 360;
     public float SpeedDivisor2 = 360;
@@ -38,13 +38,15 @@ public class CanvasHud : UdonSharpBehaviour
     public bool checkPullup = false;
     public float checkPullupEvery = 1f;
     private float checkpulluptimer = 0f;
-    public LayerMask pullupdetector; 
+    public LayerMask pullupdetector;
     public bool isFollowVR = true;
     public Vector3 offsets = new Vector3(.5f, 0, .5f);
     private int TempAltimeterVal = 0;
     private Vector3 startSize;
     private int index = 0;
     private int maxLength = 0;
+    public GameObject[] DisableOnThird;
+    public GameObject[] EnableOnThird;
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
@@ -87,15 +89,37 @@ public class CanvasHud : UdonSharpBehaviour
             {
                 if (third.enabledCam == true)
                 {
-                    cockpitcam.SetActive(true);
-                    thirdHUD.SetActive(true);
-                    debugIsEnabled = true;
+                    if (!ThirdEnabled)
+                    {
+                        cockpitcam.SetActive(true);
+                        thirdHUD.SetActive(true);
+                        ThirdEnabled = true;
+                        foreach (GameObject x in EnableOnThird)
+                        {
+                            x.SetActive(true);
+                        }
+                        foreach (GameObject x in DisableOnThird)
+                        {
+                            x.SetActive(false);
+                        }
+                    }
                 }
                 else
                 {
-                    thirdHUD.SetActive(false);
-                    cockpitcam.SetActive(false);
-                    debugIsEnabled = false;
+                    if (ThirdEnabled)
+                    {
+                        thirdHUD.SetActive(false);
+                        cockpitcam.SetActive(false);
+                        ThirdEnabled = false;
+                        foreach (GameObject x in EnableOnThird)
+                        {
+                            x.SetActive(false);
+                        }
+                        foreach (GameObject x in DisableOnThird)
+                        {
+                            x.SetActive(true);
+                        }
+                    }
                 }
             }
             if (AltimeterText != null)
@@ -127,7 +151,7 @@ public class CanvasHud : UdonSharpBehaviour
                        (EngineControl.OWML != null && EngineControl.OWML.ScriptEnabled ?
                                 (EngineControl.OWML.AnchorCoordsPosition.y - EngineControl.OWML.Map.position.y) + EngineControl.SeaLevel * 3.28084f
                                 : (EngineControl.VehicleMainObj.transform.position.y + EngineControl.SeaLevel * 3.28084f));
-                
+
                 //Uncomment this line when not using OWML.
                 // float value = EngineControl.VehicleMainObj.transform.position.y + EngineControl.SeaLevel * 3.28084f;
 
@@ -169,9 +193,12 @@ public class CanvasHud : UdonSharpBehaviour
             //HitboxController Specifics. Comment ends here. 
         }
 
-        if(index + 1 < maxLength){
+        if (index + 1 < maxLength)
+        {
             index = index + 1;
-        }else{
+        }
+        else
+        {
             index = 0;
         }
     }

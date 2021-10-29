@@ -312,6 +312,7 @@ public class EngineController : UdonSharpBehaviour
     bool PlaneMoving = false;
     public bool ScriptHasStarted = false;
     public LeaveVehicleButton[] LVB;
+    public TriggerScript deadTrigger;
     //float MouseX;
     //float MouseY;
     //float mouseysens = 1; //mouse input can't be used because it's used to look around even when in a seat
@@ -2472,6 +2473,10 @@ public class EngineController : UdonSharpBehaviour
         // EffectsControl.Tarps = false;
         hbcontroller.Respawn();
         EffectsControl.PlaneAnimator.SetTrigger("explode");
+
+        if(deadTrigger!=null){
+            deadTrigger.run = true;
+        }
 
         if(OWML!=null){
             OWML.CallForRespawn();

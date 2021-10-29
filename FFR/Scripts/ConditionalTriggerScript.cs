@@ -17,6 +17,9 @@ public class ConditionalTriggerScript : UdonSharpBehaviour
     public bool runIfTriggerGood = false;
     public bool runIfAIObjectsGood = true;
     public bool disabled = false;
+    public float delay = 0f;
+    private float timer = 0f;
+    private bool scriptRun = false;
     [System.NonSerializedAttribute] [HideInInspector] public VRCPlayerApi localPlayer;
     // private int countAITurretsGood;
     void Start()
@@ -26,12 +29,28 @@ public class ConditionalTriggerScript : UdonSharpBehaviour
 
     public void runScript()
     {
-        if (ScriptToRun != null)
+        if (ScriptToRun != null){
             ScriptToRun.run = true;
+            scriptRun = false;
+            timer = 0f;
+        }
+            
     }
 
     void Update()
     {
+        if(scriptRun){
+            if(timer < delay){
+                timer += Time.deltaTime;
+            }else{
+                if(runInSync && localPlayer!=null){
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runScript");
+                }
+                else{
+                    runScript();
+                }
+            }
+        }
         if (!disabled)
         {
             countAIObjectsGood = 0;
@@ -48,14 +67,7 @@ public class ConditionalTriggerScript : UdonSharpBehaviour
                 if (countAIObjectsGood == AIObjectsToDefeat.Length)
                 {
                     Debug.Log("Launch Script");
-                    if (runInSync && localPlayer != null)
-                    {
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runScript");
-                    }
-                    else
-                    {
-                        runScript();
-                    }
+                    scriptRun = true;
                     disabled = true;
                 }
             }
@@ -71,14 +83,7 @@ public class ConditionalTriggerScript : UdonSharpBehaviour
                 if (countTriggersGood >= TriggerScriptsToFullfill.Length)
                 {
                     Debug.Log("Launch Script");
-                    if (runInSync && localPlayer != null)
-                    {
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runScript");
-                    }
-                    else
-                    {
-                        runScript();
-                    }
+                    scriptRun = true;
                     disabled = true;
                 }
             }
@@ -94,14 +99,7 @@ public class ConditionalTriggerScript : UdonSharpBehaviour
                 if (countTriggersGood >= AITurretsToDefeat.Length)
                 {
                     Debug.Log("Launch Script");
-                    if (runInSync && localPlayer != null)
-                    {
-                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runScript");
-                    }
-                    else
-                    {
-                        runScript();
-                    }
+                    scriptRun = true;
                     disabled = true;
                 }
             }

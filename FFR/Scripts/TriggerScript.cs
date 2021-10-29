@@ -85,6 +85,7 @@ public class TriggerScript : UdonSharpBehaviour
     public bool AnimatorArgument;
     public int RunAnimatorOn = 0;
     public bool isSameAsEn = false;
+    public bool isSameAsEnSound = true; // just default for safety shit
 
     public SceneAdaptor sceneAdaptorToRun; // Scene Adaptor to run after the dialogues run.
     public bool runSceneAdaptor = false;
@@ -106,7 +107,8 @@ public class TriggerScript : UdonSharpBehaviour
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runSync");
     }
 
-    public void resetScript(){
+    public void resetScript()
+    {
         stopped = false;
         ranAfterRun = false;
         enabledGameObject = false;
@@ -202,9 +204,16 @@ public class TriggerScript : UdonSharpBehaviour
                     {
                         UIScript.textObjectVR[textObjectId].text = DialogLinesJP[currentX];
                     }
-                    if (DialogSoundsJP[currentX] != null)
+                    if (isSameAsEnSound)
                     {
-                        DialogSoundsJP[currentX].Play();
+                        if (DialogSounds[currentX] != null)
+                        {
+                            DialogSounds[currentX].Play();
+                        }
+                        if (DialogSoundsJP[currentX] != null)
+                        {
+                            DialogSoundsJP[currentX].Play();
+                        }
                     }
                 }
 
@@ -296,7 +305,8 @@ public class TriggerScript : UdonSharpBehaviour
                             }
                             ranAfterRun = true;
                         }
-                        if(runSceneAdaptor){
+                        if (runSceneAdaptor)
+                        {
                             sceneAdaptorToRun.startScene();
                         }
                     }

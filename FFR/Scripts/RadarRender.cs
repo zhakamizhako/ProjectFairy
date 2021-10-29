@@ -340,19 +340,19 @@ public class RadarRender : UdonSharpBehaviour
         }
         else if (parsing != null && parsingMis == null && parsingTarp == null)
         {
-            Debug.Log("ppaparse");
+            // Debug.Log("ppaparse");
 
             if (counterList < List.Length && List[counterList].Tracking == parsing)
             {
                 parsemode = false;
                 parsing = null;
-                Debug.Log("found");
+                // Debug.Log("found");
                 found = true;
             }
 
             if (counterList >= List.Length && !found)
             {
-                Debug.Log("Attempt to add");
+                // Debug.Log("Attempt to add");
                 AddRadarObject(parsing, null, null);
                 parsing = null;
                 counterList = 0;
@@ -361,7 +361,7 @@ public class RadarRender : UdonSharpBehaviour
 
             if (counterList < List.Length && !found)
             {
-                Debug.Log("counter");
+                // Debug.Log("counter");
                 counterList = counterList + 1;
             }
 
@@ -375,7 +375,6 @@ public class RadarRender : UdonSharpBehaviour
         }
         else if (parsing == null && parsingMis != null && parsingTarp == null)
         {
-            Debug.Log("ppaparse");
 
             if (counterList < List.Length && List[counterList].TrackingMissile == parsingMis)
             {
@@ -410,7 +409,6 @@ public class RadarRender : UdonSharpBehaviour
         }
         else if (parsing == null && parsingMis == null && parsingTarp != null)
         {
-            Debug.Log("ppaparse");
 
             if (counterList < List.Length && List[counterList].TrackingTarps == parsingTarp)
             {

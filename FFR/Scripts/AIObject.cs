@@ -66,7 +66,7 @@ public class AIObject : UdonSharpBehaviour
     bool notargetsCheck = false;
     bool isTargetableCheck = false;
     public RaycastHit[] TargetDetectionList;
-    public GameObject[] debugTargets;
+    public MissileTrackerAndResponse[] debugTargets;
 
     [Header("Movement Update Setings")]
     public float updateMovementTendency = 0.5f;
@@ -96,11 +96,12 @@ public class AIObject : UdonSharpBehaviour
     public float currentmoveSpeed = 0f;
     public float targetFloatDistance = 40f;
     public float formMultiplier = 4f;
-    public float distanceTooClose = 100f;
-    public float distanceTooCloseGround = 800f;
-    public float distanceExit = 800f;
+    public float distanceTooClose = 1000f;
+    public float distanceTooCloseGround = 1200f;
+    public float distanceExit = 1300f;
     public Transform GroundOffset;
     public bool tooClose = false;
+    public bool tooCloseGround = false;
     public bool cleanupFollowObjectWhenDead = true;
     public MissileTrackerAndResponse FollowObject;
 
@@ -110,6 +111,7 @@ public class AIObject : UdonSharpBehaviour
     public bool debug_WITHINTHRESHORD = false;
     public float CurrentVelocity = 0f;
     public float TargetVelocity = 0f;
+    public Transform DebugObjectMovement;
 
     [Header("Waypoint Settings")]
     public GameObject[] Waypoints; //????????????
@@ -117,6 +119,8 @@ public class AIObject : UdonSharpBehaviour
     public bool shouldGoNextWaypoint = true;
     public bool AIPathGobackToOrigin = false; //useful for patrolling AI objects.
     [UdonSynced(UdonSyncMode.None)] public int currentWaypointIndex = 0;
+    public Transform[] EscapePointTransforms;
+    public Vector3[] EscapePointTransformVectors;
     //Not implemented yet...
     // public int[] TriggerWaypoints; // index - ?, entry - Waypoint number
     // public TriggerScript[] WaypointTrigger; // index - TriggerWaypoint rep, Trigger action
@@ -226,6 +230,8 @@ public class AIObject : UdonSharpBehaviour
 
     [System.NonSerializedAttribute] [HideInInspector] public VRCPlayerApi localPlayer;
     public bool inited = false;
+
+    private int tooCloseRandomizer = 0; //0 -> down, 1 -> left, 2-> right, 3-> up, 4-> back, 5-> forward
     void Start()
     {
         fullHealth = Health;
@@ -247,6 +253,11 @@ public class AIObject : UdonSharpBehaviour
         {
             startmass = AIRigidBody.mass;
         }
+        else
+        {
+            Debug.LogError("AI Has no Rigidbody. Switching to Translate Mode");
+            useTranslate = true;
+        }
 
         // if (Waypoints.Length > 0) {
         //     b = Vector3.Angle (gameObject.transform.forward, (Waypoints[currentWaypointIndex].gameObject.transform.position - gameObject.transform.position));
@@ -256,8 +267,11 @@ public class AIObject : UdonSharpBehaviour
         currentmoveSpeed = movementSpeed;
         if (AIRigidBody != null)
         {
-            AiConstantForce = AIRigidBody.GetComponent<ConstantForce>();
+            var b = AIRigidBody.GetComponent<ConstantForce>();
+            if (b != null) AiConstantForce = b;
+
         }
+
         AIClassTransform = AIClass.transform;
         GameObjectTransform = gameObject.transform;
         if (type == "air")
@@ -323,7 +337,8 @@ public class AIObject : UdonSharpBehaviour
 
     public void reviveAI()
     {
-        revive = true;
+        // revive = true;
+        reviveLogic();
     }
 
     public void DestroyAI()
@@ -392,6 +407,19 @@ public class AIObject : UdonSharpBehaviour
         }
     }
 
+    public void OwnershipSetter(){
+        if(TrackerObject!=null){
+            if(TrackerObject.UIScript!=null && TrackerObject.UIScript.isSinglePlayer && TrackerObject.UIScript.InstanceOwner!=null){
+                if(Networking.GetOwner(gameObject)!=TrackerObject.UIScript.InstanceOwner.Owner){
+                    Networking.SetOwner(TrackerObject.UIScript.InstanceOwner.Owner,gameObject);
+                    foreach(AITurretScript x in TurretScripts){
+                        Networking.SetOwner(TrackerObject.UIScript.InstanceOwner.Owner, x.gameObject);
+                    }
+                }
+            }
+        }
+    }
+
 
     void LateUpdateLogic()
     {
@@ -400,7 +428,7 @@ public class AIObject : UdonSharpBehaviour
             if (updateTimer > updateTendency && updated)
             {
                 TargetDetectionList = Physics.SphereCastAll(TargetDetector.position, radius, TargetDetector.forward, 5000, TargetingLayermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
-                debugTargets = new GameObject[0];
+                debugTargets = new MissileTrackerAndResponse[0];
                 targetIndices = new int[0];
                 targetUpdateIndex2 = 0;
                 targetUpdateIndex = 0;
@@ -418,11 +446,11 @@ public class AIObject : UdonSharpBehaviour
                     MissileTrackerAndResponse currentSelection = TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null ? TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() : null;
                     if (currentSelection != null && ((currentSelection.AI != null && currentSelection.AI.Health > 0) || (currentSelection.AITurret != null && currentSelection.AITurret.Health > 0) || (currentSelection.EngineController != null && currentSelection.EngineController.Health > 0 && currentSelection.EngineController.Occupied)) && currentSelection == PredefinedTargets.Targets[targetUpdateIndex2])
                     {
-                        GameObject[] temp = new GameObject[debugTargets.Length + 1];
+                        MissileTrackerAndResponse[] temp = new MissileTrackerAndResponse[debugTargets.Length + 1];
                         int[] tempTargetIndices = new int[debugTargets.Length + 1];
                         debugTargets.CopyTo(temp, 0);
                         targetIndices.CopyTo(tempTargetIndices, 0);
-                        temp[temp.Length - 1] = TargetDetectionList[targetUpdateIndex].collider.gameObject;
+                        temp[temp.Length - 1] = currentSelection;
                         tempTargetIndices[temp.Length - 1] = targetUpdateIndex2;
                         targetIndices = tempTargetIndices;
                         debugTargets = temp;
@@ -463,6 +491,10 @@ public class AIObject : UdonSharpBehaviour
                     updateMovementTimer = updateMovementTimer + Time.deltaTime;
                 }
             }
+            else
+            {
+                AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed));//Something for the future.
+            }
 
         }
     }
@@ -485,23 +517,45 @@ public class AIObject : UdonSharpBehaviour
                         Vector3 V;
                         Vector3 targetPos;
                         // Transform targetTransform;
-                        if (debugTargets[0].gameObject.GetComponent<HitDetector>() != null)
+                        if (debugTargets[0].EngineController != null)
                         {
-                            V = debugTargets[0].gameObject.GetComponent<HitDetector>().EngineControl.CurrentVel;
-                            targetPos = debugTargets[0].gameObject.GetComponent<HitDetector>().Tracker.Tailer.position;
+                            V = debugTargets[0].EngineController.CurrentVel;
+                            targetPos = debugTargets[0].EngineController.VehicleMainObj.transform.position;
                         }
-                        else if (debugTargets[0].gameObject.GetComponent<AIObject>() != null && debugTargets[0].gameObject.GetComponent<AIObject>().AIClass != null && debugTargets[0].gameObject.GetComponent<AIObject>().AIRigidBody != null)
+                        else if (debugTargets[0].AI != null && debugTargets[0].AI.AIClass != null && debugTargets[0].AI.AIRigidBody != null)
                         {
-                            V = debugTargets[0].gameObject.GetComponent<AIObject>().AIRigidBody.velocity;
-                            targetPos = debugTargets[0].gameObject.GetComponent<AIObject>().TrackerObject.Tailer.transform.position;
+                            V = debugTargets[0].AI.AIRigidBody.velocity;
+                            targetPos = debugTargets[0].AI.AIClass.transform.position;
+                        }
+                        else if (debugTargets[0].AITurret != null && debugTargets[0].AITurret.mainAIObject != null && debugTargets[0].AITurret.mainAIObject.AIRigidBody != null)
+                        {
+                            V = debugTargets[0].AITurret.mainAIObject.AIRigidBody.velocity;
+                            targetPos = debugTargets[0].AITurret.mainAIObject.AIRigidBody.transform.position;
+                        }
+                        else if (debugTargets[0].AITurret != null && debugTargets[0].AITurret.mainAIObject != null && debugTargets[0].AITurret.mainAIObject == null)
+                        {
+                            V = Vector3.zero;
+                            targetPos = debugTargets[0].AITurret.mainAIObject.transform.position;
+                        }
+                        else if (debugTargets[0].AITurret != null && debugTargets[0].AITurret.mainAIObject == null)
+                        {
+                            V = Vector3.zero;
+                            targetPos = debugTargets[0].AITurret.transform.position;
                         }
                         else
                         {
                             V = Vector3.zero;
                             targetPos = debugTargets[0].gameObject.transform.position;
                         }
+
+
                         if ((AIClassTransform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) < distanceTooCloseGround) || Vector3.Distance(AIClassTransform.position, targetPos) < distanceTooClose)
                         {
+                            if (!tooClose)
+                            {
+                                if(EscapePointTransforms!=null && EscapePointTransforms.Length > 0)tooCloseRandomizer = Random.Range(0, EscapePointTransforms.Length);
+                                if(EscapePointTransformVectors!=null && EscapePointTransformVectors.Length > 0)tooCloseRandomizer = Random.Range(0, EscapePointTransformVectors.Length);
+                            }
                             tooClose = true;
                         }
                         else if (tooClose && ((AIClassTransform.position.y - (GroundOffset != null ? GroundOffset.position.y : 0f) > distanceExit) || Vector3.Distance(AIClassTransform.position, targetPos) > distanceExit))
@@ -509,8 +563,55 @@ public class AIObject : UdonSharpBehaviour
                             tooClose = false;
                         }
 
+                        Transform xxx = AIClass.gameObject.transform;
+                        Vector3 escapePoint = Vector3.zero;
 
-                        finalVectors = !tooClose ? FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, targetPos, V) : FirstOrderIntercept(AIClass.gameObject.transform.position, AIRigidBody.velocity, AIRigidBody.velocity.magnitude, new Vector3(AIClass.gameObject.transform.position.x, 10000f, AIClass.gameObject.transform.position.z), AIRigidBody.velocity);
+                        if (tooClose)
+                        {
+
+                            // switch (tooCloseRandomizer)
+                            // {
+                            //     case 0:
+                            //         escapePoint = xxx.up * -1000f;
+                            //         break;
+                            //     case 1:
+                            //         escapePoint = xxx.up * -1000f;
+                            //         break;
+                            //     case 2:
+                            //         escapePoint = xxx.forward * 1000f;
+                            //         break;
+                            //     case 3:
+                            //         escapePoint = xxx.forward * -1000f;
+                            //         break;
+                            //     case 4:
+                            //         escapePoint = xxx.right * 1000f;
+                            //         break;
+                            //     case 5:
+                            //         escapePoint = xxx.right * -1000f;
+                            //         break;
+                            // }
+                        }
+
+
+                        finalVectors = !tooClose ?
+                        FirstOrderIntercept(
+                            AIClass.gameObject.transform.position,
+                            AIRigidBody != null ? AIRigidBody.velocity : Vector3.zero,
+                            AIRigidBody != null ? AIRigidBody.velocity.magnitude : currentmoveSpeed,
+                            targetPos, V)
+                            :
+                        FirstOrderIntercept(
+                            AIClass.gameObject.transform.position,
+                            AIRigidBody != null ? AIRigidBody.velocity : Vector3.zero,
+                            AIRigidBody != null ? AIRigidBody.velocity.magnitude : currentmoveSpeed,
+                            // new Vector3(AIClass.gameObject.transform.position.x, 10000f, AIClass.gameObject.transform.position.z),
+                            escapePoint,
+                            AIRigidBody != null ? AIRigidBody.velocity : Vector3.zero);
+
+                        // if(DebugObjectMovement!=null){
+                        //     DebugObjectMovement.position = finalVectors;
+                        // }
+
                         moveLogc(finalVectors, finalVectors);
                     }
 
@@ -558,14 +659,8 @@ public class AIObject : UdonSharpBehaviour
                                 shouldFollowRight = true;
                             }
                         }
-                        if (FollowObject.AI != null)
-                        {
-                            finalMovementSpeed = followLogic(FollowObject.AI.AIRigidBody, FollowObject);
-                        }
-                        else if (FollowObject.EngineController != null)
-                        {
-                            finalMovementSpeed = followLogic(FollowObject.EngineController.VehicleRigidbody, FollowObject);
-                        }
+
+                        finalMovementSpeed = followLogic(FollowObject);
                         currentmoveSpeed = finalMovementSpeed;
 
                         if (cleanupFollowObjectWhenDead && (FollowObject.AI != null && FollowObject.AI.Health < 1) || (FollowObject.EngineController != null && (FollowObject.EngineController.dead || FollowObject.EngineController.Health < 0)))
@@ -581,24 +676,24 @@ public class AIObject : UdonSharpBehaviour
 
                 if (shouldOnlyMoveInMaster && Networking.IsOwner(gameObject))
                 { // Finally
-                    if (!useTranslate)
+                    if (AIRigidBody != null)
                     {
                         AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
                     }
                     else
                     {
-                        AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed));//Something for the future.
+                        AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed), Space.Self);//Something for the future.
                     }
                 }
                 else if (!shouldOnlyMoveInMaster)
                 {
-                    if (!useTranslate)
+                    if (AIRigidBody != null)
                     {
                         AiConstantForce.relativeForce = new Vector3(0, 0, currentmoveSpeed);
                     }
                     else
                     {
-                        AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed));//Something for the future update. 
+                        AIClassTransform.Translate(new Vector3(0, 0, currentmoveSpeed), Space.Self);//Something for the future.
                     }
                 }
 
@@ -634,7 +729,7 @@ public class AIObject : UdonSharpBehaviour
                     {
                         posSync = uselocalPosition ? GameObjectTransform.localPosition : GameObjectTransform.position;
                         rotationSync = GameObjectTransform.localRotation;
-                        veloSync = AIRigidBody.velocity;
+                        veloSync = AIRigidBody != null ? AIRigidBody.velocity : Vector3.zero;
                     }
                 }
             }
@@ -671,17 +766,36 @@ public class AIObject : UdonSharpBehaviour
         GameObjectTransform.Rotate(rotationAxis, Mathf.Min(RotSpeed * Time.deltaTime, deltaAngle), Space.World);
     }
 
-    public float followLogic(Rigidbody ObjectVelocity, MissileTrackerAndResponse Tracker)
+    public float followLogic(MissileTrackerAndResponse Tracker)
     {
+        Rigidbody ObjectVelocity = null;
+        bool translateMode = false;
+        float targetspeed = 0f;
+        if (Tracker != null)
+        {
+            if (Tracker.AI != null && Tracker.AI.AIRigidBody != null)
+            {
+                ObjectVelocity = Tracker.AI.AIRigidBody;
+            }
+            else if (Tracker.EngineController != null)
+            {
+                ObjectVelocity = Tracker.EngineController.VehicleRigidbody;
+            }
+            else if (Tracker.AI != null && Tracker.AI.AIRigidBody == null && Tracker.AI.useTranslate && useTranslate)
+            {
+                targetspeed = Tracker.AI.currentmoveSpeed;
+                translateMode = true;
+            }
+        }
         float finalMovespeed = currentmoveSpeed;
         Transform Following = null;
         if (shouldFollowLeft)
         {
-            Following = FollowObject.FollowL;
+            Following = Tracker.FollowL;
         }
         if (shouldFollowRight)
         {
-            Following = FollowObject.FollowR;
+            Following = Tracker.FollowR;
         }
 
         if (Following == null)
@@ -690,112 +804,171 @@ public class AIObject : UdonSharpBehaviour
         }
 
         float dist = Vector3.Distance(AIClassTransform.position, Following.position);
-        CurrentVelocity = AIRigidBody.velocity.magnitude;
-        TargetVelocity = ObjectVelocity.velocity.magnitude;
 
-        if (dist < formDistanceSlowdown && dist > targetFloatDistance)
+        //Normal Follow Logic, With Rigidbody
+        if (ObjectVelocity != null && !translateMode && !useTranslate)
         {
-            float temp = 0f;
-            if (CurrentVelocity > TargetVelocity)
+            CurrentVelocity = AIRigidBody.velocity.magnitude;
+            TargetVelocity = ObjectVelocity.velocity.magnitude;
+
+            if (dist < formDistanceSlowdown && dist > targetFloatDistance)
             {
-                temp = -Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f;
+                float temp = 0f;
+                if (CurrentVelocity > TargetVelocity)
+                {
+                    temp = -Mathf.Lerp(AiConstantForce.relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f;
+                }
+                else
+                {
+                    temp = Mathf.Lerp(AiConstantForce.relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f; ;
+                }
+
+                finalMovespeed = Mathf.Clamp(finalMovespeed + temp, 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = true;
+                debug_OUTDISTANCESLOWDOWN = false;
             }
-            else
+            else if (dist > formDistanceSlowdown)
             {
-                temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f; ;
+                finalMovespeed = Mathf.Clamp(Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist), 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = true;
             }
+            else if (dist < targetFloatDistance && (dist < formDistanceSlowdown))
+            {
 
-            finalMovespeed = Mathf.Clamp(finalMovespeed + temp, 0, maxMovementSpeed);
-            // if (currentmoveSpeed < maxMovementSpeed)
-            // {
-            // float temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.01f;
-            // float temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.1f;!!
-            // temp = +Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
-            // output = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
-            // finalMovespeed = finalMovespeed + temp;!!
-            // float force = (CurrentVelocity * AIRigidBody.mass * TargetVelocity);
-            // force = (AIRigidBody.drag * force) / (1 - 0.02f * AIRigidBody.drag);
+                float temp = Mathf.Lerp(AiConstantForce.relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.1f;
+                finalMovespeed = finalMovespeed - temp;
 
-            // finalMovespeed = force;
-            // }
-            // else
-            // {
-            //     finalMovespeed = currentmoveSpeed - 2f;
-            // }
-            debug_WITHINTHRESHORD = false;
-            debug_INDISTANCESLOWDOWN = true;
-            debug_OUTDISTANCESLOWDOWN = false;
-            // if (!isInFollow)
-            // {
-            //     AIRigidBody.angularDrag = startAngularDrag;
-            //     AIRigidBody.drag = startDragSpeed;
-            //     isInFollow = false;
-            // }
-            // finalMovespeed = finalMovespeed - 10f;
+                debug_WITHINTHRESHORD = true;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
         }
-        else if (dist > formDistanceSlowdown)
+
+        //Normal AI with Rigidbody, Following a NonRigidbody
+        else if (ObjectVelocity == null && translateMode && !useTranslate)
         {
-            finalMovespeed = Mathf.Clamp(Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist), 0, maxMovementSpeed);
-            // output = Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist);
+            CurrentVelocity = AIRigidBody.velocity.magnitude;
+            TargetVelocity = targetspeed;
 
-            // output = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
-            // output2 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, TargetVelocity - CurrentVelocity ) * (Time.deltaTime * dist * formMultiplier) * 0.1f;
-            // output3 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity ) * (Time.deltaTime * dist / formMultiplier) * 0.1f;
-            // output4 =  (finalMovespeed / CurrentVelocity ) / (TargetVelocity / 1);
-            // output3 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist * Time.deltaTime);
-            // output4 = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist / Time.deltaTime);
+            if (dist < formDistanceSlowdown && dist > targetFloatDistance)
+            {
+                float temp = 0f;
+                if (CurrentVelocity > TargetVelocity)
+                {
+                    temp = -Mathf.Lerp(AiConstantForce.relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f;
+                }
+                else
+                {
+                    temp = Mathf.Lerp(AiConstantForce.relativeForce.z, maxMovementSpeed, CurrentVelocity - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f; ;
+                }
 
-            // // outputSolve = finalMovespeed + output2;
-            // // outputSolve2 = finalMovespeed - output2;
-            // outputSolve3 = Mathf.Lerp(finalMovespeed, Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime, dist);
+                finalMovespeed = Mathf.Clamp(finalMovespeed + temp, 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = true;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
+            else if (dist > formDistanceSlowdown)
+            {
+                finalMovespeed = Mathf.Clamp(Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist), 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = true;
+            }
+            else if (dist < targetFloatDistance && (dist < formDistanceSlowdown))
+            {
 
-            // float wtf = ((1/2*(AIRigidBody.mass == 0 ? 1f : AIRigidBody.mass)*finalMovespeed) / Time.deltaTime) * finalMovespeed;
+                float temp = Mathf.Lerp(AiConstantForce.relativeForce.z, TargetVelocity, dist) * Time.deltaTime * 0.1f;
+                finalMovespeed = finalMovespeed - temp;
 
-            // finalMovespeed = force;
-
-            // outputSolve4 = wtf;
-
-            debug_WITHINTHRESHORD = false;
-            debug_INDISTANCESLOWDOWN = false;
-            debug_OUTDISTANCESLOWDOWN = true;
-            // if (isInFollow)
-            // {
-            //     AIRigidBody.angularDrag = startAngularDrag;
-            //     AIRigidBody.drag = startDragSpeed;
-            //     isInFollow = false;
-            // }
-
-
-            // finalMovespeed = finalMovespeed + 10f;
+                debug_WITHINTHRESHORD = true;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
         }
-        else if (dist < targetFloatDistance && (dist < formDistanceSlowdown))
+
+        //AI With no Rigidbody, Following a Rigidbody
+        else if (ObjectVelocity != null && useTranslate)
         {
-            // finalMovespeed = Mathf.Lerp(ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, finalMovespeed, dist);
-            // output = Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist);
-            // float temp = 0f;
+            TargetVelocity = ObjectVelocity.velocity.magnitude;
+            if (dist < formDistanceSlowdown && dist > targetFloatDistance)
+            {
+                float temp = 0f;
+                if (currentmoveSpeed > targetspeed)
+                {
+                    temp = -Mathf.Lerp(currentmoveSpeed, maxMovementSpeed, currentmoveSpeed - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f;
+                }
+                else
+                {
+                    temp = Mathf.Lerp(currentmoveSpeed, maxMovementSpeed, currentmoveSpeed - TargetVelocity) * (Time.deltaTime * formMultiplier / dist) * 0.1f; ;
+                }
 
-            // Vector3 forwardSpeed = (AIRigidBody.transform.forward * desiredSpeed);
-            // float force = (CurrentVelocity * AIRigidBody.mass * TargetVelocity);
-            // force = (AIRigidBody.drag * force) / (1 - 0.02f * AIRigidBody.drag);
+                finalMovespeed = Mathf.Clamp(finalMovespeed + temp, 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = true;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
+            else if (dist > formDistanceSlowdown)
+            {
+                finalMovespeed = Mathf.Clamp(Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist), 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = true;
+            }
+            else if (dist < targetFloatDistance && (dist < formDistanceSlowdown))
+            {
 
-            // finalMovespeed = force;
+                float temp = Mathf.Lerp(currentmoveSpeed, TargetVelocity, dist) * Time.deltaTime * 0.1f;
+                finalMovespeed = finalMovespeed - temp;
 
-
-            float temp = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime * 0.1f;
-            // temp = finalMovespeed - Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist * Time.deltaTime);
-            // output = Mathf.Lerp(AIRigidBody.GetComponent<ConstantForce>().relativeForce.z, ObjectVelocity.transform.GetComponent<ConstantForce>().relativeForce.z, dist) * Time.deltaTime;
-            finalMovespeed = finalMovespeed - temp;
-
-            debug_WITHINTHRESHORD = true;
-            debug_INDISTANCESLOWDOWN = false;
-            debug_OUTDISTANCESLOWDOWN = false;
-            // if (!isInFollow)
-            // {
-            //     AIRigidBody.drag = ObjectVelocity.drag;
-            //     AIRigidBody.angularDrag = ObjectVelocity.angularDrag;
-            //     isInFollow = true;
-            // }
+                debug_WITHINTHRESHORD = true;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
         }
+
+
+        //AI with no Rigidbody, Following a nonRigidbody, 
+        else if (ObjectVelocity == null && translateMode && useTranslate)
+        {
+            if (dist < formDistanceSlowdown && dist > targetFloatDistance)
+            {
+                float temp = 0f;
+                if (currentmoveSpeed > targetspeed)
+                {
+                    temp = -Mathf.Lerp(currentmoveSpeed, maxMovementSpeed, currentmoveSpeed - targetspeed) * (Time.deltaTime * formMultiplier / dist) * 0.1f;
+                }
+                else
+                {
+                    temp = Mathf.Lerp(currentmoveSpeed, maxMovementSpeed, currentmoveSpeed - targetspeed) * (Time.deltaTime * formMultiplier / dist) * 0.1f; ;
+                }
+
+                finalMovespeed = Mathf.Clamp(finalMovespeed + temp, 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = true;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
+            else if (dist > formDistanceSlowdown)
+            {
+                finalMovespeed = Mathf.Clamp(Mathf.Lerp(finalMovespeed, maxMovementSpeed, Time.deltaTime * formMultiplier / dist), 0, maxMovementSpeed);
+                debug_WITHINTHRESHORD = false;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = true;
+            }
+            else if (dist < targetFloatDistance && (dist < formDistanceSlowdown))
+            {
+
+                float temp = Mathf.Lerp(currentmoveSpeed, targetspeed, dist) * Time.deltaTime * 0.1f;
+                finalMovespeed = finalMovespeed - temp;
+
+                debug_WITHINTHRESHORD = true;
+                debug_INDISTANCESLOWDOWN = false;
+                debug_OUTDISTANCESLOWDOWN = false;
+            }
+        }
+
 
         moveLogc(Following.position, Following.up);
 
@@ -837,8 +1010,16 @@ public class AIObject : UdonSharpBehaviour
         // Debug.LogError("COLLIDE");
     }
 
+    public void SetDamagable()
+    {
+        damageable = true;
+    }
+
     void Update()
     {
+        // if(TrackerObject!=null && TrackerObject.UIScript!=null && TrackerObject.UIScript.isSinglePlayer && Networking.GetOwner(gameObject)!=localPlayer){
+            // OwnershipSetter();
+        // }
         if (!dead && (type == "air" || type == "heavyair"))
         {
             if (updateMovementTimer > updateMovementTendency)
@@ -866,7 +1047,7 @@ public class AIObject : UdonSharpBehaviour
                     }
                     AIClassTransform.localRotation = rotationSync;
                 }
-                AIRigidBody.velocity = veloSync;
+                if (AIRigidBody != null) AIRigidBody.velocity = veloSync;
             }
         }
 
@@ -882,7 +1063,7 @@ public class AIObject : UdonSharpBehaviour
                         TargetString = null;
                     if (type == "air")
                     {
-                        AIRigidBody.useGravity = true;
+                        if (AIRigidBody != null) AIRigidBody.useGravity = true;
                     }
                 }
                 if (Health < (fullHealth / 2))
@@ -986,7 +1167,6 @@ public class AIObject : UdonSharpBehaviour
                                         for (int c = 0; c < TurretScripts.Length; c++)
                                         {
                                             var skip = false;
-                                            // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
                                             if (!TurretScripts[c].canTarget)
                                             {
                                                 skip = true;
@@ -1004,18 +1184,6 @@ public class AIObject : UdonSharpBehaviour
                                                 }
                                                 TargetString = TargetString + TurretScripts[c].idTurret + "=" + targetIndices[m] + ";";
                                             }
-                                            // TurretScripts[c].currentTargetIndex = targetIndices[m];
-                                            // if (
-                                            //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
-                                            //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
-                                            //     TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
-                                            // ) {
-                                            //     Transform[] childrena = TurretScripts[c].transform.GetComponentsInChildren<Transform>();
-                                            //     foreach (Transform child in childrena) {
-                                            //         Networking.SetOwner (Networking.GetOwner (gameObject), child.gameObject);
-                                            //     }
-                                            // //     Networking.SetOwner (Networking.GetOwner (TurretScripts[c].TargetListTemp.Targets[TurretScripts[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), TurretScripts[c].gameObject);
-                                            // }
                                         }
                                         if (enableMainTurrets)
                                         {
@@ -1040,20 +1208,6 @@ public class AIObject : UdonSharpBehaviour
                                                     }
                                                     TargetString = TargetString + MainTurrets[c].idTurret + "=" + targetIndices[m] + ";";
                                                 }
-                                                // Networking.SetOwner (Networking.GetOwner (gameObject), TurretScripts[c].gameObject);
-                                                // MainTurrets[c].currentTargetIndex = targetIndices[m];
-
-                                                // if (
-                                                //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> () != null &&
-                                                //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController != null &&
-                                                //     MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.localPlayer != null
-                                                // ) {
-                                                //     // Transform[] children = MainTurrets[c].transform.GetComponentsInChildren<Transform>();
-                                                //     // foreach (Transform child in children) {
-                                                //     // Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), child.gameObject);    
-                                                //     // }
-                                                //     Networking.SetOwner (Networking.GetOwner (MainTurrets[c].TargetListTemp.Targets[MainTurrets[c].currentTargetIndex].GetComponent<MissileTrackerAndResponse> ().EngineController.gameObject), MainTurrets[c].gameObject);
-                                                // }
                                             }
                                         }
 
@@ -1082,89 +1236,9 @@ public class AIObject : UdonSharpBehaviour
 
         if (revive)
         {
-            Health = fullHealth;
-            damageable = initDamagable;
-            disabled = initDisabled;
-            enableMainTurrets = initEnableMainTurrets;
-            if (deadParticle != null && deadParticle.activeSelf) { deadParticle.SetActive(false); }
-            isTargetableCheck = false;
-            if (TrackerObject != null)
-            {
-                TrackerObject.isRendered = initRendered;
-                TrackerObject.isTargetable = initTargetable;
-            }
-            if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("alive"); }
-            if (TurretScripts.Length > 0)
-            {
-                foreach (AITurretScript g in TurretScripts)
-                {
-                    g.revive = true;
-                }
-            }
-            if (MainTurrets.Length > 0)
-            {
-                foreach (AITurretScript g in MainTurrets)
-                {
-                    g.revive = true;
-                }
-            }
-            if (onDestroy != null)
-            {
-                onDestroy.ran = false;
-                // onDestroy.ranSync = false;
-                onDestroy.stopped = false;
-                onDestroy.currentX = 0;
-                for (int x = 0; x < onDestroy.isRunning.Length; x++)
-                {
-                    onDestroy.isRunning[x] = false;
-                }
-            }
-            if (onHalfHealth != null)
-            {
-                onHalfHealth.ran = false;
-                // onHalfHealth.ranSync = false;
-                onHalfHealth.stopped = false;
-                onHalfHealth.currentX = 0;
-                for (int x = 0; x < onHalfHealth.isRunning.Length; x++)
-                {
-                    onHalfHealth.isRunning[x] = false;
-                }
-            }
-            if (onHalfTurrets != null)
-            {
-                onHalfTurrets.ran = false;
-                // onHalfTurrets.ranSync = false;
-                onHalfTurrets.stopped = false;
-                onHalfTurrets.currentX = 0;
-                for (int x = 0; x < onHalfTurrets.isRunning.Length; x++)
-                {
-                    onHalfTurrets.isRunning[x] = false;
-                }
-            }
-            if (onDeadTurrets != null)
-            {
-                onDeadTurrets.ran = false;
-                // onDeadTurrets.ranSync = false;
-                onDeadTurrets.stopped = false;
-                onDeadTurrets.currentX = 0;
-                for (int x = 0; x < onDeadTurrets.isRunning.Length; x++)
-                {
-                    onDeadTurrets.isRunning[x] = false;
-                }
-            }
-            if (type == "air" || type == "heavyair")
-            {
-                AIRigidBody.mass = startmass;
-                AIRigidBody.useGravity = false;
-            }
-            revive = false;
-            dead = false;
-            deadplay = false;
-            triggerDeadTurretsRan = false;
-            triggerDeadTriggerRan = false;
-            triggerHalfTurretRan = false;
-            triggerHalfHealthRan = false;
+            reviveLogic();
         }
+
         if (dead)
         {
             if (type == "air" || type == "heavyair")
@@ -1267,6 +1341,95 @@ public class AIObject : UdonSharpBehaviour
 
     }
 
+    public void reviveLogic()
+    {
+        Health = fullHealth;
+        damageable = initDamagable;
+        disabled = initDisabled;
+        enableMainTurrets = initEnableMainTurrets;
+        if (deadParticle != null && deadParticle.activeSelf) { deadParticle.SetActive(false); }
+        isTargetableCheck = false;
+        if (TrackerObject != null)
+        {
+            TrackerObject.isRendered = initRendered;
+            TrackerObject.isTargetable = initTargetable;
+        }
+        if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("alive"); }
+        if (TurretScripts.Length > 0)
+        {
+            foreach (AITurretScript g in TurretScripts)
+            {
+                g.revive = true;
+            }
+        }
+        if (MainTurrets.Length > 0)
+        {
+            foreach (AITurretScript g in MainTurrets)
+            {
+                g.revive = true;
+            }
+        }
+        if (onDestroy != null)
+        {
+            onDestroy.ran = false;
+            // onDestroy.ranSync = false;
+            onDestroy.stopped = false;
+            onDestroy.currentX = 0;
+            for (int x = 0; x < onDestroy.isRunning.Length; x++)
+            {
+                onDestroy.isRunning[x] = false;
+            }
+        }
+        if (onHalfHealth != null)
+        {
+            onHalfHealth.ran = false;
+            // onHalfHealth.ranSync = false;
+            onHalfHealth.stopped = false;
+            onHalfHealth.currentX = 0;
+            for (int x = 0; x < onHalfHealth.isRunning.Length; x++)
+            {
+                onHalfHealth.isRunning[x] = false;
+            }
+        }
+        if (onHalfTurrets != null)
+        {
+            onHalfTurrets.ran = false;
+            // onHalfTurrets.ranSync = false;
+            onHalfTurrets.stopped = false;
+            onHalfTurrets.currentX = 0;
+            for (int x = 0; x < onHalfTurrets.isRunning.Length; x++)
+            {
+                onHalfTurrets.isRunning[x] = false;
+            }
+        }
+        if (onDeadTurrets != null)
+        {
+            onDeadTurrets.ran = false;
+            // onDeadTurrets.ranSync = false;
+            onDeadTurrets.stopped = false;
+            onDeadTurrets.currentX = 0;
+            for (int x = 0; x < onDeadTurrets.isRunning.Length; x++)
+            {
+                onDeadTurrets.isRunning[x] = false;
+            }
+        }
+        if (type == "air" || type == "heavyair")
+        {
+            if (AIRigidBody != null)
+            {
+                AIRigidBody.mass = startmass;
+                AIRigidBody.useGravity = false;
+            }
+        }
+        revive = false;
+        dead = false;
+        deadplay = false;
+        triggerDeadTurretsRan = false;
+        triggerDeadTriggerRan = false;
+        triggerHalfTurretRan = false;
+        triggerHalfHealthRan = false;
+    }
+
     //Tools
     public Vector3 FirstOrderIntercept(
         Vector3 shooterPosition,
@@ -1277,12 +1440,20 @@ public class AIObject : UdonSharpBehaviour
     {
         Vector3 targetRelativePosition = targetPosition - shooterPosition;
         Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
-        float t = FirstOrderInterceptTime(
+
+        if (targetVelocity != Vector3.zero)
+        {
+            float t = FirstOrderInterceptTime(
             shotSpeed,
             targetRelativePosition,
             targetRelativeVelocity
         );
-        return targetPosition + t * (targetRelativeVelocity);
+            return targetPosition + t * (targetRelativeVelocity);
+        }
+        else
+        {
+            return targetPosition;
+        }
     }
 
     public float FirstOrderInterceptTime(

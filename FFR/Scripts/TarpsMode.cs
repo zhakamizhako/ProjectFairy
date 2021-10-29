@@ -28,9 +28,8 @@ public class TarpsMode : UdonSharpBehaviour
     [UdonSynced(UdonSyncMode.Smooth)] public float breakingFloat = 0f;
     public bool isNear = false;
     public bool isFar = false;
-    [UdonSynced(UdonSyncMode.None)]  public bool isBreaking = false;
+    [UdonSynced(UdonSyncMode.None)] public bool isBreaking = false;
     private bool isBreakingRan = false;
-
     private bool buttonDown = false;
     public bool isTarpsAvailable = true;
     private int IncrementorCheckerInt = 0;
@@ -40,7 +39,8 @@ public class TarpsMode : UdonSharpBehaviour
     private int TarpAreasLength = 0;
     public bool changeAfterDone = true;
     private RaycastHit[] hits;
-
+    private float timeset = 0;
+    private float timesetmax = 2;
 
     void Update()
     {
@@ -52,15 +52,33 @@ public class TarpsMode : UdonSharpBehaviour
                 isScanning = false;
                 isBreaking = false;
                 tarpAreas = null;
-
+                TarpAreasLength = 0;
             }
             if (TarpsAni != null)
             {
                 TarpsAni.SetBool("tarps", false);
             }
+            UITarpsAni.SetBool("ReadyScan", false);
 
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "stopScan");
             return;
+        }
+        if (weaponSelector.EngineController.Piloting && !isSelected)
+        {
+            if (timeset > timesetmax)
+            {
+                CurrentTarpsTarget = null;
+                tarpAreas = new TarpsArea[0];
+                isScanning = false;
+                isFar = false;
+                isNear = false;
+                isBreaking = false;
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "stopScan");
+            }
+            else
+            {
+                timeset = timeset + Time.deltaTime;
+            }
         }
 
         // if(doneIncrement && pingTimer < pingEvery){
@@ -140,12 +158,16 @@ public class TarpsMode : UdonSharpBehaviour
         hits = Physics.SphereCastAll(Detector.position, detectorRadius, Detector.forward, detectorRange, TarpsLayer, QueryTriggerInteraction.Collide);
     }
 
-    public void scanSuccessCall(){
+    public void scanSuccessCall()
+    {
         UITarpsAni.SetBool("ScanSuccess", true);
     }
 
-    public void stopScan(){
+    public void stopScan()
+    {
         UITarpsAni.SetBool("isScanning", false);
+        UITarpsAni.SetBool("ReadyScan", false);
+        UITarpsAni.SetBool("isBreaking", false);
     }
 
     public void Timer()
@@ -181,9 +203,10 @@ public class TarpsMode : UdonSharpBehaviour
 
                 if (weaponSelector.EngineController.Piloting && changeAfterDone)
                 {
-                    CurrentTarpsTarget = null;
+                    // CurrentTarpsTarget = null;
                     weaponSelector.SwitchWeaponSystem();
-                    HandleExit(tarpAreas[0]);
+                    // HandleExit(tarpAreas[0]);
+                    // tarpAreas = null;
                 }
 
             }
@@ -213,13 +236,19 @@ public class TarpsMode : UdonSharpBehaviour
     public void AnimateUI()
     {
         UITarpsAni.SetFloat("ScanValue", ScanTimer / CurrentTarpsTarget.timeToScan);
-        if(Networking.GetOwner(gameObject)==weaponSelector.EngineController.localPlayer){
+        if (Networking.GetOwner(gameObject) == weaponSelector.EngineController.localPlayer)
+        {
             ScanFloat = ScanTimer / CurrentTarpsTarget.timeToScan;
         }
     }
 
-    public void failScan(){
+    public void failScan()
+    {
         UITarpsAni.SetBool("Fail", true);
+        UITarpsAni.SetBool("isBreaking", false);
+        UITarpsAni.SetBool("isScanning", false);
+        UITarpsAni.SetFloat("BreakingValue", 0);
+        UITarpsAni.SetBool("ReadyScan", false);
     }
 
     public void Fail()
@@ -229,6 +258,7 @@ public class TarpsMode : UdonSharpBehaviour
         UITarpsAni.SetBool("isBreaking", false);
         UITarpsAni.SetBool("isScanning", false);
         UITarpsAni.SetFloat("BreakingValue", 0);
+        UITarpsAni.SetBool("ReadyScan", false);
 
         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "failScan");
 
@@ -345,6 +375,9 @@ public class TarpsMode : UdonSharpBehaviour
     {
         if (t == null)
         {
+            return;
+        }
+        if(!(tarpAreas.Length > 0)){
             return;
         }
         if (TarpAreasLength > 0)

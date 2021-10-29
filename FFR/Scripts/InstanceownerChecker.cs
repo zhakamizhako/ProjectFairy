@@ -8,8 +8,12 @@ using UnityEngine.UI;
 public class InstanceownerChecker : UdonSharpBehaviour
 {
     public Text textDisplay;
+    public VRCPlayerApi Owner;
 
     public override void OnPlayerJoined(VRCPlayerApi player){
+        if(Owner==null){
+            Owner = Networking.GetOwner(gameObject);
+        }
         textDisplay.text = Networking.GetOwner(gameObject).displayName;
     }
 

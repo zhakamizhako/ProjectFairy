@@ -32,7 +32,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public Transform WaypointDetector;
     public float WaypointDetectorRange = 100;
     public float WaypointDetectorRadius = 100;
-    public LayerMask layermask = 23;
+    // public LayerMask layermask = 23;
+    public bool VehicleOnlyWaypoint = true;
     public bool hideAfterWaypointContact = true;
     public bool hideInSyncContact = true;
     private bool globalCheck = false;
@@ -112,6 +113,19 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     private VRCPlayerApi localPlayer;
     private float dist = 0;
 
+    public bool RunOnDestroy = false;
+    public bool RunOnLock = false;
+    public bool RunOnMissile = false;
+
+    private bool ranDestroy = false;
+    private bool ranLocks = false;
+    private bool ranMissile = false;
+
+    public TriggerScript[] RunDestroys;
+    public TriggerScript[] RunLocks;
+    public TriggerScript[] RunMissiles;
+    public bool AddIgnore = false;
+
     void Start()
     {
         hasRendered = isRendered;
@@ -138,6 +152,11 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
         }
 
         localPlayer = Networking.LocalPlayer;
+
+        if (isWaypoint && UIScript == null)
+        {
+            Debug.LogError("Waypoint but no UI Script present! Waypoint will not work!");
+        }
     }
     public void receiveTracker(MissileScript misScript)
     {
@@ -374,79 +393,24 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
 
     void LateUpdate()
     {
-        if (isWaypoint)
+        if (isWaypoint && isWaypointEnabled)
         {
             dist = Vector3.Distance(localPlayer.GetPosition(), WaypointDetector.position);
-            if (isWaypointEnabled && dist < WaypointDetectorRange)
+            if (dist < WaypointDetectorRange && UIScript != null && ((VehicleOnlyWaypoint && UIScript.PlayerAircraft != null) || !VehicleOnlyWaypoint))
             {
-                RaycastHit[] hit = Physics.SphereCastAll(WaypointDetector.position, WaypointDetectorRadius, WaypointDetector.forward, WaypointDetectorRange, layermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
-                                                                                                                                                                                                            // Debug.DrawLine (WaypointDetector.position, WaypointDetectorRange);
-                DebugHits = new Transform[hit.Length];
-                for (int x = 0; x < hit.Length; x++)
+                if (hideAfterWaypointContact)
                 {
-                    // Debug.Log("HITS");
-                    DebugHits[x] = hit[x].transform;
+                    isRendered = false;
+                    isWaypointEnabled = false;
                 }
-                if (hit.Length > 0)
+                if (hideInSyncContact)
                 {
-                    for (int x = 0; x < hit.Length; x++)
-                    { // skim through the list of detected targets
-                        GameObject currentHitObject = hit[x].transform.gameObject;
-                        float hitDistance = hit[x].distance;
-                        Transform[] children = currentHitObject.GetComponentsInChildren<Transform>();
-                        MissileTrackerAndResponse bb = null;
-                        if (currentHitObject.GetComponent<HitDetector>() != null)
-                        {
-                            bb = currentHitObject.GetComponent<HitDetector>().Tracker;
-                        }
-                        else if (currentHitObject.GetComponent<MissileTrackerAndResponse>() != null)
-                        {
-                            bb = currentHitObject.GetComponent<MissileTrackerAndResponse>();
-                        }
-
-                        if (bb == null)
-                        {
-                            return;
-                        }
-
-                        if (bb.EngineController != null)
-                        {
-                            if (bb.EngineController.localPlayer != null && bb.EngineController.localPlayer.IsOwner(bb.EngineController.VehicleMainObj))
-                            {
-                                if (hideAfterWaypointContact)
-                                {
-                                    isRendered = false;
-                                    isWaypointEnabled = false;
-                                }
-                                if (hideInSyncContact)
-                                {
-                                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hideSync");
-                                }
-                                if (onEnter != null)
-                                {
-                                    Debug.Log("Enter");
-                                    onEnter.run = true;
-                                }
-                            }
-                            else if (bb.EngineController.localPlayer == null)
-                            { //Editormode
-                                if (hideAfterWaypointContact)
-                                {
-                                    isRendered = false;
-                                    isWaypointEnabled = false;
-                                    if (hideInSyncContact)
-                                    {
-                                        SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hideSync");
-                                    }
-                                }
-                                if (onEnter != null)
-                                {
-                                    Debug.Log("Enter");
-                                    onEnter.run = true;
-                                }
-                            }
-                        }
-                    }
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hideSync");
+                }
+                if (onEnter != null)
+                {
+                    Debug.Log("Enter");
+                    onEnter.run = true;
                 }
             }
         }
@@ -647,8 +611,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
 
                         words = words + "\n" + Mathf.Round(distance);
                     }
-                    TrackerText.text = words;
-
+                    if (TrackerText.text != words) TrackerText.text = words;
                 }
             }
             else
@@ -674,7 +637,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                 }
             }
 
-            if(!isRendered && OBJIndicators!=null && OBJIndicators.Length > 0){
+            if (!isRendered && OBJIndicators != null && OBJIndicators.Length > 0)
+            {
                 cleanupOBJMarkers();
                 isRenderedMarker = false;
             }
@@ -740,6 +704,16 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             if (hudAlert != null)
                 hudAlert.SetActive(true);
             // Debug.Log("Alert sound started playing");
+
+            if (RunOnMissile && RunMissiles != null && RunMissiles.Length > 0 && !ranMissile &&  Networking.IsOwner(Networking.LocalPlayer, gameObject))
+            {
+                ranMissile = true;
+                int xRand = Random.Range(AddIgnore ? -1 : 0, RunMissiles.Length);
+                if (xRand != -1)
+                {
+                    RunMissiles[xRand].run = true;
+                }
+            }
         }
         else if (soundStarted == true && isChasing == false)
         {
@@ -748,6 +722,7 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
             if (MissileAlert != null)
                 MissileAlert.Stop();
             soundStarted = false;
+            ranMissile = false;
             // Debug.Log("Alert sound Stopped");
         }
 
@@ -759,6 +734,15 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                 if (CautionObject != null)
                     CautionObject.SetActive(true);
                 soundCautionStarted = true;
+                if (RunOnLock && RunLocks != null && RunLocks.Length > 0 && !ranLocks && Networking.IsOwner(Networking.LocalPlayer, gameObject))
+                {
+                    ranLocks = true;
+                    int xRand = Random.Range(AddIgnore ? -1 : 0, RunLocks.Length);
+                    if (xRand != -1)
+                    {
+                        RunLocks[xRand].run = true;
+                    }
+                }
 
             }
         }
@@ -770,10 +754,47 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                 if (CautionObject != null)
                     CautionObject.SetActive(false);
                 soundCautionStarted = false;
-
+                ranLocks = false;
             }
         }
 
+        // On Destroy
+        if (RunOnDestroy && RunDestroys != null && RunDestroys.Length > 0)
+        {
+            if (!ranDestroy)
+            {
+                bool run = false;
+                if (EngineController != null)
+                {
+                    if (EngineController.dead) run = true;
+                }
+
+                if (AI != null)
+                {
+                    if(AI.dead) run = true;
+                }
+
+                if (AITurret != null)
+                {
+                    if(AITurret.dead) run = true;
+                }
+
+                if (run && Networking.IsOwner(Networking.LocalPlayer, gameObject))
+                {
+                    int randx = Random.Range(AddIgnore ? -1 : 0, RunDestroys.Length);
+                    if (randx != -1)
+                    {
+                        RunDestroys[randx].run = true;
+                    }
+                    ranDestroy = true;
+                }
+            }else{
+                if((EngineController!=null && !EngineController.dead) || (AI!=null && !AI.dead) || (AITurret!=null && !AITurret.dead)){
+                    ranDestroy = false;
+                }
+            }
+        }
+        //cleanups
         if (EngineController != null)
         {
             if (EngineController.dead || (!EngineController.Piloting && !EngineController.Passenger))

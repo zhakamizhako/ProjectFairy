@@ -38,14 +38,14 @@ public int speed = 5;
                 "--ProjectFairyTest Debug Menu--\n" + 
                 "--V0.1--!!Close when unused. Will drop frames.!!\n" + 
                 "--Press TAB to hide--\n";
-                if(UIScript!=null){
-                    string tt = "--UI Script Debug" + "\n" +
-                    "TriggerScript:" + UIScript.TriggerScripts!=null ? UIScript.TriggerScripts[0].currentX + "" : "Not active" + "\n" +
-                    "TriggerScript Length:" + UIScript.TriggerScripts!=null ? UIScript.TriggerScripts.Length + "" : "Not Active" + "\n" +
-                    "TriggerScript CurrentX: " + UIScript.TriggerScripts!=null  ? UIScript.TriggerScripts[0].currentX + "" : "Not Active";
-                    text = text + tt;
+                // if(UIScript!=null){
+                    // string tt = "--UI Script Debug" + "\n" +
+                    // "TriggerScript:" + UIScript.TriggerScripts!=null ? UIScript.TriggerScripts[0].currentX + "" : "Not active" + "\n" +
+                    // "TriggerScript Length:" + UIScript.TriggerScripts!=null ? UIScript.TriggerScripts.Length + "" : "Not Active" + "\n" +
+                    // "TriggerScript CurrentX: " + UIScript.TriggerScripts!=null  ? UIScript.TriggerScripts[0].currentX + "" : "Not Active";
+                    // text = text + tt;
                     
-                 }
+                //  }
                 if(AIObjects.Length >0){
                     string txtAIs = "";
                     foreach(AIObject g in AIObjects){

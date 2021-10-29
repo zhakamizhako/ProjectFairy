@@ -4,6 +4,10 @@
 !*/
 !*.cs
 
+*/
+
+!FFR/*
+
 Aerial Explosion Tutorial/*
 Aerial_Explosions/*
 FFR/CamToTexture/*
@@ -15,6 +19,8 @@ CyanEmu/*
 Editor/*
 FFR/NPC/*
 Standard Assets/*
+MassiveClouds/*
+Nuke/*
 # !*.controller
 # !*.anim
 # !*.mat

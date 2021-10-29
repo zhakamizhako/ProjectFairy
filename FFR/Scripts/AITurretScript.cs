@@ -896,12 +896,19 @@ public class AITurretScript : UdonSharpBehaviour
     {
         Vector3 targetRelativePosition = targetPosition - shooterPosition;
         Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
-        float t = FirstOrderInterceptTime(
+
+        if (targetVelocity != Vector3.zero)
+        {
+            float t = FirstOrderInterceptTime(
             shotSpeed,
             targetRelativePosition,
             targetRelativeVelocity
         );
-        return targetPosition + t * (targetRelativeVelocity);
+            return targetPosition + t * (targetRelativeVelocity);
+        }
+        else{
+            return targetPosition;
+        }
     }
     public float FirstOrderInterceptTime(
         float shotSpeed,

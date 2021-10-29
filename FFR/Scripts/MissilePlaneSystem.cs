@@ -128,6 +128,17 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     private bool isFiringBurst = false;
     public PlayerUIScript UIScript;
     public WeaponSelector wpss;
+
+    public bool RunLocks = false;
+    public bool RunFire = false;
+
+    private bool ranLocks = false;
+    private bool ranMissile = false;
+
+    public TriggerScript[] RunMissileLock;
+    public TriggerScript[] RunMissileLaunch;
+
+    public bool AddIgnore = false;
     void Start()
     { //Initialize Missile Packs and status
         if (LockSightHUD != null)
@@ -220,16 +231,21 @@ public class MissilePlaneSystem : UdonSharpBehaviour
         if (locked != null) { locked.Stop(); }
         if (locking != null) { locking.Stop(); }
 
-        if(wpss!=null){
-            if(wpss.IFFIndicator!=null){
+        if (wpss != null)
+        {
+            if (wpss.IFFIndicator != null)
+            {
                 string x = "";
                 Color b = Color.white;
-                if(selectedTargetIndex!=-1){
-                    if(MissileTargetScript.Targets[selectedTargetIndex].isEnemy){ x = "Enemy"; b = Color.red;}
-                    if(MissileTargetScript.Targets[selectedTargetIndex].isAlly){ x = "Ally"; b = Color.white;}
+                if (selectedTargetIndex != -1)
+                {
+                    if (MissileTargetScript.Targets[selectedTargetIndex].isEnemy) { x = "Enemy"; b = Color.red; }
+                    if (MissileTargetScript.Targets[selectedTargetIndex].isAlly) { x = "Ally"; b = Color.white; }
                     // if(MissileTargetScript.Targets[selectedTargetIndex].isObjective) x = "Objective";
-                    if(MissileTargetScript.Targets[selectedTargetIndex].isUnknown){ x = "Unknown"; b = Color.yellow;}
-                }else{
+                    if (MissileTargetScript.Targets[selectedTargetIndex].isUnknown) { x = "Unknown"; b = Color.yellow; }
+                }
+                else
+                {
                     x = "None";
                 }
                 wpss.IFFIndicator.text = x;
@@ -390,6 +406,14 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                         if (locked != null)
                         {
                             locked.Play();
+                        }
+                        if (RunLocks && RunMissileLock != null && RunMissileLock.Length > 0)
+                        {
+                            int xRand = Random.Range(AddIgnore ? -1 : 0, RunMissileLock.Length);
+                            if (xRand != -1)
+                            {
+                                RunMissileLock[xRand].run = true;
+                            }
                         }
                     }
                 }
@@ -788,7 +812,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                                         SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "MissileFireUnlocked");
                                     }
                                     timerBurst = 0;
-                                    burstNo = burstNo +1;
+                                    burstNo = burstNo + 1;
                                 }
                                 else
                                 {
@@ -1062,6 +1086,14 @@ public class MissilePlaneSystem : UdonSharpBehaviour
 
     public void MissileSync()
     {
+        if (RunFire && RunMissileLaunch != null && RunMissileLaunch.Length > 0)
+        {
+            int xRand = Random.Range(AddIgnore ? -1 : 0, RunMissileLaunch.Length);
+            if (xRand != -1)
+            {
+                RunMissileLaunch[xRand].run = true;
+            }
+        }
         // The next set of lines below basically what it does is it spawns the missile depending which pod is free if they're not on cooldown.
         // Debug.Log ("MissileSync Called");
         if (MissileSpawnAreas.Length > 0)

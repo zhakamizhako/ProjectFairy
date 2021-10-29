@@ -19,8 +19,10 @@ public class PassengerSeat : UdonSharpBehaviour
     public MissileTrackerAndResponse mistracker;
     public Transform teleportTo;
     public bool returnToNorah = false;
+    public VRCStation x;
     // public MissilePlaneSystem MissileControl;
     public WeaponSelector wp;
+    [UdonSynced(UdonSyncMode.None)] public bool Occupied = false;
     private void Start()
     {
         Assert(EngineControl != null, "Start: EngineControl != null");
@@ -32,8 +34,15 @@ public class PassengerSeat : UdonSharpBehaviour
         PlaneMesh = EngineControl.PlaneMesh.transform;
         // Planelayer = PlaneMesh.gameObject.layer;
     }
+
+    public void TPToSeat(){
+        if(!Occupied)
+        Interact();
+    }
+
     private void Interact()
     {
+        Occupied = true;
         EngineControl.PasengerEnterPlaneLocal();
         // Networking.SetOwner (EngineControl.localPlayer, gameObject);
         //Set CVH Params
@@ -130,6 +139,9 @@ public class PassengerSeat : UdonSharpBehaviour
     }
     public void PlayerExitPlane(VRCPlayerApi player)
     {
+        if(Networking.IsOwner(Networking.LocalPlayer, gameObject)){
+            Occupied = false;
+        }
         LeaveButtonControl.SeatedPlayer = -1;
         if (player != null)
         {

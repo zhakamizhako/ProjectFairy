@@ -18,10 +18,16 @@ public class PlayerUIScript : UdonSharpBehaviour
     public float vrDistance2 = 0;
     public float vrSize = 0;
     public float vrSize2 = 0;
+    public float verticalDistanceHud;
+    public float verticalDistanceUi;
     public Slider VRDistanceSlider;
     public Slider VRDistanceSlider2;
     public Slider VRSizeSlider;
     public Slider VRSizeSlider2;
+    public Slider VerticalPositionSlider_UI;
+    public Slider VerticalPositionSlider_HUD;
+    public Text VerticalPositionText_UI;
+    public Text VerticalPositionText_HUD;
     public Text vrDistanceText;
     public Text vrDistanceText2;
     public Text vrSizeText;
@@ -37,6 +43,8 @@ public class PlayerUIScript : UdonSharpBehaviour
     private float startVRSize;
     private float startVRSize2;
     private float startIconSize;
+    private float startVerticalDistanceHUD;
+    private float startVerticalDistanceUI;
     public Text[] textObject; //This is where all the texts are drawn. Maybe stick it with a player's Head.
     public Text[] textObjectVR; //Automatically disabled if on VR
     public Renderer IconRenderer;
@@ -70,14 +78,40 @@ public class PlayerUIScript : UdonSharpBehaviour
     // public float triggerScriptTimeout = 15f;
     public EngineController PlayerAircraft;
     public MissileTrackerAndResponse sampleThing;
+    [Header("Skybox Settings")]
     public Material Skybox;
     public float baseAtmos = 1f;
     public float AtmosphereDarkStart = 30000;
     public float AtmosphereDarkMax = 50000;
+    [Header("Cloud Settings")]
+    public Material CloudMat;
+    public float baseHeight = 10000f;
+    private float currentHeight = 0f;
     public bool disabletexts = false;
     public bool inited = false;
     public int framesBeforeCheck = 10;
     private int framePass = 0;
+
+    public Toggle OWMLIntervalCheckbox;
+    public Toggle OWMLDistanceCheckbox;
+    public Toggle OWMLConstantCheckbox;
+
+    public Slider OWMLIntervalSlider;
+    public Slider OWMLDistanceSlider;
+
+    public Text OWMLDistanceText;
+    public Text OWMLIntervalText;
+
+
+
+    public bool OWMLMoveByChunks = false; //<- False == Move world always, true == move only by chunks
+    public float ChunkDistance = 5000f;
+    public bool OWMLMoveByTime = false;
+    public float MoveByTimeSeconds = 10f;
+
+    public bool isSinglePlayer = false;
+    public bool isMultiplayer = false;
+    public InstanceownerChecker InstanceOwner;
 
     void Start()
     {
@@ -99,6 +133,15 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             startVRDistance2 = VRDistanceSlider2.value;
         }
+        if (VerticalPositionSlider_HUD != null)
+        {
+            startVerticalDistanceHUD = VerticalPositionSlider_HUD.value;
+        }
+        if (VerticalPositionSlider_UI != null)
+        {
+            startVerticalDistanceUI = VerticalPositionSlider_UI.value;
+        }
+
         //---------------------
         if (textObject != null)
         {
@@ -128,10 +171,37 @@ public class PlayerUIScript : UdonSharpBehaviour
             // baseAtmos = Skybox.GetFloat("_AtmosphereThickness");
             Skybox.SetFloat("_AtmosphereThickness", baseAtmos);
         }
+        if (CloudMat != null)
+        {
+            CloudMat.SetFloat("_FromHeight", baseHeight);
+        }
         if (UIPhotoRenderer != null)
         {
             IconRenderer = UIPhotoRenderer.GetComponent<Renderer>();
         }
+        if (OWMLDistanceCheckbox != null)
+        {
+            OWMLDistanceCheckbox.isOn = OWMLMoveByChunks;
+        }
+        if (OWMLConstantCheckbox != null)
+        {
+            OWMLConstantCheckbox.isOn = (!OWMLMoveByChunks && !OWMLMoveByTime);
+        }
+        if (OWMLIntervalCheckbox != null)
+        {
+            OWMLIntervalCheckbox.isOn = OWMLMoveByTime;
+        }
+        if (OWMLIntervalSlider != null && OWMLIntervalText != null && MoveByTimeSeconds != OWMLIntervalSlider.value)
+        {
+            MoveByTimeSeconds = OWMLIntervalSlider.value;
+            OWMLIntervalText.text = MoveByTimeSeconds.ToString("F0");
+        }
+        if (OWMLDistanceSlider != null && OWMLDistanceText != null && ChunkDistance != OWMLDistanceSlider.value)
+        {
+            ChunkDistance = OWMLDistanceSlider.value;
+            OWMLDistanceText.text = ChunkDistance.ToString("F0");
+        }
+
         //Set TextObjects
         Assert(textObject != null, "Start: TextObject MUST NOT BE null");
         Assert(textObjectVR != null, "Start: textobjectvr MUST NOT BE null");
@@ -144,7 +214,48 @@ public class PlayerUIScript : UdonSharpBehaviour
         VRSizeSlider2.value = startVRSize2;
         VRDistanceSlider.value = startVRDistance;
         VRDistanceSlider2.value = startVRDistance2;
+        verticalDistanceHud = startVerticalDistanceHUD;
+        verticalDistanceUi = startVerticalDistanceUI;
         IconSize = startIconSize;
+    }
+
+    public void SetOWMLTimeInterval(float x)
+    {
+
+    }
+    public void SetOWMLDistanceValue(float x)
+    {
+        ChunkDistance = x;
+    }
+    public void SetOWMLInterval()
+    {
+        Debug.Log("A");
+        OWMLMoveByChunks = false;
+        OWMLMoveByTime = true;
+
+        if (OWMLConstantCheckbox != null) OWMLConstantCheckbox.isOn = false;
+        if (OWMLDistanceCheckbox != null) OWMLDistanceCheckbox.isOn = false;
+        if (OWMLIntervalCheckbox != null) OWMLIntervalCheckbox.isOn = true;
+    }
+    public void SetOWMLDistance()
+    {
+        Debug.Log("B");
+        OWMLMoveByChunks = true;
+        OWMLMoveByTime = false;
+
+        if (OWMLConstantCheckbox != null) OWMLConstantCheckbox.isOn = false;
+        if (OWMLDistanceCheckbox != null) OWMLDistanceCheckbox.isOn = true;
+        if (OWMLIntervalCheckbox != null) OWMLIntervalCheckbox.isOn = false;
+    }
+    public void SetOWMLConstant()
+    {
+        Debug.Log("C");
+        OWMLMoveByChunks = false;
+        OWMLMoveByTime = false;
+
+        if (OWMLConstantCheckbox != null) OWMLConstantCheckbox.isOn = true;
+        if (OWMLDistanceCheckbox != null) OWMLDistanceCheckbox.isOn = false;
+        if (OWMLIntervalCheckbox != null) OWMLIntervalCheckbox.isOn = false;
     }
 
     void Update()
@@ -153,7 +264,7 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             if (framePass < framesBeforeCheck)
             {
-                framePass = framePass+1;
+                framePass = framePass + 1;
             }
             else
             {
@@ -199,6 +310,18 @@ public class PlayerUIScript : UdonSharpBehaviour
             vrDistance = VRDistanceSlider.value;
             vrDistanceText.text = vrDistance.ToString("F3");
         }
+
+        if (VerticalPositionSlider_HUD != null && VerticalPositionText_HUD != null && verticalDistanceHud != VerticalPositionSlider_HUD.value)
+        {
+            verticalDistanceHud = VerticalPositionSlider_HUD.value;
+            VerticalPositionText_HUD.text = verticalDistanceHud.ToString("F3");
+        }
+        if (VerticalPositionSlider_UI != null && VerticalPositionText_UI != null && verticalDistanceUi != VerticalPositionSlider_UI.value)
+        {
+            verticalDistanceUi = VerticalPositionSlider_UI.value;
+            VerticalPositionText_UI.text = verticalDistanceUi.ToString("F3");
+        }
+
         if (VRDistanceSlider2 != null && vrDistanceText2 != null && vrDistance2 != VRDistanceSlider2.value)
         {
             vrDistance2 = VRDistanceSlider2.value;
@@ -219,6 +342,17 @@ public class PlayerUIScript : UdonSharpBehaviour
             IconSize = IconSlider.value;
             IconSliderText.text = IconSize.ToString("F3");
         }
+        if (OWMLIntervalSlider != null && OWMLIntervalText != null && MoveByTimeSeconds != OWMLIntervalSlider.value)
+        {
+            MoveByTimeSeconds = OWMLIntervalSlider.value;
+            OWMLIntervalText.text = MoveByTimeSeconds.ToString("F0");
+        }
+        if (OWMLDistanceSlider != null && OWMLDistanceText != null && ChunkDistance != OWMLDistanceSlider.value)
+        {
+            ChunkDistance = OWMLDistanceSlider.value;
+            OWMLDistanceText.text = ChunkDistance.ToString("F0");
+        }
+        
         if (MusicVolume != null && MusicVolumeText != null && MusicVolumeValue != MusicVolume.value)
         {
             MusicVolumeValue = MusicVolume.value;
@@ -289,19 +423,33 @@ public class PlayerUIScript : UdonSharpBehaviour
         {
             if (PlayerAircraft.OWML != null && PlayerAircraft.OWML.ScriptEnabled)
             {
-                float x = (PlayerAircraft.OWML.AnchorCoordsPosition.y - PlayerAircraft.OWML.Map.position.y) + PlayerAircraft.SeaLevel * 3.28084f;
-                if (x > AtmosphereDarkStart)
+                float offsetHeight = (PlayerAircraft.OWML.AnchorCoordsPosition.y - PlayerAircraft.OWML.Map.position.y) + PlayerAircraft.SeaLevel * 3.28084f;
+                Vector3 Offsets = new Vector3(
+                    PlayerAircraft.OWML.AnchorCoordsPosition.x - PlayerAircraft.OWML.Map.position.x,
+                    PlayerAircraft.OWML.AnchorCoordsPosition.y - PlayerAircraft.OWML.Map.position.y,
+                    PlayerAircraft.OWML.AnchorCoordsPosition.z - PlayerAircraft.OWML.Map.position.z
+                    );
+                if (offsetHeight > AtmosphereDarkStart)
                 {
-                    Skybox.SetFloat("_AtmosphereThickness", baseAtmos - ((x - AtmosphereDarkStart) / AtmosphereDarkMax));
+                    Skybox.SetFloat("_AtmosphereThickness", baseAtmos - ((offsetHeight - AtmosphereDarkStart) / AtmosphereDarkMax));
                 }
                 else
                 {
                     Skybox.SetFloat("_AtmosphereThickness", 1);
                 }
+
+                if (CloudMat != null)
+                {
+                    CloudMat.SetVector("_OffsetXYZ", new Vector4(Offsets.x, baseHeight - Offsets.y, Offsets.z, 0));
+                }
             }
             if (PlayerAircraft.OWML == null)
             {
                 Skybox.SetFloat("_AtmosphereThickness", 1);
+                if (CloudMat != null)
+                {
+                    CloudMat.SetFloat("_FromHeight", baseHeight);
+                }
             }
         }
     }
@@ -312,6 +460,10 @@ public class PlayerUIScript : UdonSharpBehaviour
     {
         if (Audio != null)
         {
+            if (IntroMusic != null)
+            {
+                IntroMusic.Stop();
+            }
             IntroMusic = Intro;
             QueueAudio = Audio;
             isSwitchingMusic = true;
@@ -385,8 +537,11 @@ public class PlayerUIScript : UdonSharpBehaviour
             triggerEmpty = false;
             parentHolderTexts.position = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero;
             parentHolderTexts.rotation = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
-            parentHolderTexts.transform.position = parentHolderTexts.position;
-            parentHolderTexts.transform.position += textObjectVR[0].transform.forward * vrDistance;
+            Vector3 pos = Vector3.zero;
+            pos = parentHolderTexts.position;
+            pos += textObjectVR[0].transform.forward * vrDistance;
+            pos += textObjectVR[0].transform.up * verticalDistanceUi;
+            parentHolderTexts.transform.position = pos;
             parentHolderTexts.transform.rotation = localPlayer != null ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation : Quaternion.Euler(Vector3.zero);
             parentHolderTexts.transform.localScale = startsizeTextVR * vrSize;
             // foreach (Text x in textObject)
@@ -443,6 +598,7 @@ public class PlayerUIScript : UdonSharpBehaviour
                 else
                 {
                     musiFadeTimer = 0;
+                    if (IntroMusic != null) IntroMusic.Stop();
                     CurrentPlayingMusic.Stop();
                     CurrentPlayingMusic = QueueAudio;
                     isSwitchingMusic = false;

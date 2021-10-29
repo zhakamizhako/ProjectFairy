@@ -23,6 +23,9 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
     public Transform targetParent;
     public Transform originalParent;
     private bool moved = false;
+    private bool transfer = false;
+    private Vector3 mapCenter = Vector3.zero;
+    public float timeMove = 0f;
     // public Quaternion AnchorCoordsRotation;
     // public float maxX = 1000;
     // public float maxY = 1000;
@@ -104,23 +107,66 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
                     EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
                     Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
                     moved = true;
+                    mapCenter = EngineControl.VehicleMainObj.transform.position;
                 }
-                // if (!EngineControl.Taxiing)
-                // {
-                if (!EngineControl.Taxiing)
+
+                if (UIScript.OWMLMoveByChunks)
                 {
-                    EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                    var dist = Vector3.Distance(mapCenter, EngineControl.VehicleMainObj.transform.position);
+                    if (dist > (UIScript.ChunkDistance + 800f))
+                    {
+                        // if(transfer && dist < UIScript.ChunkDistance){
+                        //     transfer = false;
+                        // }
+                        // else if(!transfer){
+                        var ep = EngineControl.VehicleTransform.transform.position;
+                        EngineControl.VehicleMainObj.transform.position = new Vector3(ep.x - UIScript.ChunkDistance, ep.y - UIScript.ChunkDistance, ep.z - UIScript.ChunkDistance);
+                        var mp = Map.transform.position;
+                        Map.transform.position = new Vector3(mp.x + UIScript.ChunkDistance, mp.y + UIScript.ChunkDistance, mp.z + UIScript.ChunkDistance);
+                        mapCenter = Map.transform.position;
+                    }
                 }
                 else
                 {
-                    EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                    if (UIScript.OWMLMoveByTime) // move map by time
+                    {
+                        if (timeMove < UIScript.MoveByTimeSeconds)
+                        {
+                            timeMove = timeMove + Time.deltaTime;
+                        }
+                        else
+                        {
+                            timeMove = 0f;
+                            if (!EngineControl.Taxiing)
+                            {
+                                EngineControl.VehicleMainObj.transform.position = new Vector3(0, 0, 0);
+                            }
+                            else
+                            {
+                                EngineControl.VehicleMainObj.transform.position = new Vector3(0,0,0);
+                            }
+                            // Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
+                            Map.position = Map.position - AnchorCoordsPosition;
+                        }
+                    }
+                    else // move the map constantly
+                    {
+                        if (!EngineControl.Taxiing)
+                        {
+                            EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                        }
+                        else
+                        {
+                            EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
+                        }
+                        Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
+                    }
+
                 }
-                // EngineControl.VehicleMainObj.transform.position = new Vector3(AnchorCoordsPosition.x, testY ? AnchorCoordsPosition.y : EngineControl.VehicleMainObj.transform.position.y, AnchorCoordsPosition.z);
-                Map.transform.Translate(-(EngineControl.VehicleRigidbody.velocity * (Time.deltaTime))); //Divider set to 1. Maybe i should take that out. 
+
+
                 PosSync = -Map.transform.position + AnchorCoordsPosition;
-                // PosSync = -Map.transform.position + AnchorCoordsPosition;
-                if (syncRotate)
-                    RotSync = EngineControl.VehicleMainObj.transform.rotation;
+                if (syncRotate) RotSync = EngineControl.VehicleMainObj.transform.rotation;
             }
             else if (EngineControl.Passenger)
             {
@@ -144,8 +190,8 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
         {
             EngineControl.VehicleMainObj.transform.SetParent(originalParent);
             moved = false;
-            if(!AlwaysActive)
-            ScriptEnabled = false;
+            if (!AlwaysActive)
+                ScriptEnabled = false;
         }
 
         AnchorCoordsPosition = EngineControl.VehicleMainObj.transform.position;

@@ -66,6 +66,9 @@ public class MissileScript : UdonSharpBehaviour
     private Transform missileTransform;
     public AITurretScript turretScript;
     private MissileTargeterParent ptargeter;
+    public TriggerScript[] onExplode;
+    public TriggerScript[] onMiss;
+
     void Start()
     {
         if (type == "missile")
@@ -200,7 +203,11 @@ public class MissileScript : UdonSharpBehaviour
         }
     }
 
-    void Update()
+    // void FixedUpdate(){
+        
+    // }
+
+    void FixedUpdate()
     {
         // Debug.Log("I AM FIRED");
         if (isExploded)
@@ -272,6 +279,10 @@ public class MissileScript : UdonSharpBehaviour
                             if (missileDist < explodeAt)
                             {
                                 ExplodeMissile();
+                                if(onExplode!=null && onExplode.Length > 0){
+                                    int  m = Random.Range(0, onExplode.Length);
+                                    onExplode[m].run = true;
+                                }
                             }
                             if (angleToTarget > maxAngle)
                             {
@@ -355,7 +366,7 @@ public class MissileScript : UdonSharpBehaviour
                                     }
                                     else
                                     {
-                                        V = Vector3.zero;
+                                        V = new Vector3(0.00001f,0.00001f,0.00001f);
                                     }
                                     finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, Targeting.gameObject.transform.position, V);
                                     if (TargetTest != null)
@@ -381,7 +392,8 @@ public class MissileScript : UdonSharpBehaviour
                                     Vector3 targetVelocity = Targeting.position - targetPosLastFrame;
                                     targetVelocity /= Time.deltaTime;
 
-                                    float predictedSpeed = Mathf.Min(MissileRigidBody.velocity.magnitude * MissileTimer);
+                                    // float predictedSpeed = Mathf.Min(MissileRigidBody.velocity.magnitude * MissileTimer);
+                                    float predictedSpeed = Mathf.Min(MissileRigidBody.velocity.magnitude, MissileRigidBody.velocity.magnitude * MissileTimer);
                                     float timeToImpact = missileDist / Mathf.Max(predictedSpeed, 1.0f);
 
                                     // Create lead position based on target velocity and time to impact.                
@@ -423,6 +435,11 @@ public class MissileScript : UdonSharpBehaviour
                                     targetObjectTracker.removeTracker(this);
                                     calledOff = true;
                                 } //This will disable the missile alert in your cockpit.
+
+                                if(onMiss!=null && onMiss.Length > 0){
+                                    int  m = Random.Range(0, onMiss.Length);
+                                    onMiss[m].run = true;
+                                }
 
                             }
                         }
@@ -488,12 +505,19 @@ public class MissileScript : UdonSharpBehaviour
     {
         Vector3 targetRelativePosition = targetPosition - shooterPosition;
         Vector3 targetRelativeVelocity = targetVelocity - shooterVelocity;
-        float t = FirstOrderInterceptTime(
+
+        if (targetVelocity != Vector3.zero)
+        {
+            float t = FirstOrderInterceptTime(
             shotSpeed,
             targetRelativePosition,
             targetRelativeVelocity
         );
-        return targetPosition + t * (targetRelativeVelocity);
+            return targetPosition + t * (targetRelativeVelocity);
+        }
+        else{
+            return targetPosition;
+        }
     }
 
     public float FirstOrderInterceptTime(
