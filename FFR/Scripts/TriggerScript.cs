@@ -84,7 +84,7 @@ public class TriggerScript : UdonSharpBehaviour
     public string AnimatorString;
     public bool AnimatorArgument;
     public int RunAnimatorOn = 0;
-    public bool isSameAsEn = false;
+    public bool isSameAsEn = true;
     public bool isSameAsEnSound = true; // just default for safety shit
 
     public SceneAdaptor sceneAdaptorToRun; // Scene Adaptor to run after the dialogues run.
