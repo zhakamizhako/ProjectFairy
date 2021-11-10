@@ -23,7 +23,7 @@ public class PlayerUIScript : UdonSharpBehaviour
     public Slider VRDistanceSlider;
     public Slider VRDistanceSlider2;
     public Slider VRSizeSlider;
-    public Slider VRSizeSlider2;
+    public Slider VRSizeSlider2; 
     public Slider VerticalPositionSlider_UI;
     public Slider VerticalPositionSlider_HUD;
     public Text VerticalPositionText_UI;
@@ -73,6 +73,7 @@ public class PlayerUIScript : UdonSharpBehaviour
     public float IconSize = 0f;
     private bool triggerEmpty = false;
     public bool isEnglishOrJapanese = false; //False = english, japanese = 1;
+    public bool isEnglishOrJapaneseVoice = false; //0 = en, 1 = jp
     public Toggle LanguageEn;
     public Toggle LanguageJP;
     // public float triggerScriptTimeout = 15f;

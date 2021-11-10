@@ -179,6 +179,7 @@ public class TriggerScript : UdonSharpBehaviour
             if (!isRunning[currentX])
             {
                 isRunning[currentX] = true;
+                //dialogues
                 if (isSameAsEn || (!isSameAsEn && !UIScript.isEnglishOrJapanese))//en
                 {
                     if (UIScript.textObject[textObjectId] != null && !updateString)
@@ -189,10 +190,7 @@ public class TriggerScript : UdonSharpBehaviour
                     {
                         UIScript.textObjectVR[textObjectId].text = DialogLines[currentX];
                     }
-                    if (DialogSounds[currentX] != null)
-                    {
-                        DialogSounds[currentX].Play();
-                    }
+
                 }
                 if (!isSameAsEn && UIScript.isEnglishOrJapanese)//jp
                 {
@@ -204,16 +202,19 @@ public class TriggerScript : UdonSharpBehaviour
                     {
                         UIScript.textObjectVR[textObjectId].text = DialogLinesJP[currentX];
                     }
-                    if (isSameAsEnSound)
+                }
+
+                //Sound
+                if(isSameAsEnSound || (!isSameAsEnSound && !UIScript.isEnglishOrJapaneseVoice)){
+                     if (DialogSounds[currentX] != null)
                     {
-                        if (DialogSounds[currentX] != null)
-                        {
-                            DialogSounds[currentX].Play();
-                        }
-                        if (DialogSoundsJP[currentX] != null)
-                        {
-                            DialogSoundsJP[currentX].Play();
-                        }
+                        DialogSounds[currentX].Play();
+                    }
+                }
+                if(!isSameAsEnSound && UIScript.isEnglishOrJapaneseVoice){
+                     if (DialogSoundsJP[currentX] != null)
+                    {
+                        DialogSoundsJP[currentX].Play();
                     }
                 }
 
@@ -305,7 +306,7 @@ public class TriggerScript : UdonSharpBehaviour
                             }
                             ranAfterRun = true;
                         }
-                        if (runSceneAdaptor)
+                        if (runSceneAdaptor && sceneAdaptorToRun != null)
                         {
                             sceneAdaptorToRun.startScene();
                         }
