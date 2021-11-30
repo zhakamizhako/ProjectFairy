@@ -207,7 +207,7 @@ public class MissileScript : UdonSharpBehaviour
         
     // }
 
-    void FixedUpdate()
+    void Update()
     {
         // Debug.Log("I AM FIRED");
         if (isExploded)
