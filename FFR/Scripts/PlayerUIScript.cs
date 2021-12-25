@@ -78,6 +78,7 @@ public class PlayerUIScript : UdonSharpBehaviour
     public Toggle LanguageJP;
     // public float triggerScriptTimeout = 15f;
     public EngineController PlayerAircraft;
+    public OpenWorldMovementLogic OWMLPlayer;
     public MissileTrackerAndResponse sampleThing;
     [Header("Skybox Settings")]
     public Material Skybox;
@@ -113,6 +114,8 @@ public class PlayerUIScript : UdonSharpBehaviour
     public bool isSinglePlayer = false;
     public bool isMultiplayer = false;
     public InstanceownerChecker InstanceOwner;
+
+    public bool AIDamageLocalOnly = true; //change this for multiplayer.
 
     void Start()
     {
@@ -218,6 +221,19 @@ public class PlayerUIScript : UdonSharpBehaviour
         verticalDistanceHud = startVerticalDistanceHUD;
         verticalDistanceUi = startVerticalDistanceUI;
         IconSize = startIconSize;
+    }
+
+    public void setLanguageJP(bool arg){
+        if(arg==null){
+            isEnglishOrJapanese = !isEnglishOrJapanese;
+        }else{
+            isEnglishOrJapanese = arg;
+        }
+    }
+
+    public void setAudioEn(bool arg){
+
+        isEnglishOrJapaneseVoice = !isEnglishOrJapaneseVoice;
     }
 
     public void SetOWMLTimeInterval(float x)

@@ -79,6 +79,9 @@ public class TriggerScript : UdonSharpBehaviour
     private bool updateString = false;
     [System.NonSerializedAttribute] public bool ranAfterRun = false;
     [System.NonSerializedAttribute] public bool enabledGameObject = false;
+    public bool canIgnoreDialogue = false;
+    public float timeBeforeIgnore = 3f;
+    public float timerForIgnore = 0f;
 
     public Animator aniTrigger;
     public string AnimatorString;
@@ -163,6 +166,22 @@ public class TriggerScript : UdonSharpBehaviour
             stopped = false;
         }
 
+        if (canIgnoreDialogue && ran && !stopped && !playRegardless && UIScript != null && UIScript.TriggerScripts[textObjectId] != null && UIScript.TriggerScripts[textObjectId][0] != this)
+        {
+            if (timerForIgnore < timeBeforeIgnore)
+            {
+                timerForIgnore = timerForIgnore + Time.deltaTime;
+            }
+            if (timerForIgnore > timeBeforeIgnore)
+            {
+                run = false;
+                ran = false;
+                stopped = true;
+                UIScript.RemoveTrigger(this, textObjectId);
+                timerForIgnore = 0f;
+            }
+        }
+
         if (ran & !stopped && ((!playRegardless && UIScript.TriggerScripts.Length > 0 && UIScript.TriggerScripts[textObjectId] != null && UIScript.TriggerScripts[textObjectId].Length > 0 && UIScript.TriggerScripts[textObjectId][0] == this) || playRegardless))
         {
             // if ((ran) && !stopped) {
@@ -205,14 +224,16 @@ public class TriggerScript : UdonSharpBehaviour
                 }
 
                 //Sound
-                if(isSameAsEnSound || (!isSameAsEnSound && !UIScript.isEnglishOrJapaneseVoice)){
-                     if (DialogSounds[currentX] != null)
+                if (isSameAsEnSound || (!isSameAsEnSound && !UIScript.isEnglishOrJapaneseVoice))
+                {
+                    if (DialogSounds[currentX] != null)
                     {
                         DialogSounds[currentX].Play();
                     }
                 }
-                if(!isSameAsEnSound && UIScript.isEnglishOrJapaneseVoice){
-                     if (DialogSoundsJP[currentX] != null)
+                if (!isSameAsEnSound && UIScript.isEnglishOrJapaneseVoice)
+                {
+                    if (DialogSoundsJP[currentX] != null)
                     {
                         DialogSoundsJP[currentX].Play();
                     }
@@ -292,6 +313,7 @@ public class TriggerScript : UdonSharpBehaviour
                         }
                         currentX = 0;
                         updateString = false;
+                        timerForIgnore = 0f;
                         if (AfterRun != null && !ranAfterRun)
                         {
 

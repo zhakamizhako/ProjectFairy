@@ -349,16 +349,22 @@ public class AIObject : UdonSharpBehaviour
 
     void OnParticleCollision(GameObject other)
     {
-        // Debug.Log("Damage call?");
-        // var getch =  other.GetComponent<GunParticle>();
-        // if(other!=null && getch!=null && getch.fromShot!=null )
-        if (localPlayer == null)
+        bool damage = false;
+        if (TrackerObject != null && TrackerObject.UIScript != null && !TrackerObject.UIScript.AIDamageLocalOnly)
         {
-            hitDamage();
+            damage = true;
         }
-        else
+
+        if (damage || Networking.IsOwner(localPlayer, gameObject))
         {
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hitDamage");
+            if (localPlayer == null)
+            {
+                hitDamage();
+            }
+            else
+            {
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hitDamage");
+            }
         }
     }
     // void FixedUpdate()
@@ -407,12 +413,17 @@ public class AIObject : UdonSharpBehaviour
         }
     }
 
-    public void OwnershipSetter(){
-        if(TrackerObject!=null){
-            if(TrackerObject.UIScript!=null && TrackerObject.UIScript.isSinglePlayer && TrackerObject.UIScript.InstanceOwner!=null){
-                if(Networking.GetOwner(gameObject)!=TrackerObject.UIScript.InstanceOwner.Owner){
-                    Networking.SetOwner(TrackerObject.UIScript.InstanceOwner.Owner,gameObject);
-                    foreach(AITurretScript x in TurretScripts){
+    public void OwnershipSetter()
+    {
+        if (TrackerObject != null)
+        {
+            if (TrackerObject.UIScript != null && TrackerObject.UIScript.isSinglePlayer && TrackerObject.UIScript.InstanceOwner != null)
+            {
+                if (Networking.GetOwner(gameObject) != TrackerObject.UIScript.InstanceOwner.Owner)
+                {
+                    Networking.SetOwner(TrackerObject.UIScript.InstanceOwner.Owner, gameObject);
+                    foreach (AITurretScript x in TurretScripts)
+                    {
                         Networking.SetOwner(TrackerObject.UIScript.InstanceOwner.Owner, x.gameObject);
                     }
                 }
@@ -553,8 +564,8 @@ public class AIObject : UdonSharpBehaviour
                         {
                             if (!tooClose)
                             {
-                                if(EscapePointTransforms!=null && EscapePointTransforms.Length > 0)tooCloseRandomizer = Random.Range(0, EscapePointTransforms.Length);
-                                if(EscapePointTransformVectors!=null && EscapePointTransformVectors.Length > 0)tooCloseRandomizer = Random.Range(0, EscapePointTransformVectors.Length);
+                                if (EscapePointTransforms != null && EscapePointTransforms.Length > 0) tooCloseRandomizer = Random.Range(0, EscapePointTransforms.Length);
+                                if (EscapePointTransformVectors != null && EscapePointTransformVectors.Length > 0) tooCloseRandomizer = Random.Range(0, EscapePointTransformVectors.Length);
                             }
                             tooClose = true;
                         }
@@ -569,27 +580,27 @@ public class AIObject : UdonSharpBehaviour
                         if (tooClose)
                         {
 
-                            // switch (tooCloseRandomizer)
-                            // {
-                            //     case 0:
-                            //         escapePoint = xxx.up * -1000f;
-                            //         break;
-                            //     case 1:
-                            //         escapePoint = xxx.up * -1000f;
-                            //         break;
-                            //     case 2:
-                            //         escapePoint = xxx.forward * 1000f;
-                            //         break;
-                            //     case 3:
-                            //         escapePoint = xxx.forward * -1000f;
-                            //         break;
-                            //     case 4:
-                            //         escapePoint = xxx.right * 1000f;
-                            //         break;
-                            //     case 5:
-                            //         escapePoint = xxx.right * -1000f;
-                            //         break;
-                            // }
+                            switch (tooCloseRandomizer)
+                            {
+                                case 0:
+                                    escapePoint = xxx.up * 1000f;
+                                    break;
+                                case 1:
+                                    escapePoint = xxx.up * 1000f;
+                                    break;
+                                case 2:
+                                    escapePoint = xxx.forward * 1000f;
+                                    break;
+                                case 3:
+                                    escapePoint = xxx.forward * -1000f;
+                                    break;
+                                case 4:
+                                    escapePoint = xxx.right * 1000f;
+                                    break;
+                                case 5:
+                                    escapePoint = xxx.right * -1000f;
+                                    break;
+                            }
                         }
 
 
@@ -1018,7 +1029,7 @@ public class AIObject : UdonSharpBehaviour
     void Update()
     {
         // if(TrackerObject!=null && TrackerObject.UIScript!=null && TrackerObject.UIScript.isSinglePlayer && Networking.GetOwner(gameObject)!=localPlayer){
-            // OwnershipSetter();
+        // OwnershipSetter();
         // }
         if (!dead && (type == "air" || type == "heavyair"))
         {

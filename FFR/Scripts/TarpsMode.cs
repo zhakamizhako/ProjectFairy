@@ -41,27 +41,36 @@ public class TarpsMode : UdonSharpBehaviour
     private RaycastHit[] hits;
     private float timeset = 0;
     private float timesetmax = 2;
+    private bool sleeping = false;
 
     void Update()
     {
         if (!weaponSelector.EngineController.Piloting && !isSelected && isTarpsAvailable)
         {
-            if (CurrentTarpsTarget != null)
+            if (!sleeping)
             {
-                CurrentTarpsTarget = null;
-                isScanning = false;
-                isBreaking = false;
-                tarpAreas = null;
-                TarpAreasLength = 0;
-            }
-            if (TarpsAni != null)
-            {
-                TarpsAni.SetBool("tarps", false);
-            }
-            UITarpsAni.SetBool("ReadyScan", false);
+                if (CurrentTarpsTarget != null)
+                {
+                    CurrentTarpsTarget = null;
+                    isScanning = false;
+                    isBreaking = false;
+                    tarpAreas = null;
+                    TarpAreasLength = 0;
 
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "stopScan");
-            return;
+                }
+                if (TarpsAni != null)
+                {
+                    TarpsAni.SetBool("tarps", false);
+                }
+                    UITarpsAni.SetBool("ReadyScan", false);
+
+                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "stopScan");
+                    sleeping = true;
+
+
+                return;
+            }
+
         }
         if (weaponSelector.EngineController.Piloting && !isSelected)
         {
@@ -111,6 +120,7 @@ public class TarpsMode : UdonSharpBehaviour
             if (weaponSelector.EngineController.Piloting && isSelected)
             {
                 inputChecker();
+                sleeping = false;
             }
             if (isScanning)
             {
@@ -377,7 +387,8 @@ public class TarpsMode : UdonSharpBehaviour
         {
             return;
         }
-        if(!(tarpAreas.Length > 0)){
+        if (!(tarpAreas.Length > 0))
+        {
             return;
         }
         if (TarpAreasLength > 0)

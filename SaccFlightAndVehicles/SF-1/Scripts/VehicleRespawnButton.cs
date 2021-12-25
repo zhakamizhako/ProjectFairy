@@ -43,6 +43,7 @@ public class VehicleRespawnButton : UdonSharpBehaviour
         EngineControl.EffectsControl.PlaneAnimator.SetTrigger("respawn");//this animation disables EngineControl.dead after 5s
         EngineControl.EffectsControl.PlaneAnimator.SetTrigger("instantgeardown");
         EngineControl.VehicleRigidbody.velocity = Vector3.zero;
+        if(EngineControl.hbcontroller)
         EngineControl.hbcontroller.Respawn();
         if(EngineControl.OWML != null){
             EngineControl.OWML.AnchorCoordsPosition = (EngineControl.gameObject.transform.localPosition = Vector3.zero);

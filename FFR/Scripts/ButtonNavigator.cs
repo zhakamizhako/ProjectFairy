@@ -27,12 +27,16 @@ public class ButtonNavigator : UdonSharpBehaviour
     public Text WestText;
     public EngineController EngineControl;
     public GameObject QueryObject;
+    //Circle Menu Animator
     public Animator BUIAnimator;
     public Text DebugText;
     public float standbyTime = 0f;
     public bool RSelected = false;
     public bool isDebug = false;
     public CanvasHud CVHVR;
+    public Animator MenuAnimator;
+
+    public ButtonListenerUI[] Categories;
 
     void Start()
     {
@@ -40,11 +44,74 @@ public class ButtonNavigator : UdonSharpBehaviour
         {
             QueryObject.SetActive(false);
         }
+
+        if (selectedButton != null && MenuAnimator != null)
+        {
+            MenuAnimator.SetTrigger(selectedButton.AnimatorTrigger);
+            MenuAnimator.SetTrigger(selectedButton.AnimatorCategory);
+        }
+    }
+
+    public void buttonSelectCallback()
+    {
+        if (MenuAnimator != null)
+        {
+            MenuAnimator.SetTrigger(selectedButton.AnimatorTrigger);
+            MenuAnimator.SetTrigger(selectedButton.AnimatorCategory);
+        }
+        if (selectedButton.audioSFX != null && selectedButton.select != null)
+        {
+            selectedButton.audioSFX.PlayOneShot(selectedButton.select);
+        }
+    }
+
+    public void handleCategory(string dir, ButtonListenerUI btton)
+    {
+        if (Categories != null)
+        {
+            Categories[btton.categoryId] = btton;
+            if (dir == "up")
+            {
+                if (btton.categoryId - 1 < 0)
+                {
+                    selectedButton = Categories[Categories.Length - 1];
+                }
+                else
+                {
+                    selectedButton = Categories[btton.categoryId - 1];
+                }
+            }
+            if (dir == "down")
+            {
+                if (btton.categoryId + 1 == Categories.Length)
+                {
+                    selectedButton = Categories[0];
+                }
+                else
+                {
+                    selectedButton = Categories[btton.categoryId + 1];
+                }
+            }
+            if (selectedButton.gameObject.GetComponent<Button>() != null)
+            {
+                selectedButton.gameObject.GetComponent<Button>().Select();
+            }
+            else if (selectedButton.gameObject.GetComponent<Slider>() != null)
+            {
+                selectedButton.gameObject.GetComponent<Slider>().Select();
+            }
+            buttonSelectCallback();
+        }
+        else
+        {
+            btton.navigate(dir, true);
+        }
     }
 
     void Update()
     {
-        if(EngineControl == null || !(EngineControl.Piloting || EngineControl.Passenger) ){
+        if (EngineControl == null || !(EngineControl.Piloting || EngineControl.Passenger))
+        {
             return;
         }
         if (standbyTime < 1)

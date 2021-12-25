@@ -202,16 +202,23 @@ public class AITurretScript : UdonSharpBehaviour
 
     void OnParticleCollision(GameObject other)
     {
-        if (localPlayer == null)
+        bool damage = false;
+        if (TrackerObject != null && TrackerObject.UIScript != null && !TrackerObject.UIScript.AIDamageLocalOnly)
         {
-            hitDamage();
+            damage = true;
         }
-        else
-        {
 
-            SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hitDamage");
+        if (damage || Networking.IsOwner(localPlayer, gameObject))
+        {
+            if (localPlayer == null)
+            {
+                hitDamage();
+            }
+            else
+            {
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "hitDamage");
+            }
         }
-        // Debug.LogError("PARTICLE CONTACT");
     }
     public void hitDamage()
     {

@@ -2470,7 +2470,8 @@ public class EngineController : UdonSharpBehaviour
         }
         if (mistracker != null)
             mistracker.cleanup();
-        // EffectsControl.Tarps = false;
+        // EffectsControl.Tarps = false;\
+        if(hbcontroller!=null)
         hbcontroller.Respawn();
         EffectsControl.PlaneAnimator.SetTrigger("explode");
 
