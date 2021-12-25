@@ -93,6 +93,7 @@ public class AITurretScript : UdonSharpBehaviour
     public float maxmultiplier = 4f;
     private bool onHalfHealthrun = false;
     private bool onDestroyRan = false;
+    public PlayerUIScript UIScript;
 
     void Start()
     {
@@ -107,11 +108,24 @@ public class AITurretScript : UdonSharpBehaviour
             initRendered = TrackerObject.isRendered;
             initShouldFire = shouldFire;
         }
-        if(turretType=="FLAK" && MissileFab!=null){
+        if (turretType == "FLAK" && MissileFab != null)
+        {
             speedflak = MissileFab.GetComponent<MissileScript>().missileSpeed;
         }
         isFiring = false;
         isFiringCiws = false;
+
+        if(UIScript==null){
+            UIScript = TrackerObject!=null ? 
+                        TrackerObject.UIScript :
+                        (mainAIObject.TrackerObject!=null ? (mainAIObject.TrackerObject.UIScript!=null ? mainAIObject.TrackerObject.UIScript : null) : 
+                        mainAIObject.UIScript!=null ? mainAIObject.UIScript : null
+                         );
+                        
+            if(UIScript==null)
+            Debug.LogError("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
+        }
+
 
     }
 
@@ -129,12 +143,15 @@ public class AITurretScript : UdonSharpBehaviour
         }
     }
 
-    public void setDamagable(){
+    public void setDamagable()
+    {
         damageable = true;
     }
 
-    public void setEnableTurret(){
-        if(TrackerObject!=null){
+    public void setEnableTurret()
+    {
+        if (TrackerObject != null)
+        {
             TrackerObject.isRendered = true;
             TrackerObject.isTargetable = true;
         }
@@ -233,7 +250,8 @@ public class AITurretScript : UdonSharpBehaviour
     void Update()
     {
         //animation syncer
-        if(TurretAni!=null && !Networking.IsOwner(gameObject)){
+        if (TurretAni != null && !Networking.IsOwner(gameObject))
+        {
             TurretAni.SetBool("fireciws", isFiringCiws);
         }
 
@@ -274,7 +292,8 @@ public class AITurretScript : UdonSharpBehaviour
         {
             if (onHalfHealth != null && !onHalfHealthrun)
             {
-                onHalfHealth.run = true;
+                // onHalfHealth.run = true;
+                UIScript.AddToQueueScript(onHalfHealth);
                 onHalfHealthrun = true;
             }
         }
@@ -304,7 +323,8 @@ public class AITurretScript : UdonSharpBehaviour
             }
             if (onDestroy != null && !onDestroyRan)
             {
-                onDestroy.run = true;
+                UIScript.AddToQueueScript(onDestroy);
+                // onDestroy.run = true;
                 onDestroyRan = true;
             }
         }
@@ -687,7 +707,7 @@ public class AITurretScript : UdonSharpBehaviour
                     {
                         float distanceTarget = Vector3.Distance(LineOfSightDetector.position, Target.gameObject.transform.position);
                         float randa = Random.Range(minmultiplier, maxmultiplier);
-                        TimerLimitFlak = (distanceTarget / speedflak) * randa ;
+                        TimerLimitFlak = (distanceTarget / speedflak) * randa;
                         if (localPlayer == null || Networking.IsOwner(gameObject))
                         {
                             if (isAngleSpecific)
@@ -844,8 +864,10 @@ public class AITurretScript : UdonSharpBehaviour
 
                     }
                 }
-                if(turretType=="CIWS"){
-                    if(TurretAni!=null){
+                if (turretType == "CIWS")
+                {
+                    if (TurretAni != null)
+                    {
                         TurretAni.SetBool("fireciws", false);
                         TurretFire.Stop();
                     }
@@ -913,7 +935,8 @@ public class AITurretScript : UdonSharpBehaviour
         );
             return targetPosition + t * (targetRelativeVelocity);
         }
-        else{
+        else
+        {
             return targetPosition;
         }
     }

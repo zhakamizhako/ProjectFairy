@@ -410,7 +410,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                 if (onEnter != null)
                 {
                     Debug.Log("Enter");
-                    onEnter.run = true;
+                    // onEnter.run = true;
+                    UIScript.AddToQueueScript(onEnter);
                 }
             }
         }
@@ -711,7 +712,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                 int xRand = Random.Range(AddIgnore ? -1 : 0, RunMissiles.Length);
                 if (xRand != -1)
                 {
-                    RunMissiles[xRand].run = true;
+                    // RunMissiles[xRand].run = true;
+                    UIScript.AddToQueueScript(RunMissiles[xRand]);
                 }
             }
         }
@@ -740,7 +742,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                     int xRand = Random.Range(AddIgnore ? -1 : 0, RunLocks.Length);
                     if (xRand != -1)
                     {
-                        RunLocks[xRand].run = true;
+                        // RunLocks[xRand].run = true;
+                        UIScript.AddToQueueScript(RunLocks[xRand]);
                     }
                 }
 
@@ -784,7 +787,8 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
                     int randx = Random.Range(AddIgnore ? -1 : 0, RunDestroys.Length);
                     if (randx != -1)
                     {
-                        RunDestroys[randx].run = true;
+                        // RunDestroys[randx].run = true;
+                        UIScript.AddToQueueScript(RunDestroys[randx]);
                     }
                     ranDestroy = true;
                 }

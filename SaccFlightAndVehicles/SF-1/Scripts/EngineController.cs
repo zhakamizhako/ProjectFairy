@@ -2476,7 +2476,9 @@ public class EngineController : UdonSharpBehaviour
         EffectsControl.PlaneAnimator.SetTrigger("explode");
 
         if(deadTrigger!=null){
-            deadTrigger.run = true;
+            if(OWML!=null && OWML.UIScript!=null)
+            // deadTrigger.run = true;
+            OWML.UIScript.AddToQueueScript(deadTrigger);
         }
 
         if(OWML!=null){

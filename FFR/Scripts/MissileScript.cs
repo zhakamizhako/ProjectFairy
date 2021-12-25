@@ -69,6 +69,8 @@ public class MissileScript : UdonSharpBehaviour
     public TriggerScript[] onExplode;
     public TriggerScript[] onMiss;
 
+    public PlayerUIScript UIScript;
+
     void Start()
     {
         if (type == "missile")
@@ -139,6 +141,15 @@ public class MissileScript : UdonSharpBehaviour
         {
             // Debug.Log ("Target Must not be null????");
         }
+
+        if (UIScript == null)
+        {
+            UIScript = onExplode!=null && onExplode.Length > 0 && onExplode[0].UIScript!=null ? onExplode[0].UIScript :
+                        onMiss!=null && onMiss.Length > 0 && onMiss[0].UIScript!=null ? onMiss[0].UIScript : null;
+
+            if (UIScript == null)
+                Debug.LogWarning("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
+        }
     }
 
     //Missile on Impact
@@ -204,7 +215,7 @@ public class MissileScript : UdonSharpBehaviour
     }
 
     // void FixedUpdate(){
-        
+
     // }
 
     void Update()
@@ -279,9 +290,11 @@ public class MissileScript : UdonSharpBehaviour
                             if (missileDist < explodeAt)
                             {
                                 ExplodeMissile();
-                                if(onExplode!=null && onExplode.Length > 0){
-                                    int  m = Random.Range(0, onExplode.Length);
-                                    onExplode[m].run = true;
+                                if (onExplode != null && onExplode.Length > 0)
+                                {
+                                    int m = Random.Range(0, onExplode.Length);
+                                    // onExplode[m].run = true;
+                                    UIScript.AddToQueueScript(onExplode[m]);
                                 }
                             }
                             if (angleToTarget > maxAngle)
@@ -366,7 +379,7 @@ public class MissileScript : UdonSharpBehaviour
                                     }
                                     else
                                     {
-                                        V = new Vector3(0.00001f,0.00001f,0.00001f);
+                                        V = new Vector3(0.00001f, 0.00001f, 0.00001f);
                                     }
                                     finalVectors = FirstOrderIntercept(missile.gameObject.transform.position, MissileRigidBody.velocity, MissileRigidBody.velocity.magnitude, Targeting.gameObject.transform.position, V);
                                     if (TargetTest != null)
@@ -436,9 +449,11 @@ public class MissileScript : UdonSharpBehaviour
                                     calledOff = true;
                                 } //This will disable the missile alert in your cockpit.
 
-                                if(onMiss!=null && onMiss.Length > 0){
-                                    int  m = Random.Range(0, onMiss.Length);
-                                    onMiss[m].run = true;
+                                if (onMiss != null && onMiss.Length > 0)
+                                {
+                                    int m = Random.Range(0, onMiss.Length);
+                                    // onMiss[m].run = true;
+                                    UIScript.AddToQueueScript(onMiss[m]);
                                 }
 
                             }
@@ -515,7 +530,8 @@ public class MissileScript : UdonSharpBehaviour
         );
             return targetPosition + t * (targetRelativeVelocity);
         }
-        else{
+        else
+        {
             return targetPosition;
         }
     }

@@ -232,6 +232,7 @@ public class AIObject : UdonSharpBehaviour
     public bool inited = false;
 
     private int tooCloseRandomizer = 0; //0 -> down, 1 -> left, 2-> right, 3-> up, 4-> back, 5-> forward
+    public PlayerUIScript UIScript;
     void Start()
     {
         fullHealth = Health;
@@ -283,6 +284,15 @@ public class AIObject : UdonSharpBehaviour
         startArea = AIClassTransform.transform.localPosition;
         startAreaRotation = AIClassTransform.transform.localRotation;
         inited = true;
+
+        if(UIScript==null){
+            UIScript = TrackerObject!=null ? 
+                        TrackerObject.UIScript :
+                        null;
+                        
+            if(UIScript==null)
+            Debug.LogError("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
+        }
 
         // EngineController x;
         // x.VehicleRigidbody.angularVelocity
@@ -1083,7 +1093,8 @@ public class AIObject : UdonSharpBehaviour
                     {
                         if (Networking.IsOwner(gameObject))
                         {
-                            onHalfHealth.run = true;
+                            // onHalfHealth.run = true;
+                            UIScript.AddToQueueScript(onHalfHealth);
                         }
                         triggerHalfHealthRan = true;
                     }
@@ -1128,7 +1139,8 @@ public class AIObject : UdonSharpBehaviour
                                         enableMainTurrets = true;
                                         if (onDeadTurrets != null && !triggerDeadTurretsRan)
                                         {
-                                            onDeadTurrets.run = true;
+                                            // onDeadTurrets.run = true;
+                                            UIScript.AddToQueueScript(onDeadTurrets);
                                             triggerDeadTurretsRan = true;
                                             // Debug.Log("TURRET END"); 
                                         }
@@ -1154,7 +1166,8 @@ public class AIObject : UdonSharpBehaviour
                                     {
                                         if (onHalfTurrets != null && !triggerHalfTurretRan)
                                         {
-                                            onHalfTurrets.run = true;
+                                            // onHalfTurrets.run = true;
+                                            UIScript.AddToQueueScript(onHalfTurrets);
                                             triggerHalfTurretRan = true;
                                         }
                                     }
@@ -1319,7 +1332,8 @@ public class AIObject : UdonSharpBehaviour
             if (AIObjectAnimator != null) { AIObjectAnimator.SetTrigger("dead"); }
             if (onDestroy != null && !onDestroyRan)
             {
-                onDestroy.run = true;
+                // onDestroy.run = true;
+                UIScript.AddToQueueScript(onDestroy);
                 onDestroyRan = true;
             }
             if (!deadplay)

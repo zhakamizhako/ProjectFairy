@@ -20,33 +20,50 @@ public class ConditionalTriggerScript : UdonSharpBehaviour
     public float delay = 0f;
     private float timer = 0f;
     private bool scriptRun = false;
+    public PlayerUIScript UIScript;
     [System.NonSerializedAttribute] [HideInInspector] public VRCPlayerApi localPlayer;
     // private int countAITurretsGood;
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
+        if (UIScript == null)
+        {
+            UIScript = ScriptToRun.UIScript !=null ? ScriptToRun.UIScript : null;
+
+            if (UIScript == null)
+                Debug.LogError("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
+        }
     }
 
     public void runScript()
     {
-        if (ScriptToRun != null){
-            ScriptToRun.run = true;
+        if (ScriptToRun != null)
+        {
+            // ScriptToRun.run = true;
+            UIScript.AddToQueueScript(ScriptToRun);
+
             scriptRun = false;
             timer = 0f;
         }
-            
+
     }
 
     void Update()
     {
-        if(scriptRun){
-            if(timer < delay){
+        if (scriptRun)
+        {
+            if (timer < delay)
+            {
                 timer += Time.deltaTime;
-            }else{
-                if(runInSync && localPlayer!=null){
+            }
+            else
+            {
+                if (runInSync && localPlayer != null)
+                {
                     SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "runScript");
                 }
-                else{
+                else
+                {
                     runScript();
                 }
             }

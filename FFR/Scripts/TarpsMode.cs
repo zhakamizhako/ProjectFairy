@@ -43,6 +43,16 @@ public class TarpsMode : UdonSharpBehaviour
     private float timesetmax = 2;
     private bool sleeping = false;
 
+    public PlayerUIScript UIScript;
+
+    void Start()
+    {
+        if (UIScript == null)
+        {
+            Debug.LogError("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
+        }
+    }
+
     void Update()
     {
         if (!weaponSelector.EngineController.Piloting && !isSelected && isTarpsAvailable)
@@ -62,10 +72,10 @@ public class TarpsMode : UdonSharpBehaviour
                 {
                     TarpsAni.SetBool("tarps", false);
                 }
-                    UITarpsAni.SetBool("ReadyScan", false);
+                UITarpsAni.SetBool("ReadyScan", false);
 
-                    SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "stopScan");
-                    sleeping = true;
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "stopScan");
+                sleeping = true;
 
 
                 return;
@@ -198,7 +208,8 @@ public class TarpsMode : UdonSharpBehaviour
                 if (CurrentTarpsTarget.AfterScan != null && CurrentTarpsTarget.AfterScan.Length > 0)
                 {
                     int x = CurrentTarpsTarget.AfterScan.Length == 0 ? 0 : Random.Range(0, CurrentTarpsTarget.AfterScan.Length - 1);
-                    CurrentTarpsTarget.AfterScan[x].run = true;
+                    // CurrentTarpsTarget.AfterScan[x].run = true;
+                    UIScript.AddToQueueScript(CurrentTarpsTarget.AfterScan[x]);
                 }
                 if (CurrentTarpsTarget.HideAfterScan)
                 {
@@ -231,7 +242,8 @@ public class TarpsMode : UdonSharpBehaviour
             if (!isBreakingRan && CurrentTarpsTarget.onBreakingScan != null && CurrentTarpsTarget.onBreakingScan.Length > 0)
             {
                 int x = CurrentTarpsTarget.onBreakingScan.Length == 0 ? 0 : Random.Range(0, CurrentTarpsTarget.onBreakingScan.Length - 1);
-                CurrentTarpsTarget.onBreakingScan[x].run = true;
+                // CurrentTarpsTarget.onBreakingScan[x].run = true;
+                UIScript.AddToQueueScript(CurrentTarpsTarget.onBreakingScan[x]);
                 isBreakingRan = true;
             }
 
@@ -282,7 +294,8 @@ public class TarpsMode : UdonSharpBehaviour
             if (CurrentTarpsTarget.ScanFail != null && CurrentTarpsTarget.ScanFail.Length > 0)
             {
                 int x = CurrentTarpsTarget.ScanFail.Length == 0 ? 0 : Random.Range(0, CurrentTarpsTarget.ScanFail.Length - 1);
-                CurrentTarpsTarget.ScanFail[x].run = true;
+                // CurrentTarpsTarget.ScanFail[x].run = true;
+                UIScript.AddToQueueScript(CurrentTarpsTarget.ScanFail[x]);
             }
         }
         if (CurrentTarpsTarget != null && CurrentTarpsTarget.ReturnToZeroIfFail)
@@ -461,7 +474,8 @@ public class TarpsMode : UdonSharpBehaviour
             if (CurrentTarpsTarget.onEnterScan != null && CurrentTarpsTarget.onEnterScan.Length > 0)
             {
                 int x = CurrentTarpsTarget.onEnterScan.Length == 0 ? 0 : Random.Range(0, CurrentTarpsTarget.onEnterScan.Length - 1);
-                CurrentTarpsTarget.onEnterScan[x].run = true;
+                // CurrentTarpsTarget.onEnterScan[x].run = true;
+                UIScript.AddToQueueScript(CurrentTarpsTarget.onEnterScan[x]);
             }
         }
     }

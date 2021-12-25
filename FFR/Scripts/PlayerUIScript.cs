@@ -23,7 +23,7 @@ public class PlayerUIScript : UdonSharpBehaviour
     public Slider VRDistanceSlider;
     public Slider VRDistanceSlider2;
     public Slider VRSizeSlider;
-    public Slider VRSizeSlider2; 
+    public Slider VRSizeSlider2;
     public Slider VerticalPositionSlider_UI;
     public Slider VerticalPositionSlider_HUD;
     public Text VerticalPositionText_UI;
@@ -223,15 +223,20 @@ public class PlayerUIScript : UdonSharpBehaviour
         IconSize = startIconSize;
     }
 
-    public void setLanguageJP(bool arg){
-        if(arg==null){
+    public void setLanguageJP(bool arg)
+    {
+        if (arg == null)
+        {
             isEnglishOrJapanese = !isEnglishOrJapanese;
-        }else{
+        }
+        else
+        {
             isEnglishOrJapanese = arg;
         }
     }
 
-    public void setAudioEn(bool arg){
+    public void setAudioEn(bool arg)
+    {
 
         isEnglishOrJapaneseVoice = !isEnglishOrJapaneseVoice;
     }
@@ -369,7 +374,7 @@ public class PlayerUIScript : UdonSharpBehaviour
             ChunkDistance = OWMLDistanceSlider.value;
             OWMLDistanceText.text = ChunkDistance.ToString("F0");
         }
-        
+
         if (MusicVolume != null && MusicVolumeText != null && MusicVolumeValue != MusicVolume.value)
         {
             MusicVolumeValue = MusicVolume.value;
@@ -471,8 +476,20 @@ public class PlayerUIScript : UdonSharpBehaviour
         }
     }
 
+    public void AddToQueueScript(TriggerScript scriptx)
+    {
+        scriptx.gameObject.SetActive(true);
+        scriptx.run = true;
+    }
 
-
+    public void RestartScript(TriggerScript scriptx)
+    {
+        scriptx.stopped = false;
+        scriptx.ranAfterRun = false;
+        scriptx.enabledGameObject = false;
+        scriptx.currentX = 0;
+        scriptx.runSceneAdaptor = false;
+    }
     public void ReceiveMusic(AudioSource Audio, AudioSource Intro, string Title)
     {
         if (Audio != null)

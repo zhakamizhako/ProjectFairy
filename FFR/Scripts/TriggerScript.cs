@@ -93,6 +93,8 @@ public class TriggerScript : UdonSharpBehaviour
     public SceneAdaptor sceneAdaptorToRun; // Scene Adaptor to run after the dialogues run.
     public bool runSceneAdaptor = false;
     [System.NonSerializedAttribute] public bool ranSceneAdaptor = false;
+    public float sleepIn = 5;
+    public float sleepTimer = 0f;
 
     void Start()
     {
@@ -146,6 +148,13 @@ public class TriggerScript : UdonSharpBehaviour
 
     void Update()
     {
+        if(!run){
+            sleepTimer = sleepTimer+Time.deltaTime;
+            if(sleepTimer > sleepIn){
+                sleepTimer = 0f;
+                gameObject.SetActive(false);
+            }
+        }
         if (run && runInSync == false && ran == false && !stopped)
         { // If global event..
             ran = true;
@@ -317,14 +326,16 @@ public class TriggerScript : UdonSharpBehaviour
                         if (AfterRun != null && !ranAfterRun)
                         {
 
-                            AfterRun.run = true;
+                            // AfterRun.run = true;
+                            UIScript.AddToQueueScript(AfterRun);
                             ranAfterRun = true;
                         }
                         if (AfterRuns != null)
                         {
                             foreach (TriggerScript x in AfterRuns)
                             {
-                                x.run = true;
+                                UIScript.AddToQueueScript(x);
+                                // x.run = true;
                             }
                             ranAfterRun = true;
                         }

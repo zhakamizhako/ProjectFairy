@@ -29,6 +29,7 @@ public class SceneAdaptor : UdonSharpBehaviour
 
     public AIObject[] aiScriptsToReset;
     public TarpsTarget[] tarps;
+    public PlayerUIScript UIScript;
 
     public void startScene()
     {
@@ -37,12 +38,14 @@ public class SceneAdaptor : UdonSharpBehaviour
             //reset scripts
             foreach (TriggerScript x in runScripts)
             {
-               x.resetScript();
+            //    x.resetScript();
+            UIScript.RestartScript(x);
 
             }
             foreach (TriggerScript x in resetScripts)
             {
-               x.resetScript();
+                UIScript.RestartScript(x);
+            //    x.resetScript();
             }
             //respawn ai
             foreach (AIObject x in aiScriptsToReset)
@@ -91,7 +94,8 @@ public class SceneAdaptor : UdonSharpBehaviour
 
             foreach (TriggerScript x in runScripts)
             {
-                x.run = true;
+                // x.run = true;
+                UIScript.AddToQueueScript(x);
             }
         }
 

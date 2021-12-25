@@ -380,13 +380,13 @@ public class RadarRender : UdonSharpBehaviour
             {
                 parsemode = false;
                 parsingMis = null;
-                Debug.Log("found");
+                // Debug.Log("found");
                 found = true;
             }
 
             if (counterList >= List.Length && !found)
             {
-                Debug.Log("Attempt to add");
+                // Debug.Log("Attempt to add");
                 AddRadarObject(null, parsingMis, null);
                 parsingMis = null;
                 counterList = 0;
@@ -395,7 +395,7 @@ public class RadarRender : UdonSharpBehaviour
 
             if (counterList < List.Length && !found)
             {
-                Debug.Log("counter");
+                // Debug.Log("counter");
                 counterList = counterList + 1;
             }
 
@@ -415,13 +415,13 @@ public class RadarRender : UdonSharpBehaviour
                 parsemode = false;
                 parsingMis = null;
                 parsingTarp = null;
-                Debug.Log("found");
+                // Debug.Log("found");
                 found = true;
             }
 
             if (counterList >= List.Length && !found)
             {
-                Debug.Log("Attempt to add");
+                // Debug.Log("Attempt to add");
                 AddRadarObject(null, null, parsingTarp);
                 parsingTarp = null;
                 counterList = 0;
@@ -430,7 +430,7 @@ public class RadarRender : UdonSharpBehaviour
 
             if (counterList < List.Length && !found)
             {
-                Debug.Log("counter");
+                // Debug.Log("counter");
                 counterList = counterList + 1;
             }
 
@@ -473,7 +473,7 @@ public class RadarRender : UdonSharpBehaviour
 
         temp[temp.Length - 1] = bb;
         List = temp;
-        Debug.Log("AAdded");
+        // Debug.Log("AAdded");
         waitForCallback = false;
         WaitForCallBackTimer_current = 0f;
         ToAssignTracker = null;

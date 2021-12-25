@@ -412,7 +412,8 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                             int xRand = Random.Range(AddIgnore ? -1 : 0, RunMissileLock.Length);
                             if (xRand != -1)
                             {
-                                RunMissileLock[xRand].run = true;
+                                // RunMissileLock[xRand].run = true;
+                                UIScript.AddToQueueScript(RunMissileLock[xRand]);
                             }
                         }
                     }
@@ -1091,7 +1092,8 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             int xRand = Random.Range(AddIgnore ? -1 : 0, RunMissileLaunch.Length);
             if (xRand != -1)
             {
-                RunMissileLaunch[xRand].run = true;
+                // RunMissileLaunch[xRand].run = true;
+                UIScript.AddToQueueScript(RunMissileLaunch[xRand]);
             }
         }
         // The next set of lines below basically what it does is it spawns the missile depending which pod is free if they're not on cooldown.
