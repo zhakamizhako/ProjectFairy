@@ -117,6 +117,11 @@ public class PlayerUIScript : UdonSharpBehaviour
 
     public bool AIDamageLocalOnly = true; //change this for multiplayer.
 
+    public TriggerScript[] TriggerList;
+    public bool sleepTriggers = false; //Sync can be an issue.
+
+    public Transform MapObject;
+
     void Start()
     {
         // Debug.Log("UI Script started");
@@ -210,6 +215,21 @@ public class PlayerUIScript : UdonSharpBehaviour
         Assert(textObject != null, "Start: TextObject MUST NOT BE null");
         Assert(textObjectVR != null, "Start: textobjectvr MUST NOT BE null");
         Assert(parentHolderTexts != null, "Start: parentholder MUST NOT BE null");
+
+        scanTriggers();
+    }
+
+    public void scanTriggers(){
+        // GameObject[] triggers;
+        // triggers = GameObject.FindGameObjectsWithTag("TriggerScript");
+        // TriggerList = new TriggerScript[triggers.Length];
+        // for(int x =0; x< TriggerList.Length;x++){
+        //     TriggerList[x] = triggers[x].GetComponent<TriggerScript>();
+        //     TriggerList[x].uid = x;
+        // }
+        // // foreach(GameObject x in triggers){
+        // //     TriggerScript xx = x.GetComponent<TriggerScript>();
+        // // }
     }
 
     public void ResetDefaults()
@@ -278,6 +298,15 @@ public class PlayerUIScript : UdonSharpBehaviour
         if (OWMLConstantCheckbox != null) OWMLConstantCheckbox.isOn = true;
         if (OWMLDistanceCheckbox != null) OWMLDistanceCheckbox.isOn = false;
         if (OWMLIntervalCheckbox != null) OWMLIntervalCheckbox.isOn = false;
+    }
+
+    public void OnPlayerRespawn(VRCPlayerApi player)
+    {
+        if(player == localPlayer)
+        {
+            MapObject.position = Vector3.zero;
+            localPlayer.SetVelocity(Vector3.zero);
+        }
     }
 
     void Update()
