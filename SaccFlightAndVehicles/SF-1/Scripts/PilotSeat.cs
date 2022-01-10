@@ -68,10 +68,6 @@ public class PilotSeat : UdonSharpBehaviour
             EngineStart();
             // EngineControl.PilotEnterPlaneLocal();
         }
-        if (ButtonSet != null)
-        {
-            ButtonSet.SetActive(true);
-        }
         if (OWML != null)
         {
             Networking.SetOwner(EngineControl.localPlayer, OWML.gameObject);
@@ -143,6 +139,11 @@ public class PilotSeat : UdonSharpBehaviour
         if (fHud != null)
         {
             fHud.SetActive(true);
+        }
+        
+        if (ButtonSet != null)
+        {
+            ButtonSet.SetActive(true);
         }
 
         if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
