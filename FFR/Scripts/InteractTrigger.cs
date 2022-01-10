@@ -8,10 +8,6 @@ public class InteractTrigger : UdonSharpBehaviour
 {
     public UdonBehaviour Class;
     public string Event;
-    void Start()
-    {
-        
-    }
 
     void Interact(){
         if(Class !=null && Event!=null){

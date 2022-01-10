@@ -139,10 +139,11 @@ public class FHudController : UdonSharpBehaviour
 
     void doAnimator()
     {
-        float value = EngineController.VehicleMainObj.transform.position.y +
-       (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
-                (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
-                : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
+        var position = EngineController.VehicleMainObj.transform.position;
+        float value = position.y +
+                      (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
+                          (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
+                          : (position.y + EngineController.SeaLevel * 3.28084f));
 
         //Uncomment this line when not using OWML.
         // float value = EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f;
@@ -152,7 +153,8 @@ public class FHudController : UdonSharpBehaviour
         HUDAnimator.SetFloat("liftneedle", (EngineController.CurrentVel.y * 60 * 3.28084f) / LiftDivisor + .5f); // Note: Lift on every 60 seconds / Total value  ?. 
 
         //Level
-        var body = EngineController.VehicleMainObj.transform.rotation.eulerAngles;
+        var rotation = EngineController.VehicleMainObj.transform.rotation;
+        var body = rotation.eulerAngles;
         HUDAnimator.SetFloat("level", (body.z / 360) + offsets.z);
         HUDAnimator.SetFloat("pitch", (body.x / 180) + offsets.x);
 
@@ -168,7 +170,7 @@ public class FHudController : UdonSharpBehaviour
         HUDAnimator.SetBool("brake", EngineController.BrakeInput == 1);
         HUDAnimator.SetBool("limiter",EngineController.FlightLimitsEnabled);
         //heading
-        float angle = -EngineController.VehicleMainObj.transform.rotation.eulerAngles.y;
+        float angle = -rotation.eulerAngles.y;
         HUDAnimator.SetFloat("heading", (angle / 360) + offsets.y);
 
         //Speedometer
@@ -181,10 +183,11 @@ public class FHudController : UdonSharpBehaviour
 
         if (AltimeterText != null)
         {
-            float value = EngineController.VehicleMainObj.transform.position.y +
-                   (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
-                            (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
-                            : (EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f));
+            var position = EngineController.VehicleMainObj.transform.position;
+            float value = position.y +
+                          (EngineController.OWML != null && EngineController.OWML.ScriptEnabled ?
+                              (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
+                              : (position.y + EngineController.SeaLevel * 3.28084f));
 
             if (value != altimetertemp)
             {

@@ -209,51 +209,50 @@ public class WeaponSelector : UdonSharpBehaviour {
             x.gameObject.SetActive(false);
         }
     }
-    public void SwitchWeaponSystem () {
-        if (Networking.IsOwner (gameObject)) {
-            if(tarps!=null && tarps.isSelected){
-                tarps.isSelected = false;
-            }
-            if (SwitchWeapon != null)
-                SwitchWeapon.Play ();
-            var prevSelected = selectedSystem;
-            MissilePlaneSystems[selectedSystem].showTargets = false;
-            MissilePlaneSystems[selectedSystem].timerLocking = 0;
-            MissilePlaneSystems[selectedSystem].isLocking = false;
-            MissilePlaneSystems[selectedSystem].isLocked = false;
-            MissilePlaneSystems[selectedSystem].selectedWeapon = false;
-            MissilePlaneSystems[selectedSystem].misTarget.noTarget = true;
-            if(MissilePlaneSystems[selectedSystem].isGun){
-                MissilePlaneSystems[selectedSystem].gunAnimator.SetBool("firing", false);
-            }
-            MissilePlaneSystems[selectedSystem].gameObject.SetActive (false);
-            for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
-                selectedWeapohHUDs[selectedSystem][x].SetActive (false);
-            }
-            if (selectedSystem + 1 < MissilePlaneSystems.Length) {
-                selectedSystem += 1;
-            } else {
-                selectedSystem = 0;
-            }
-            MissilePlaneSystems[selectedSystem].gameObject.SetActive (true);
-            Debug.Log("Setting Ownership");
-            if(EngineController.localPlayer!=null && !Networking.IsOwner(MissilePlaneSystems[selectedSystem].gameObject)){
-                Networking.SetOwner(EngineController.localPlayer, MissilePlaneSystems[selectedSystem].gameObject);
-                Networking.SetOwner(EngineController.localPlayer, MissilePlaneSystems[selectedSystem].misTarget.gameObject);
-                Debug.Log("Ownership set");
-            }
+    public void SwitchWeaponSystem ()
+    {
+        if (!Networking.IsOwner(gameObject)) return;
+        if(tarps!=null && tarps.isSelected){
+            tarps.isSelected = false;
+        }
+        if (SwitchWeapon != null)
+            SwitchWeapon.Play ();
+        var prevSelected = selectedSystem;
+        MissilePlaneSystems[selectedSystem].showTargets = false;
+        MissilePlaneSystems[selectedSystem].timerLocking = 0;
+        MissilePlaneSystems[selectedSystem].isLocking = false;
+        MissilePlaneSystems[selectedSystem].isLocked = false;
+        MissilePlaneSystems[selectedSystem].selectedWeapon = false;
+        MissilePlaneSystems[selectedSystem].misTarget.noTarget = true;
+        if(MissilePlaneSystems[selectedSystem].isGun){
+            MissilePlaneSystems[selectedSystem].gunAnimator.SetBool("firing", false);
+        }
+        MissilePlaneSystems[selectedSystem].gameObject.SetActive (false);
+        for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
+            selectedWeapohHUDs[selectedSystem][x].SetActive (false);
+        }
+        if (selectedSystem + 1 < MissilePlaneSystems.Length) {
+            selectedSystem += 1;
+        } else {
+            selectedSystem = 0;
+        }
+        MissilePlaneSystems[selectedSystem].gameObject.SetActive (true);
+        Debug.Log("Setting Ownership");
+        if(EngineController.localPlayer!=null && !Networking.IsOwner(MissilePlaneSystems[selectedSystem].gameObject)){
+            Networking.SetOwner(EngineController.localPlayer, MissilePlaneSystems[selectedSystem].gameObject);
+            Networking.SetOwner(EngineController.localPlayer, MissilePlaneSystems[selectedSystem].misTarget.gameObject);
+            Debug.Log("Ownership set");
+        }
             
-            MissilePlaneSystems[selectedSystem].timerLocking = 0;
-            MissilePlaneSystems[selectedSystem].showTargets = true;
-            MissilePlaneSystems[selectedSystem].selectedWeapon = true;
-            MissilePlaneSystems[selectedSystem].selectedTargetIndex = MissilePlaneSystems[prevSelected].selectedTargetIndex;
-            if (SwitchWeaponText != null) {
-                SwitchWeaponText.text = MissilePlaneSystems[selectedSystem].gameObject.name;
-            }
-            for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
-                selectedWeapohHUDs[selectedSystem][x].SetActive (true);
-            }
-
+        MissilePlaneSystems[selectedSystem].timerLocking = 0;
+        MissilePlaneSystems[selectedSystem].showTargets = true;
+        MissilePlaneSystems[selectedSystem].selectedWeapon = true;
+        MissilePlaneSystems[selectedSystem].selectedTargetIndex = MissilePlaneSystems[prevSelected].selectedTargetIndex;
+        if (SwitchWeaponText != null) {
+            SwitchWeaponText.text = MissilePlaneSystems[selectedSystem].gameObject.name;
+        }
+        for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
+            selectedWeapohHUDs[selectedSystem][x].SetActive (true);
         }
     }
 

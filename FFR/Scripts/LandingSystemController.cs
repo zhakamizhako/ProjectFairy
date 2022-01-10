@@ -28,24 +28,24 @@ public class LandingSystemController : UdonSharpBehaviour
             isSnagged = false;
             if(fhud!=null && fhud.CatchArmLocked!=null && fhud.CatchArmReady!=null & fhud.CatapultReady!=null){
                 if(fhud.CatchArmLocked.activeSelf)
-                fhud.CatchArmLocked.SetActive(false);
+                    fhud.CatchArmLocked.SetActive(false);
                 if(fhud.CatapultReady.activeSelf)
-                fhud.CatapultReady.SetActive(false);
+                    fhud.CatapultReady.SetActive(false);
                 if(fhud.CatchArmReady.activeSelf)
-                fhud.CatchArmReady.SetActive(false);
+                    fhud.CatchArmReady.SetActive(false);
             }
-        }else if(CAC!=null && EngineControl.Piloting){
-            if(Input.GetKeyDown(KeyCode.C) && CAC.holdTimer > CAC.holdTime){
-                if(EngineControl.localPlayer==null){ CAC.Launch(); }
-                CAC.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Launch");
-            }
+        }else if(CAC!=null && EngineControl.Piloting)
+        {
+            if (!Input.GetKeyDown(KeyCode.C) || !(CAC.holdTimer > CAC.holdTime)) return;
+            if(EngineControl.localPlayer==null){ CAC.Launch(); }
+            CAC.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Launch");
         }
     }
 
-    public void Launch(){
-        if(CAC!=null && EngineControl.Piloting && CAC.holdTimer > CAC.holdTime){
-            if(EngineControl.localPlayer==null){ CAC.Launch(); }
-             CAC.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Launch");
-        }
+    public void Launch()
+    {
+        if (CAC == null || !EngineControl.Piloting || !(CAC.holdTimer > CAC.holdTime)) return;
+        if(EngineControl.localPlayer==null){ CAC.Launch(); }
+        CAC.SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "Launch");
     }
 }
