@@ -35,6 +35,7 @@ public class ButtonNavigator : UdonSharpBehaviour
     public bool isDebug = false;
     public CanvasHud CVHVR;
     public Animator MenuAnimator;
+    public Animator[] MenuAnimators;
 
     public ButtonListenerUI[] Categories;
 
@@ -50,6 +51,14 @@ public class ButtonNavigator : UdonSharpBehaviour
             MenuAnimator.SetTrigger(selectedButton.AnimatorTrigger);
             MenuAnimator.SetTrigger(selectedButton.AnimatorCategory);
         }
+        if (selectedButton != null && MenuAnimators != null && MenuAnimators.Length >0)
+        {
+            foreach (Animator x in MenuAnimators)
+            {
+                x.SetTrigger(selectedButton.AnimatorTrigger);
+                x.SetTrigger(selectedButton.AnimatorCategory);
+            }
+        }
     }
 
     public void buttonSelectCallback()
@@ -59,6 +68,14 @@ public class ButtonNavigator : UdonSharpBehaviour
             MenuAnimator.SetTrigger(selectedButton.AnimatorTrigger);
             MenuAnimator.SetTrigger(selectedButton.AnimatorCategory);
         }
+        if (MenuAnimators != null && MenuAnimators.Length > 0)
+        {
+            foreach (var x in MenuAnimators)
+            {
+                x.SetTrigger(selectedButton.AnimatorTrigger);
+                x.SetTrigger(selectedButton.AnimatorCategory);
+            }
+        }
         if (selectedButton.audioSFX != null && selectedButton.select != null)
         {
             selectedButton.audioSFX.PlayOneShot(selectedButton.select);
@@ -67,7 +84,7 @@ public class ButtonNavigator : UdonSharpBehaviour
 
     public void handleCategory(string dir, ButtonListenerUI btton)
     {
-        if (Categories != null)
+        if (Categories != null && Categories.Length > 0)
         {
             Categories[btton.categoryId] = btton;
             if (dir == "up")
