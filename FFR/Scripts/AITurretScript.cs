@@ -56,7 +56,8 @@ public class AITurretScript : UdonSharpBehaviour
     [System.NonSerializedAttribute] [HideInInspector] public int currentTargetIndex = -1;
     public float timeToDisappear = 3f;
     [System.NonSerializedAttribute] [HideInInspector] [UdonSynced(UdonSyncMode.None)] public int launchArea = 0;
-    private float disappeartimer = 0f;
+    public float disappeartimer = 0f;
+    
     // public float Range = 5000; //Set range. 
     private GameObject MissileRuntime;
     [System.NonSerializedAttribute] [HideInInspector] bool initDamagable = false;
@@ -911,6 +912,7 @@ public class AITurretScript : UdonSharpBehaviour
             revive = false;
             onDestroyRan = false;
             onHalfHealthrun = false;
+            disappeartimer = 0f;
         }
 
     }

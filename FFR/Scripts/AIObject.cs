@@ -359,11 +359,7 @@ public class AIObject : UdonSharpBehaviour
 
     void OnParticleCollision(GameObject other)
     {
-        bool damage = false;
-        if (TrackerObject != null && TrackerObject.UIScript != null && !TrackerObject.UIScript.AIDamageLocalOnly)
-        {
-            damage = true;
-        }
+        bool damage = TrackerObject != null && TrackerObject.UIScript != null && !TrackerObject.UIScript.AIDamageLocalOnly;
 
         if (damage || Networking.IsOwner(localPlayer, gameObject))
         {
@@ -389,7 +385,7 @@ public class AIObject : UdonSharpBehaviour
 
     void checkStandby()
     {
-        if (TargetString == null || TargetString == "")
+        if (string.IsNullOrEmpty(TargetString))
         {
             if (!turretStandby)
             {
@@ -1281,6 +1277,7 @@ public class AIObject : UdonSharpBehaviour
             {
                 if (disableTimer > disableTime)
                 {
+                    disableTimer = 0f;
                     gameObject.SetActive(false);
                 }
                 else
