@@ -52,6 +52,7 @@ public class WeaponSelector : UdonSharpBehaviour {
             SwitchWeaponText.text = MissilePlaneSystems[selectedSystem].gameObject.name;
         }
         for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
+            if(selectedWeapohHUDs[selectedSystem]!=null && selectedWeapohHUDs[selectedSystem][x]!=null)
             selectedWeapohHUDs[selectedSystem][x].SetActive (true);
         }
         if (HitIndicator != null) {
@@ -185,9 +186,11 @@ public class WeaponSelector : UdonSharpBehaviour {
                 }
                 MissilePlaneSystems[prevselected].gameObject.SetActive (false);
                 for (int x = 0; x < selectedWeapohHUDs[prevselected].Length; x++) {
+                    if(selectedWeapohHUDs[prevselected]!=null && selectedWeapohHUDs[prevselected][x]!=null)
                     selectedWeapohHUDs[prevselected][x].SetActive (false);
                 }
                 for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
+                    if(selectedWeapohHUDs[selectedSystem]!=null && selectedWeapohHUDs[selectedSystem][x]!=null)
                     selectedWeapohHUDs[selectedSystem][x].SetActive (true);
                 }
                 prevselected = selectedSystem;
@@ -229,6 +232,7 @@ public class WeaponSelector : UdonSharpBehaviour {
         }
         MissilePlaneSystems[selectedSystem].gameObject.SetActive (false);
         for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
+            if(selectedWeapohHUDs[selectedSystem]!=null && selectedWeapohHUDs[selectedSystem][x]!=null)
             selectedWeapohHUDs[selectedSystem][x].SetActive (false);
         }
         if (selectedSystem + 1 < MissilePlaneSystems.Length) {
@@ -252,6 +256,7 @@ public class WeaponSelector : UdonSharpBehaviour {
             SwitchWeaponText.text = MissilePlaneSystems[selectedSystem].gameObject.name;
         }
         for (int x = 0; x < selectedWeapohHUDs[selectedSystem].Length; x++) {
+            if(selectedWeapohHUDs[selectedSystem]!=null && selectedWeapohHUDs[selectedSystem][x]!=null)
             selectedWeapohHUDs[selectedSystem][x].SetActive (true);
         }
     }

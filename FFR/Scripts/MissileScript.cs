@@ -202,6 +202,13 @@ public class MissileScript : UdonSharpBehaviour
         {
             ConstraintObject.constraintActive = false;
         }
+        
+        if (onExplode != null && onExplode.Length > 0)
+        {
+            int m = Random.Range(0, onExplode.Length);
+            // onExplode[m].run = true;
+            UIScript.AddToQueueScript(onExplode[m]);
+        }
     }
 
     // void FixedUpdate(){
@@ -280,12 +287,6 @@ public class MissileScript : UdonSharpBehaviour
                             if (missileDist < explodeAt)
                             {
                                 ExplodeMissile();
-                                if (onExplode != null && onExplode.Length > 0)
-                                {
-                                    int m = Random.Range(0, onExplode.Length);
-                                    // onExplode[m].run = true;
-                                    UIScript.AddToQueueScript(onExplode[m]);
-                                }
                             }
                             if (angleToTarget > maxAngle)
                             {
@@ -326,7 +327,7 @@ public class MissileScript : UdonSharpBehaviour
                                 {
                                     foreach (RadarRender xx in targetObjectTracker.RadarRenders)
                                     {
-                                        if (xx.gameObject.activeSelf)
+                                        if (xx!=null && xx.gameObject.activeSelf)
                                             xx.AddRadarObject(null, this, null);
                                     }
                                 }

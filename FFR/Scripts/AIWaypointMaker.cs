@@ -11,6 +11,7 @@ public class AIWaypointMaker : UdonSharpBehaviour
     private bool enabled = false;
     public GameObject waypointObject;
     private GameObject waypointRuntime;
+    public Transform spawnParent;
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
@@ -23,6 +24,7 @@ public class AIWaypointMaker : UdonSharpBehaviour
                 waypointRuntime = VRCInstantiate (waypointObject);
                 waypointRuntime.transform.position = gameObject.transform.position;
                 waypointRuntime.transform.rotation = gameObject.transform.rotation;
+                waypointRuntime.transform.parent = spawnParent;
             }
         }
     }

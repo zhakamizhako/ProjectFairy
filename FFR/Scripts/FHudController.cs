@@ -89,6 +89,8 @@ public class FHudController : UdonSharpBehaviour
     public float SpeedDivisor1;
     public Vector3 offsets = new Vector3(0.5f, 0, 0.5f);
 
+    public Transform VelocityIndicator;
+
     void Start()
     {
         localPlayer = Networking.LocalPlayer;
@@ -274,7 +276,7 @@ public class FHudController : UdonSharpBehaviour
                 // gunhudLerp = Vector3.Lerp(gunhudLerp, new Vector3(-localVelocity.x / 2.5f, 0, localVelocity.y / 2.5f), 4.5f * Time.deltaTime);
                 // GunHud.localPosition = gunhudLerp;
             }
-
+            
             if (PlaneBody != null && HeadingTool != null)
             {
                 float angle = (Mathf.Atan2(MainBodyPlane.velocity.x, MainBodyPlane.velocity.z) * Mathf.Rad2Deg);

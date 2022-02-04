@@ -121,6 +121,9 @@ public class PlayerUIScript : UdonSharpBehaviour
     public bool sleepTriggers = false; //Sync can be an issue.
 
     public Transform MapObject;
+    public bool allowShake = true;
+    public ThirdPersonPlayerCamera TPS;
+    private bool startedAircraft = false;
 
     void Start()
     {
@@ -470,6 +473,19 @@ public class PlayerUIScript : UdonSharpBehaviour
             }
         }
 
+        if(allowShake && PlayerAircraft!=null){
+            if(!startedAircraft){
+                startedAircraft = true;
+            }
+            TPS.intensity = (PlayerAircraft.EngineOutput / 1f) * TPS.startIntensity;
+            TPS.distanceForward = PlayerAircraft.EngineOutput;
+        }else if(allowShake && PlayerAircraft==null){
+            if(startedAircraft){
+                TPS.intensity = 0;
+                TPS.distanceForward = 0f;
+            }
+        }
+
         if (Skybox != null && PlayerAircraft != null)
         {
             if (PlayerAircraft.OWML != null && PlayerAircraft.OWML.ScriptEnabled)
@@ -507,17 +523,23 @@ public class PlayerUIScript : UdonSharpBehaviour
 
     public void AddToQueueScript(TriggerScript scriptx)
     {
-        scriptx.gameObject.SetActive(true);
-        scriptx.run = true;
+        if (scriptx != null)
+        {
+            scriptx.gameObject.SetActive(true);
+            scriptx.run = true;   
+        }
     }
 
     public void RestartScript(TriggerScript scriptx)
     {
-        scriptx.stopped = false;
-        scriptx.ranAfterRun = false;
-        scriptx.enabledGameObject = false;
-        scriptx.currentX = 0;
-        scriptx.runSceneAdaptor = false;
+        if (scriptx != null)
+        {
+            scriptx.stopped = false;
+            scriptx.ranAfterRun = false;
+            scriptx.enabledGameObject = false;
+            scriptx.currentX = 0;
+            scriptx.runSceneAdaptor = false;   
+        }
     }
     public void ReceiveMusic(AudioSource Audio, AudioSource Intro, string Title)
     {

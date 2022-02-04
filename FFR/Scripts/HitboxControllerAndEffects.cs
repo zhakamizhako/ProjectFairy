@@ -93,37 +93,9 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
     private bool BEngineDead = false;
 
     public AudioSource[] componentExplosionSound;
-    // public Animator DamageIndicatorAnimator;
-    // public EffectsController EffectsControl;
-
+    public Animator DamageAnimator;
     void Start()
     {
-        // if (EngineControl != null) {
-        //     //EngineController Params
-        //     initLift = EngineControl.Lift;
-        //     //pitch
-        //     initPitchStrength = EngineControl.PitchStrength;
-        //     // initStartPitchStrength = EngineControl.StartPitchStrength;
-        //     initPitchResponse = EngineControl.PitchResponse;
-        //     //roll
-        //     initRollStrength = EngineControl.RollStrength;
-        //     initRollFriction = EngineControl.RollFriction;
-        //     initRollResponse = EngineControl.RollResponse;
-        //     //yaw
-        //     initYawResponse = EngineControl.YawResponse;
-        //     initYawStrength = EngineControl.YawStrength;
-        //     //aoa
-        //     initMaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch;
-        //     initMaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw;
-        //     initHighAoAMinControlPitch = EngineControl.HighAoaMinControlPitch;
-        //     initHighAoAMinControlYaw = EngineControl.HighAoaMinControlYaw;
-        //     //engines
-        //     initThrottleStrength = EngineControl.ThrottleStrength;
-        //     initHasAfterburner = EngineControl.HasAfterburner;
-        //     //flaps
-        //     initFlapsDragMulti = EngineControl.FlapsDragMulti;
-        //     initFlapsLiftMulti = EngineControl.FlapsLiftMulti;
-        // }
         initHealthBody = HealthBody;
         initHealthLWing = HealthLWing;
         initHealthRWing = HealthRWing;
@@ -135,8 +107,11 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
         initHealthRElevator = HealthRElevator;
         initHealthLEngine = HealthLEngine;
         initHealthREngine = HealthREngine;
+        // if (DFUNCFLAPS != null)
+        // {
         initHealthLFlap = HealthLFlap;
         initHealthRFlap = HealthRFlap;
+        // }
         originalCenterOfMassPosition = CenterOfMassObject.localPosition;
         comSet = true;
 
@@ -153,11 +128,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Body.SetActive(false);
                     isBodyDead = true;
                     Explode();
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_body", true);
                 }
                 else if (HealthBody > 0 && isBodyDead)
                 {
                     isBodyDead = false;
                     Body.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_body", false);
                 }
             }
             if (LWing != null)
@@ -171,11 +148,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     EngineControl.RollFriction = EngineControl.RollFriction / 4;
                     EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch / damageStrength;
                     comSet = false;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_wingL", true);
                 }
                 else if (HealthLWing > 0 && isLWingDead)
                 {
                     isLWingDead = false;
                     LWing.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_wingR", false);
                 }
             }
 
@@ -216,12 +195,14 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     EngineControl.RollFriction = EngineControl.RollFriction / damageStrength;
                     EngineControl.MaxAngleOfAttackPitch = EngineControl.MaxAngleOfAttackPitch / damageStrength;
                     comSet = false;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_wingR", true);
 
                 }
                 else if (HealthRWing > 0 && isRWingDead)
                 {
                     isRWingDead = false;
                     RWing.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_wingR", false);
                 }
             }
             if (LRudder != null)
@@ -233,11 +214,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.YawStrength = EngineControl.YawStrength / damageStrength;
                     EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_rudderL", true);
                 }
                 else if (HealthLRudder > 0 && isLRudderDead)
                 {
                     isLRudderDead = false;
                     LRudder.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_rudderL", false);
                 }
             }
             if (RRudder != null)
@@ -249,11 +232,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.YawStrength = EngineControl.YawStrength / damageStrength;
                     EngineControl.MaxAngleOfAttackYaw = EngineControl.MaxAngleOfAttackYaw / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_rudderR", true);
                 }
                 else if (HealthRRudder > 0 && isRRudderDead)
                 {
                     isRRudderDead = false;
                     RRudder.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_rudderR", false);
                 }
             }
             if (LAileron != null)
@@ -265,11 +250,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.RollStrength = EngineControl.RollStrength / damageStrength;
                     EngineControl.RollResponse = EngineControl.RollResponse / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_aileronL", true);
                 }
                 else if (HealthLAileron > 0 && isLAileronDead)
                 {
                     isLAileronDead = false;
                     LAileron.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_aileronL", false);
                 }
             }
             if (RAileron != null)
@@ -281,11 +268,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.RollStrength = EngineControl.RollStrength / damageStrength;
                     EngineControl.RollResponse = EngineControl.RollResponse / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_aileronR", true);
                 }
                 else if (HealthRAileron > 0 && isRAileronDead)
                 {
                     isRAileronDead = false;
                     RAileron.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_aileronR", false);
                 }
             }
             if (LElevator != null)
@@ -298,11 +287,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     EngineControl.PitchStrength = EngineControl.PitchStrength / damageStrength;
                     // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength/ damageStrength;
                     EngineControl.PitchResponse = EngineControl.PitchResponse / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_elevatorL", true);
                 }
                 else if (HealthLElevator > 0 && isLElevatorDead)
                 {
                     isLElevatorDead = false;
                     LElevator.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_elevatorL", false);
                 }
             }
             if (RElevator != null)
@@ -315,11 +306,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     EngineControl.PitchStrength = EngineControl.PitchStrength / damageStrength;
                     // EngineControl.StartPitchStrength = EngineControl.StartPitchStrength/ damageStrength;
                     EngineControl.PitchResponse = EngineControl.PitchResponse / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_elevatorR", true);
                 }
                 else if (HealthRElevator > 0 && isRElevatorDead)
                 {
                     isRElevatorDead = false;
                     RElevator.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_elevatorR", false);
                 }
             }
             if (LEngine != null)
@@ -330,13 +323,15 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     isLEngineDead = true;
                     EngineControl.ThrottleStrength = EngineControl.ThrottleStrength / engineDamageStrength;
                     EngineControl.HasAfterburner = false;
-                    EngineControl.EffectsControl.AfterburnerOn = false;
+                    EngineControl.SetAfterburnerOff();
                     Explode();
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_engineL", true);
                 }
                 else if (HealthLEngine > 0 && isLEngineDead)
                 {
                     isLEngineDead = false;
                     LEngine.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_engineL", false);
                 }
             }
             if (REngine != null)
@@ -347,13 +342,15 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     isREngineDead = true;
                     EngineControl.ThrottleStrength = EngineControl.ThrottleStrength / engineDamageStrength;
                     EngineControl.HasAfterburner = false;
-                    EngineControl.EffectsControl.AfterburnerOn = false;
+                    EngineControl.SetAfterburnerOff();
                     Explode();
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_engineR", true);
                 }
                 else if (HealthREngine > 0 && isREngineDead)
                 {
                     isREngineDead = false;
                     REngine.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_engineR", false);
                 }
             }
             if (isREngineDead && isLEngineDead && !BEngineDead)
@@ -372,6 +369,8 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                         x.SetActive(true);
                     }
             }
+            // if (DFUNCFLAPS != null)
+            // {
             if (LFlap != null)
             {
                 if (HealthLFlap <= 0 && isLFlapDead == false)
@@ -381,11 +380,13 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti / damageStrength;
                     EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_flapL", true);
                 }
                 else if (HealthLFlap > 0 && isLFlapDead)
                 {
                     isLFlapDead = false;
                     LFlap.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_flapR", false);
                 }
             }
             if (RFlap != null)
@@ -397,13 +398,16 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                     Explode();
                     EngineControl.FlapsLiftMulti = EngineControl.FlapsLiftMulti / damageStrength;
                     EngineControl.FlapsDragMulti = EngineControl.FlapsDragMulti / damageStrength;
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_flapR", true);
                 }
                 else if (HealthRFlap > 0 && isRFlapDead)
                 {
                     isRFlapDead = false;
                     RFlap.SetActive(true);
+                    if (DamageAnimator != null) DamageAnimator.SetBool("damage_flapR", false);
                 }
             }
+            // }
         }
         else if (initd && !Networking.IsOwner(gameObject))
         {
@@ -417,6 +421,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     Body.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_body", HealthBody > 0 ? false : true);
             }
             if (LWing != null)
             {
@@ -428,6 +433,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     LWing.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_wingL", HealthLWing > 0 ? false : true);
             }
             if (RWing != null)
             {
@@ -439,6 +445,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     RWing.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_wingR", HealthRWing > 0 ? false : true);
             }
             if (LRudder != null)
             {
@@ -450,6 +457,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     LRudder.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_rudderL", HealthLRudder > 0 ? false : true);
             }
             if (RRudder != null)
             {
@@ -461,6 +469,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     RRudder.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_rudderR", HealthRRudder > 0 ? false : true);
             }
             if (LAileron != null)
             {
@@ -472,6 +481,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     LAileron.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_aileronL", HealthLAileron > 0 ? false : true);
             }
             if (RAileron != null)
             {
@@ -483,6 +493,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     RAileron.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_aileronR", HealthRAileron > 0 ? false : true);
             }
             if (LElevator != null)
             {
@@ -494,6 +505,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     LElevator.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_elevatorL", HealthLElevator > 0 ? false : true);
             }
             if (RElevator != null)
             {
@@ -505,6 +517,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     RElevator.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_elevatorR", HealthRElevator > 0 ? false : true);
             }
             if (LEngine != null)
             {
@@ -517,6 +530,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     LEngine.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_engineL", HealthLEngine > 0 ? false : true);
             }
             if (REngine != null)
             {
@@ -529,6 +543,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     REngine.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_engineR", HealthREngine > 0 ? false : true);
             }
             if (BEngineParts != null && BEngineParts.Length > 0 && isLEngineDead && isREngineDead)
             {
@@ -538,7 +553,7 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                         {
                             x.SetActive(false);
                         }
-                        BEngineDead = true;
+                    BEngineDead = true;
                 }
             }
             if (BEngineParts != null && BEngineParts.Length > 0 && !isLEngineDead && !isREngineDead)
@@ -549,19 +564,24 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                         {
                             x.SetActive(true);
                         }
-                        BEngineDead = false;
+                    BEngineDead = false;
                 }
             }
+            // if (DFUNCFLAPS != null)
+            // {
             if (LFlap != null)
             {
                 if (HealthLFlap <= 0)
                 {
                     LFlap.SetActive(false);
+
                 }
                 else if (HealthLFlap > 0)
                 {
                     LFlap.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_flapL", HealthLFlap > 0 ? false : true);
+
             }
             if (RFlap != null)
             {
@@ -569,12 +589,15 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
                 {
                     RFlap.SetActive(false);
                     Explode();
+
                 }
                 else if (HealthRFlap > 0)
                 {
                     RFlap.SetActive(true);
                 }
+                if (DamageAnimator != null) DamageAnimator.SetBool("damage_flapR", HealthRFlap > 0 ? false : true);
             }
+            // }
         }
     }
 
@@ -600,19 +623,6 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
     {
         if (EngineControl.localPlayer == null || Networking.IsOwner(gameObject))
         {
-            // isBodyDead = false;
-            // isLWingDead = false;
-            // isRWingDead = false;
-            // isLRudderDead = false;
-            // isRRudderDead = false;
-            // isLAileronDead = false;
-            // isRAileronDead = false;
-            // isLElevatorDead = false;
-            // isRElevatorDead = false;
-            // isLEngineDead = false;
-            // isREngineDead = false;
-            // isLFlapDead = false;
-            // isRFlapDead = false;
             HealthBody = initHealthBody;
             HealthLWing = initHealthLWing;
             HealthRWing = initHealthRWing;
@@ -652,8 +662,15 @@ public class HitboxControllerAndEffects : UdonSharpBehaviour
             EngineControl.HasAfterburner = initHasAfterburner;
             EngineControl.ThrottleStrength = initThrottleStrength;
             //Flaps
-            EngineControl.FlapsDragMulti = initFlapsDragMulti;
-            EngineControl.FlapsLiftMulti = initFlapsLiftMulti;
+            // if (DFUNCFLAPS != null)
+            // {
+                EngineControl.FlapsDragMulti = initFlapsDragMulti;
+                EngineControl.FlapsLiftMulti = initFlapsLiftMulti;
+            // }
+            if(BEngineParts!=null && BEngineParts.Length>0)
+            foreach(GameObject x in BEngineParts){
+                x.SetActive(true);
+            }
         }
 
     }

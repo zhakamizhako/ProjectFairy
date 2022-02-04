@@ -7,6 +7,7 @@ using VRC.Udon;
 public class VehicleRespawnButton : UdonSharpBehaviour
 {
     public EngineController EngineControl;
+    public AIObject AIRespawn;
     private void Start()
     {
         Assert(EngineControl != null, "Start: EngineControl != null");
@@ -34,6 +35,11 @@ public class VehicleRespawnButton : UdonSharpBehaviour
             // EngineControl.GunAmmoInSeconds = EngineControl.FullGunAmmo;
             EngineControl.Fuel = EngineControl.FullFuel;
             SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "ButtonRespawn");
+        }
+
+        if (AIRespawn != null)
+        {
+            AIRespawn.revive = true;
         }
     }
     public void ButtonRespawn()

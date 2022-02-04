@@ -31,6 +31,7 @@ public class CullGroupWithCustomAngle : UdonSharpBehaviour
 
     void cullLogic(int index)
     {
+        if (CullObjects[index] == null) return;
         var distance = Vector3.Distance(Networking.LocalPlayer != null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero, CullObjects[index].transform.position);
         var ObjectToTargetVector = CullObjects[index].transform.position - (Networking.LocalPlayer != null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position : Vector3.zero);
         var AIForward = Networking.LocalPlayer != null ? Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).rotation * Vector3.forward : Vector3.zero;

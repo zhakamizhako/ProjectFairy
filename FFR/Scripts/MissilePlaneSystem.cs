@@ -25,7 +25,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public GameObject NoTargetHUD; // No target Indicator
     public GameObject SelfTarget; // Targetting self indicator
     public GameObject LockSightHUD;
-    private RaycastHit[] objects;
+    private RaycastHit[] objects = new RaycastHit[5];
     public Transform SpawnParent;
     public GameObject EnableTargeter;
     public Animator WeaponAnimator;
@@ -74,6 +74,8 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public float timeToCooldown = 10;
     private int cooldownIndex = 0;
     private int coolDownSlot = 0;
+
+    public bool useHeadTargetChanging = false;
     // public ParticleSystem[] flareObject;
     // public GameObject Tailer;
     // public ParentConstraint TailerConstraint;
@@ -141,6 +143,7 @@ public class MissilePlaneSystem : UdonSharpBehaviour
     public bool AddIgnore = false;
     void Start()
     { //Initialize Missile Packs and status
+        localPlayer = Networking.LocalPlayer;
         if (LockSightHUD != null)
         {
             LockSightHUD.SetActive(false);
@@ -169,6 +172,11 @@ public class MissilePlaneSystem : UdonSharpBehaviour
 
         LockSightRenderer = LockSightHUD.GetComponent<Transform>().GetChild(0).GetComponent<Renderer>();
         LockSightTransform = LockSightHUD.transform;
+
+        if (ChangeTargetDetector == null)
+        {
+            ChangeTargetDetector = EngineController.VehicleMainObj.transform;
+        }
     }
 
     public void leavePlane()
@@ -365,14 +373,14 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                     {
                         foreach (GameObject x in CooldownMissileHUD[missileindex])
                         {
-                            if (x.activeSelf) x.SetActive(false);
+                            if (x!=null && x.activeSelf) x.SetActive(false);
                         }
                     }
                     else if (MissileFired[missileindex] == false && !skipCooldownHUD)
                     {
                         foreach (GameObject x in CooldownMissileHUD[missileindex])
                         {
-                            if (!x.activeSelf) x.SetActive(true);
+                            if (x!=null && !x.activeSelf) x.SetActive(true);
                         }
                     }
                     if (CooldownMissiles[missileindex] < timeToCooldown && MissileFired[missileindex] == true)
@@ -596,13 +604,17 @@ public class MissilePlaneSystem : UdonSharpBehaviour
                         UpdateTimer = 0f;
                         if (TargetDetector != null && selectedTargetIndex != -1)
                         {
-                            RaycastHit[] hit = Physics.SphereCastAll(TargetDetector.position, radius, TargetDetector.forward, range, layermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
+                            RaycastHit[] hit = new RaycastHit[20];
+                            Physics.SphereCastNonAlloc(TargetDetector.position, radius, TargetDetector.forward, hit, range, layermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
                             if (hit.Length > 0)
                             {
                                 bool found = false;
                                 for (int x = 0; x < hit.Length; x++)
                                 {
-
+                                    if (hit[x].collider == null)
+                                    {
+                                        continue;
+                                    }
                                     if (hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null)
                                     {
                                         if (hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() == misTarget.Target.GetComponent<MissileTrackerAndResponse>())
@@ -945,27 +957,32 @@ public class MissilePlaneSystem : UdonSharpBehaviour
             }
             if (MissileTargetScript.Targets.Length > 0)
             { //Target List Refresh
-                RaycastHit[] hit = Physics.SphereCastAll(ChangeTargetDetector.position, changeTargetDetectorRadius, ChangeTargetDetector.forward, changeTargetDetectorRange, layermask, QueryTriggerInteraction.UseGlobal);
-                if (hit.Length > 0)
+
+                Physics.SphereCastNonAlloc( (useHeadTargetChanging ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position: ChangeTargetDetector.position), changeTargetDetectorRadius,
+                    (useHeadTargetChanging ? localPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head).position.normalized : ChangeTargetDetector.forward), objects,changeTargetDetectorRange, layermask, QueryTriggerInteraction.UseGlobal);
+                if (objects!=null && objects.Length > 0)
                 {
-                    objects = hit;
                     TGTList = new MissileTrackerAndResponse[0];
                     targetIndices = new int[0];
-                    for (int x = 0; x < hit.Length; x++)
+                    for (int x = 0; x < objects.Length; x++)
                     {
                         for (int mm = 0; mm < MissileTargetScript.Targets.Length; mm++)
                         {
-                            if (hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null)
+                            if (objects[x].collider == null)
+                            {
+                                break;
+                            }
+                            if (objects[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null)
                             {
                                 MissileTrackerAndResponse b = null;
-                                // if (hit[x].transform.gameObject.GetComponent<HitDetector> () != null) {
-                                //     if (hit[x].transform.gameObject.GetComponent<HitDetector> ().Tracker != null) {
-                                //         b = hit[x].transform.gameObject.GetComponent<HitDetector> ().Tracker;
+                                // if (objects[x].transform.gameObject.GetComponent<objectsDetector> () != null) {
+                                //     if (objects[x].transform.gameObject.GetComponent<objectsDetector> ().Tracker != null) {
+                                //         b = objects[x].transform.gameObject.GetComponent<objectsDetector> ().Tracker;
                                 //     }
                                 // }
-                                if (hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null)
+                                if (objects[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null)
                                 {
-                                    b = hit[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>();
+                                    b = objects[x].collider.gameObject.GetComponent<MissileTrackerAndResponse>();
                                 }
                                 else
                                 {

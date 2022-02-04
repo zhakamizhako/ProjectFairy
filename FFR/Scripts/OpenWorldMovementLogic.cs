@@ -3,6 +3,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+// [UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class OpenWorldMovementLogic : UdonSharpBehaviour
 {
     public EngineController EngineControl;
@@ -53,6 +54,15 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
             startPos = AI.AIRigidBody.transform.position;
             originalParent = AI.AIRigidBody.transform.parent;
         }
+
+        if (!EngineControl.Piloting)
+        {
+            AnchorCoordsPosition = EngineControl.VehicleMainObj.transform.position;
+            PosSync = -Map.transform.position + AnchorCoordsPosition;
+            RotSync = EngineControl.VehicleMainObj.transform.rotation;
+            startPos = EngineControl.VehicleMainObj.transform.position;
+        }
+        originalParent = EngineControl.VehicleMainObj.transform.parent;
         // AnchorCoordsRotation = EngineControl.VehicleMainObj.transform.rotation;
     }
 
@@ -128,6 +138,8 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
 
     public void exitPersonOWML(){
         if(UIScript!=null && UIScript.PlayerAircraft!=null){
+            EngineControl.VehicleMainObj.transform.SetParent(originalParent);
+            moved = false;
             UIScript.PlayerAircraft = null;
         }
     }
@@ -202,6 +214,9 @@ public class OpenWorldMovementLogic : UdonSharpBehaviour
 
                 PosSync = -Map.transform.position + AnchorCoordsPosition;
                 if (syncRotate) RotSync = EngineControl.VehicleMainObj.transform.rotation;
+                // if(!Networking.IsClogged){
+                    // RequestSerialization();
+                // }
             }
             else if (EngineControl.Passenger || AlwaysActive)
             {

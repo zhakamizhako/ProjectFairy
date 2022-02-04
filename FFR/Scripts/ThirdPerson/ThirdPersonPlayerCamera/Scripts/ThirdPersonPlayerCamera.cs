@@ -41,6 +41,15 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour
     // public GameObject DesktopDialog;
     public bool enabledCam = false;
     public bool TabShown = false;
+    public float intensity = 0f;
+    public float startIntensity = 0f;
+    public float distanceForward = 0f;
+    private Vector3 randomShake = Vector3.zero;
+    public Vector3 distanceTest = Vector3.zero;
+    public float intensityFast = 0.3f;
+    public float distanceForwardMultiplier = 1f;
+    public Vector3[] startPosModes;
+
 
     void Start()
     {
@@ -64,6 +73,7 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour
             //     }
             // }
         }
+        startIntensity = intensity;
 
         for (var i = 0; i < transform.childCount; i++)
         {
@@ -78,6 +88,10 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour
             if (child.name == "Follower") _follower = child.gameObject;
         }
         _camera = ThirdCam.GetComponent<Camera>();
+        startPosModes = new Vector3[cameraTarget.Length];
+        for(int i=0;i < cameraTarget.Length; i++){
+            startPosModes[i] = cameraTarget[i].position;
+        }
     }
 
     private void LateUpdate()
@@ -188,8 +202,10 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour
 
         if (!_isStatic)
         {
-            _follower.transform.position = cameraTarget[_mode].position;
+            
+            _follower.transform.position = cameraTarget[_mode].position; 
             _follower.transform.rotation = cameraTarget[_mode].rotation;
+            // _follower.transform.localPosition = distanceTest;
 
             var wallHit = new RaycastHit();
             if (Physics.Linecast(_visionTracker.transform.position, _follower.transform.position, out wallHit, wallCollisions))
@@ -202,6 +218,14 @@ public class ThirdPersonPlayerCamera : UdonSharpBehaviour
             }
             if (movementSmoothing)
             {
+                // if(timerShake > timeBetweenShake){
+                //     timerShake = 0f;
+                // }else{
+                //     timerShake = timerShake + Time.deltaTime;
+                // }
+                randomShake = new Vector3(Random.Range(0,intensity), Random.Range(0,intensity), -distanceForward * distanceForwardMultiplier);
+                cameraTarget[_mode].transform.localPosition = Vector3.Lerp(startPosModes[_mode], startPosModes[_mode] + randomShake, intensityFast);
+                
                 var thirdTran = ThirdCam.transform;
                 ThirdCam.transform.position = Vector3.Lerp(thirdTran.position, _follower.transform.position + (_follower.transform.forward / 10), followSpeed * 0.1f);
                 ThirdCam.transform.rotation = Quaternion.Lerp(thirdTran.rotation, _follower.transform.rotation, rotationSpeed * 0.1f);

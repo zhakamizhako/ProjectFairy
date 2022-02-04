@@ -18,6 +18,8 @@ public class AITurretScript : UdonSharpBehaviour
     public MissileTrackerAndResponse TrackerObject;
     public TriggerScript onDestroy;
     public TriggerScript onHalfHealth;
+
+    public TriggerScript[] onFire;
     //If missile
     public GameObject MissileFab;
     public Transform[] MissileSpawnAreas;
@@ -37,6 +39,7 @@ public class AITurretScript : UdonSharpBehaviour
     public bool fireSoundPlayed = false;
     public bool isFiring = false;
     public float fireCooldown = 1;
+    public float delayForFire = 0f;
     public float burstTime = -1f; //infinite for no limit
     private float burstTimer = 0f;
     public float cooldownEachBursts = 0.5f;
@@ -56,8 +59,8 @@ public class AITurretScript : UdonSharpBehaviour
     [System.NonSerializedAttribute] [HideInInspector] public int currentTargetIndex = -1;
     public float timeToDisappear = 3f;
     [System.NonSerializedAttribute] [HideInInspector] [UdonSynced(UdonSyncMode.None)] public int launchArea = 0;
-    public float disappeartimer = 0f;
-    
+    private float disappeartimer = 0f;
+
     // public float Range = 5000; //Set range. 
     private GameObject MissileRuntime;
     [System.NonSerializedAttribute] [HideInInspector] bool initDamagable = false;
@@ -73,7 +76,7 @@ public class AITurretScript : UdonSharpBehaviour
     //checker whether if turret has a line of sight
     public Transform LineOfSightDetector;
     public float lineOfSightTimer = 0.5f;
-    public float lineOfSightTime = 0f;
+    private float lineOfSightTime = 0f;
     public float MaxRange = 7000;
     public float sphereRadius = 30;
     public LayerMask LineOfSightCollisionLayers;
@@ -96,11 +99,22 @@ public class AITurretScript : UdonSharpBehaviour
     private bool onDestroyRan = false;
     public PlayerUIScript UIScript;
 
+    public bool isRespawnable = false;
+    public float timeToRespawn = 10f;
+    private float timerToRespawn = 0f;
+    public float damagePerParticle = 2f;
+    public GameObject OwnGun;
+
     void Start()
     {
         fullHealth = Health;
         localPlayer = Networking.LocalPlayer;
         initDamagable = damageable;
+
+        if (mainAIObject != null)
+        {
+            mainAIRigidBody = mainAIObject.AIRigidBody != null ? mainAIObject.AIRigidBody : null;
+        }
 
         TargetListTemp = mainAIObject.PredefinedTargets;
         if (TrackerObject != null)
@@ -116,15 +130,16 @@ public class AITurretScript : UdonSharpBehaviour
         isFiring = false;
         isFiringCiws = false;
 
-        if(UIScript==null){
-            UIScript = TrackerObject!=null ? 
+        if (UIScript == null)
+        {
+            UIScript = TrackerObject != null ?
                         TrackerObject.UIScript :
-                        (mainAIObject.TrackerObject!=null ? (mainAIObject.TrackerObject.UIScript!=null ? mainAIObject.TrackerObject.UIScript : null) : 
-                        mainAIObject.UIScript!=null ? mainAIObject.UIScript : null
+                        (mainAIObject.TrackerObject != null ? (mainAIObject.TrackerObject.UIScript != null ? mainAIObject.TrackerObject.UIScript : null) :
+                        mainAIObject.UIScript != null ? mainAIObject.UIScript : null
                          );
-                        
-            if(UIScript==null)
-            Debug.LogError("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
+
+            if (UIScript == null)
+                Debug.LogError("[MISSING UI SCRIPT] WARNING! MISSING UI SCRIPT!");
         }
 
 
@@ -160,9 +175,15 @@ public class AITurretScript : UdonSharpBehaviour
 
     public void syncFireMissile()
     {
+        if(TurretFire!=null) TurretFire.Play();
         // Debug.Log ("syncfiremissile called");
         // The next set of lines below basically what it does is it spawns the missile depending which pod is free if they're not on cooldown.
         // Debug.Log ("MissileSync Called");
+        if (onFire != null && onFire.Length > 0)
+        {
+            int randomx = Random.Range(0, onFire.Length);
+            onFire[randomx].run = true;
+        }
         if (MissileSpawnAreas.Length > 0)
         {
             MissileRuntime = VRCInstantiate(MissileFab);
@@ -221,12 +242,13 @@ public class AITurretScript : UdonSharpBehaviour
     void OnParticleCollision(GameObject other)
     {
         bool damage = false;
-        if (TrackerObject != null && TrackerObject.UIScript != null && !TrackerObject.UIScript.AIDamageLocalOnly)
+        if ((TrackerObject != null && TrackerObject.UIScript != null
+        && ((TrackerObject.UIScript.AIDamageLocalOnly && Networking.IsOwner(localPlayer, gameObject) || !TrackerObject.UIScript.AIDamageLocalOnly))) && other != OwnGun)
         {
             damage = true;
         }
 
-        if (damage || Networking.IsOwner(localPlayer, gameObject))
+        if (damage)
         {
             if (localPlayer == null)
             {
@@ -244,7 +266,7 @@ public class AITurretScript : UdonSharpBehaviour
         if (localPlayer == null || localPlayer.IsOwner(gameObject))
         {
             if (damageable)
-                Health += -2;
+                Health += -damagePerParticle;
         }
     }
 
@@ -304,6 +326,18 @@ public class AITurretScript : UdonSharpBehaviour
             if (DeadFire != null && !DeadFire.activeSelf)
             {
                 DeadFire.SetActive(true);
+            }
+            if (isRespawnable)
+            {
+                if (timerToRespawn < timeToRespawn)
+                {
+                    timerToRespawn = timerToRespawn + Time.deltaTime;
+                }
+                else
+                {
+                    timerToRespawn = 0f;
+                    revive = true;
+                }
             }
             if (disappeartimer < timeToDisappear)
             {
@@ -511,6 +545,7 @@ public class AITurretScript : UdonSharpBehaviour
                                 if (hit.collider != null)
                                 {
                                     DebugHit = hit.transform.gameObject;
+                                    // GameObject hitting = hit.collider.gameObject;
                                     GameObject hitting = hit.transform.gameObject;
                                     Debug.DrawRay(LineOfSightDetector.position, LineOfSightDetector.position + LineOfSightDetector.forward * hit.distance, Color.yellow);
                                     bool forced = false;
@@ -735,7 +770,7 @@ public class AITurretScript : UdonSharpBehaviour
                             if (!isFiring && isSamReady)
                             {
                                 isFiring = true;
-                                fireCooldown = 0;
+                                fireCooldown = 0 + delayForFire;
                                 if (Networking.IsOwner(gameObject) || localPlayer == null)
                                     if (localPlayer == null) { syncFireMissile(); }
                                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "syncFireMissile");
@@ -781,8 +816,9 @@ public class AITurretScript : UdonSharpBehaviour
 
                             if (!isFiring && isSamReady)
                             {
+                                if(TurretFire!=null) TurretFire.Play();
                                 isFiring = true;
-                                fireCooldown = 0;
+                                fireCooldown = 0 + delayForFire;
                                 if (Networking.IsOwner(gameObject) || localPlayer == null)
                                     if (localPlayer == null) { syncFireMissile(); }
                                 SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "syncFireMissile");

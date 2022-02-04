@@ -1,3 +1,4 @@
+using System;
 using UdonSharp;
 using UnityEngine;
 // ReSharper disable once RedundantUsingDirective
@@ -83,6 +84,11 @@ public class TriggerScript : UdonSharpBehaviour
     public bool canIgnoreDialogue = false;
     public float timeBeforeIgnore = 3f;
     public float timerForIgnore = 0f;
+
+    // public UdonBehaviour VariableSet;
+    // public String VariableToChange;
+    // public
+    // public int ChangeVariableOn;
 
     public Animator aniTrigger;
     public string AnimatorString;
@@ -308,6 +314,10 @@ public class TriggerScript : UdonSharpBehaviour
         {
             if (timer > TimePerDialog[currentX] + delayBetweenDialogues)
             {
+                // if (VariableSet!=null && currentX == ChangeVariableOn)
+                // {
+                //     VariableSet.SetProgramVariable(VariableToChange, (Boolean)VariableToChange );
+                // }
                 timer = 0f;
                 if (currentX + 1 == DialogLines.Length)
                 {

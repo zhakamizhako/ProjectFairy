@@ -31,7 +31,6 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public TriggerScript onEnter; // For waypoints
     public Transform WaypointDetector;
     public float WaypointDetectorRange = 100;
-    public float WaypointDetectorRadius = 100;
     // public LayerMask layermask = 23;
     public bool VehicleOnlyWaypoint = true;
     public bool hideAfterWaypointContact = true;
@@ -51,9 +50,9 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     [Header("Display Settings")]
     public GameObject TargetIconRender;
     public Text TrackerText;
-    public Text PlayerText;
-    public Text DistanceText;
-    public Text HealthText;
+    // public Text PlayerText;
+    // public Text DistanceText;
+    // public Text HealthText;
     public GameObject textIsAlly;
     public GameObject textIsEnemy;
     public GameObject textIsUknown;
@@ -78,13 +77,13 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     public bool isSelected = false;
     public Transform FollowL;
     public Transform FollowR;
-    public Transform[] DebugHits;
+    // public Transform[] DebugHits;
     public bool culled = false;
     public PlayerUIScript UIScript;
-    public bool isGroundTarget = false;
-    public bool isAirTarget = false;
+    // public bool isGroundTarget = false;
+    // public bool isAirTarget = false;
     public bool ShowDistance = true;
-    public bool showX = false;
+    // public bool showX = false;
     public bool ShowText = true;
     public GameObject XIcon;
     private Renderer IconRenderer;
@@ -97,9 +96,9 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
     private float tempHealth = 0f;
     private bool healthUpdate = false;
     private string words = "";
-    public PathwaySystem pathway;
-    public bool isPathway = false;
-    public bool showInRadar = true;
+    // public PathwaySystem pathway;
+    // public bool isPathway = false;
+    // public bool showInRadar = true;
 
     public RadarRender[] RadarRenders;
 
@@ -156,6 +155,10 @@ public class MissileTrackerAndResponse : UdonSharpBehaviour
         if (isWaypoint && UIScript == null)
         {
             Debug.LogError("Waypoint but no UI Script present! Waypoint will not work!");
+        }
+        if (UIScript == null || IconRenderer==null)
+        {
+            Debug.LogError("[ZHAK_Trackers] UI Script Missing And/Or Icon is missing!");
         }
     }
     public void receiveTracker(MissileScript misScript)

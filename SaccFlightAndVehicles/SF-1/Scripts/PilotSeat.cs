@@ -28,11 +28,8 @@ public class PilotSeat : UdonSharpBehaviour
     private bool sit = false;
     public void EnableOWML()
     {
-        // if(EngineControl.Piloting || EngineControl.Passenger){
-        // OWML.gameObject.SetActive(true);
+        if (OWML == null) return;
         OWML.EnableScript();
-        // Debug.Log("NYAHOI!");
-        // }
     }
 
     public void DisableKinematic()
@@ -41,9 +38,16 @@ public class PilotSeat : UdonSharpBehaviour
     }
     public void callEnableEngine()
     {
-        if (Networking.IsOwner(EngineControl.localPlayer, gameObject))
+        if (gameObject != null)
         {
-            EnabledEngine = true;
+            if (Networking.IsOwner(EngineControl.localPlayer, gameObject))
+            {
+                EnabledEngine = true;
+            }   
+        }
+        else
+        {
+            Debug.Log("What the actual fuck is this error?");
         }
     }
 
@@ -150,6 +154,7 @@ public class PilotSeat : UdonSharpBehaviour
         {
             foreach (GameObject x in EnableObjectsOnStart)
             {
+                if(x!=null)
                 x.SetActive(true);
             }
         }
@@ -176,8 +181,11 @@ public class PilotSeat : UdonSharpBehaviour
                     }
                 }
 
-                if (EnableOWMLByDefault)
-                    OWML.ScriptEnabled = true;
+                if (OWML != null)
+                {
+                    if (EnableOWMLByDefault)
+                        OWML.ScriptEnabled = true;   
+                }
             }
             else if (EngineControl.Piloting || EngineControl.Passenger)
             {
@@ -257,13 +265,14 @@ public class PilotSeat : UdonSharpBehaviour
                 if (OWML != null)
                 {
                     if (returnToNorah) OWML.Map.position = Vector3.zero;
-                    OWML.ScriptEnabled = false;
+                    // OWML.ScriptEnabled = false;
                 }
 
                 if (EnableObjectsOnStart != null && EnableObjectsOnStart.Length > 0)
                 {
                     foreach (GameObject x in EnableObjectsOnStart)
                     {
+                        if(x!=null)
                         x.SetActive(false);
                     }
                 }

@@ -35,7 +35,6 @@ public class AIObject : UdonSharpBehaviour
     public MissileTargets PredefinedTargets;
     public Animator AIObjectAnimator;
     public MissileTrackerAndResponse TrackerObject;
-    [HideInInspector] public bool updated = true;
     public float RotSpeed = 15;
     public GameObject deadParticle;
 
@@ -58,15 +57,22 @@ public class AIObject : UdonSharpBehaviour
     public float targetChangeTimer = 0;
     public LayerMask TargetingLayermask;
     public float radius = 7000;
+    //Scan period
     public float updateTendency = 0.5f;
     public float updateTimer = 0f;
+    //Wait between scans
+    public float waitUntil = 8f;
+    public float waitUntilTimer = 0f;
+    
     private int targetUpdateIndex = 0;
     private int targetUpdateIndex2 = 0;
     public bool isSingleTargetOnly = false;
     bool notargetsCheck = false;
     bool isTargetableCheck = false;
+    public int fixedTargetListLength = 50;
     public RaycastHit[] TargetDetectionList;
     public MissileTrackerAndResponse[] debugTargets;
+    public bool updated = true;
 
     [Header("Movement Update Setings")]
     public float updateMovementTendency = 0.5f;
@@ -241,6 +247,7 @@ public class AIObject : UdonSharpBehaviour
         initDisabled = disabled;
         initEnableMainTurrets = enableMainTurrets;
         aliveTurretsPrivate = 0;
+        TargetDetectionList = new RaycastHit[fixedTargetListLength];
         // initShouldAttack = shouldAttack;
 
 
@@ -379,7 +386,7 @@ public class AIObject : UdonSharpBehaviour
     // }
     void LateUpdate()
     {
-        LateUpdateLogic();
+        // LateUpdateLogic();
         if (disableTurretsOnStandby) checkStandby();
     }
 
@@ -442,9 +449,19 @@ public class AIObject : UdonSharpBehaviour
     {
         if ((Networking.IsOwner(gameObject) || localPlayer == null) && disabled == false && dead == false && TargetDetector != null)
         {
-            if (updateTimer > updateTendency && updated)
+            if (updated && targetIndices.Length == 0)
             {
-                TargetDetectionList = Physics.SphereCastAll(TargetDetector.position, radius, TargetDetector.forward, 5000, TargetingLayermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
+                shouldAttack = false;
+                removeTargets();
+                SendCustomNetworkEvent(VRC.Udon.Common.Interfaces.NetworkEventTarget.All, "removeTargets");
+            }else if (targetIndices.Length > 0)
+            {
+                shouldAttack = true;
+            }
+            if (waitUntilTimer > waitUntil)
+            {
+                /*TargetDetectionList = */
+                Physics.SphereCastNonAlloc(TargetDetector.position, radius, TargetDetector.forward, TargetDetectionList,5000, TargetingLayermask, QueryTriggerInteraction.UseGlobal); //in case of shit happens like multiple rayhitted objects
                 debugTargets = new MissileTrackerAndResponse[0];
                 targetIndices = new int[0];
                 targetUpdateIndex2 = 0;
@@ -454,14 +471,29 @@ public class AIObject : UdonSharpBehaviour
                     updateTimer = 0;
                     updated = false;
                 }
+                waitUntilTimer = 0f;
+                
             }
             else
             {
-                if (updateTimer < updateTendency) { updateTimer = updateTimer + Time.deltaTime; }
+                if (updateTimer < updateTendency)
+                {
+                    updateTimer = updateTimer + Time.deltaTime;
+                }
+                else
+                {
+                    updated = true;
+                }
+
+                if (updated && waitUntilTimer < waitUntil)
+                {
+                    waitUntilTimer = waitUntilTimer + Time.deltaTime;
+                }
                 if (TargetDetectionList != null && TargetDetectionList.Length > 0 && targetUpdateIndex < TargetDetectionList.Length)
                 {
-                    MissileTrackerAndResponse currentSelection = TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null ? TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() : null;
-                    if (currentSelection != null && ((currentSelection.AI != null && currentSelection.AI.Health > 0) || (currentSelection.AITurret != null && currentSelection.AITurret.Health > 0) || (currentSelection.EngineController != null && currentSelection.EngineController.Health > 0 && currentSelection.EngineController.Occupied)) && currentSelection == PredefinedTargets.Targets[targetUpdateIndex2])
+                    MissileTrackerAndResponse currentSelection = TargetDetectionList[targetUpdateIndex].collider!=null && TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() != null ? TargetDetectionList[targetUpdateIndex].collider.gameObject.GetComponent<MissileTrackerAndResponse>() : null;
+                    if (currentSelection != null && Vector3.Distance(currentSelection.transform.position, TargetDetector.position) < radius
+                        && ((currentSelection.AI != null && currentSelection.AI.Health > 0) || (currentSelection.AITurret != null && currentSelection.AITurret.Health > 0) || (currentSelection.EngineController != null && currentSelection.EngineController.Health > 0 && currentSelection.EngineController.Occupied)) && currentSelection == PredefinedTargets.Targets[targetUpdateIndex2])
                     {
                         MissileTrackerAndResponse[] temp = new MissileTrackerAndResponse[debugTargets.Length + 1];
                         int[] tempTargetIndices = new int[debugTargets.Length + 1];
@@ -528,8 +560,8 @@ public class AIObject : UdonSharpBehaviour
                 {
                     if (shouldAttack && !dontchaseTarget && debugTargets.Length > 0)
                     { //Attack Logic
-                        shouldFollowLeft = false;
-                        shouldFollowRight = false;
+                        // shouldFollowLeft = false;
+                        // shouldFollowRight = false;
                         Vector3 finalVectors;
                         Vector3 V;
                         Vector3 targetPos;
@@ -634,8 +666,8 @@ public class AIObject : UdonSharpBehaviour
 
                     if ((!shouldAttack || (shouldAttack && dontchaseTarget)) && Waypoints != null && Waypoints.Length > 0 && FollowObject == null)
                     { // Waypoint Logic
-                        shouldFollowLeft = false;
-                        shouldFollowRight = false;
+                        // shouldFollowLeft = false;
+                        // shouldFollowRight = false;
                         moveLogc(Waypoints[currentWaypointIndex].gameObject.transform.position, Waypoints[currentWaypointIndex].gameObject.transform.position);
                         if (shouldGoNextWaypoint)
                         { // if false, circle around the waypoint. 
@@ -1037,6 +1069,7 @@ public class AIObject : UdonSharpBehaviour
         // if(TrackerObject!=null && TrackerObject.UIScript!=null && TrackerObject.UIScript.isSinglePlayer && Networking.GetOwner(gameObject)!=localPlayer){
         // OwnershipSetter();
         // }
+
         if (!dead && (type == "air" || type == "heavyair"))
         {
             if (updateMovementTimer > updateMovementTendency)
@@ -1099,20 +1132,20 @@ public class AIObject : UdonSharpBehaviour
                 if (Networking.IsOwner(gameObject) || localPlayer == null)
                 {
 
-                    if (type == "air" || type == "static")
-                    {
-                        if (debugTargets != null && debugTargets.Length == 0)
-                        {
-                            shouldAttack = false;
-                        }
-                        else if (debugTargets != null && debugTargets.Length > 0)
-                        {
-                            if (shouldAttackOnSight)
-                            {
-                                shouldAttack = true;
-                            }
-                        }
-                    }
+                    // if (type == "air" || type == "static")
+                    // {
+                    //     if (debugTargets != null && debugTargets.Length == 0)
+                    //     {
+                    //         shouldAttack = false;
+                    //     }
+                    //     else if (debugTargets != null && debugTargets.Length > 0)
+                    //     {
+                    //         if (shouldAttackOnSight)
+                    //         {
+                    //             shouldAttack = true;
+                    //         }
+                    //     }
+                    // }
 
                     if (TurretScripts != null && TurretScripts.Length > 0 || MainTurrets != null && MainTurrets.Length > 0)
                     {
@@ -1171,9 +1204,8 @@ public class AIObject : UdonSharpBehaviour
                                     turretindex = 0;
                                 }
                             }
-                            if (updated)
+                            if (targetIndices!=null && targetIndices.Length > 0)
                             {
-
                                 if (debugTargets != null && debugTargets.Length > 0)
                                 {
                                     notargetsCheck = false;
@@ -1183,6 +1215,7 @@ public class AIObject : UdonSharpBehaviour
                                     }
                                     else
                                     {
+                                        targetChangeTimer = 0;
                                         TargetString = "";
                                         for (int c = 0; c < TurretScripts.Length; c++)
                                         {
@@ -1230,8 +1263,6 @@ public class AIObject : UdonSharpBehaviour
                                                 }
                                             }
                                         }
-
-                                        targetChangeTimer = 0;
                                     }
                                 }
                                 else
@@ -1251,6 +1282,7 @@ public class AIObject : UdonSharpBehaviour
                         }
                     }
                 }
+                LateUpdateLogic();   
             }
         }
 

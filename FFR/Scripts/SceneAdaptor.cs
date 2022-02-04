@@ -69,22 +69,32 @@ public class SceneAdaptor : UdonSharpBehaviour
             {
                 TargetAnimator.SetBool(TargetAnimatorString, true);
             }
-            TargetEngineController.EngineOutput = EngineOutputTarget;
+            // TargetEngineController.EngineOutput = EngineOutputTarget;
 
             if (asPilot)
             {
                 // TargetEngineController.Respawn_event();
+                TargetEngineController.VehicleRigidbody.velocity = Vector3.zero;
+                TargetEngineController.VehicleRigidbody.angularVelocity = Vector3.zero;
                 TargetEngineController.Health = TargetEngineController.FullHealth;
-                TargetEngineController.hbcontroller.Respawn();
-                TargetEngineController.VehicleRigidbody.velocity =TargetVelocity;
-                TargetEngineController.VehicleRigidbody.angularVelocity =TargetAngularVelocity;
+            
+                if(TargetEngineController.hbcontroller!=null)TargetEngineController.hbcontroller.Respawn();
+                
                 targetPilotSeat.Interact();
                 targetPilotSeat.EngineStart();
                 TargetEngineController.VehicleMainObj.transform.position = TargetOffsetPosition;
-                TargetEngineController.VehicleMainObj.transform.rotation = Quaternion.Euler(Vector3.zero);
+                // TargetEngineController.VehicleMainObj.transform.rotation = Quaternion.Euler(Vector3.zero);
                 TargetEngineController.VehicleMainObj.transform.rotation = targetTransformAircraftPos.rotation;
                 targetPilotSeat.OWML.Map.position = -targetTransformAircraftPos.position;
                 targetPilotSeat.OWML.EnableScript();
+                
+                TargetEngineController.VehicleRigidbody.velocity =TargetVelocity;
+                TargetEngineController.VehicleRigidbody.angularVelocity =TargetAngularVelocity;
+                TargetEngineController.PlayerThrottle = EngineOutputTarget;
+                TargetEngineController.SetGearUp();
+                TargetEngineController.SetFlapsOff();
+                // TargetEngineController.EffectsControl.Flaps = false;
+                // TargetEngineController.EffectsControl.GearUp = true;
             }
 
             foreach (TarpsTarget x in tarps)

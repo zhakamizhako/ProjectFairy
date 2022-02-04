@@ -46,7 +46,7 @@ public class PassengerSeat : UdonSharpBehaviour
         EngineControl.PasengerEnterPlaneLocal();
         // Networking.SetOwner (EngineControl.localPlayer, gameObject);
         //Set CVH Params
-        if (EngineControl.localPlayer.IsUserInVR())
+        if (Networking.LocalPlayer.IsUserInVR())
         {
             if (CVHVR != null)
             {
@@ -78,7 +78,7 @@ public class PassengerSeat : UdonSharpBehaviour
         {
             ButtonSet.SetActive(true);
         }
-        EngineControl.localPlayer.UseAttachedStation();
+        Networking.LocalPlayer.UseAttachedStation();
         // if (PlaneMesh != null) {
         //     Transform[] children = PlaneMesh.GetComponentsInChildren<Transform> ();
         //     foreach (Transform child in children) {
@@ -166,7 +166,7 @@ public class PassengerSeat : UdonSharpBehaviour
                 {
                     if (EngineControl.EffectsControl != null) { EngineControl.EffectsControl.PlaneAnimator.SetBool("localpassenger", false); }
                     EngineControl.Passenger = false;
-                    EngineControl.localPlayer.SetVelocity(EngineControl.CurrentVel);
+                    Networking.LocalPlayer.SetVelocity(EngineControl.CurrentVel);
                     // EngineControl.MissilesIncoming = 0;
                     EngineControl.EffectsControl.PlaneAnimator.SetInteger("missilesincoming", 0);
                 }

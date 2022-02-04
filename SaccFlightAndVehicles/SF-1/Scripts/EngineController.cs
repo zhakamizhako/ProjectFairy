@@ -8,6 +8,7 @@ public class EngineController : UdonSharpBehaviour
     public OpenWorldMovementLogic OWML;
     public GameObject VehicleMainObj;
     public LeaveVehicleButton[] LeaveButtons;
+    // public LeaveVehicleButton[] LVB;
     public EffectsController EffectsControl;
     public SoundController SoundControl;
     public HUDController HUDControl;
@@ -311,7 +312,6 @@ public class EngineController : UdonSharpBehaviour
     float VTOLAngle90;
     bool PlaneMoving = false;
     public bool ScriptHasStarted = false;
-    public LeaveVehicleButton[] LVB;
     public TriggerScript deadTrigger;
     //float MouseX;
     //float MouseY;
@@ -398,7 +398,7 @@ public class EngineController : UdonSharpBehaviour
         // Assert(AtGCam != null, "Start: AGMCam != null");
         Assert(CatapultDetector != null, "Start: CatapultDetector != null");
 
-        LeaveButtons = LVB;//get componants even in disabled children
+        // LeaveButtons = LVB;//get componants even in disabled children
         Assert(LeaveButtons.Length > 0, "Start: Leavebuttons Set");
 
         Planelayer = PlaneMesh.gameObject.layer;//get the layer of the plane as set by the world creator

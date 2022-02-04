@@ -17,7 +17,7 @@ public class NPCInteractionAndBehaviour : UdonSharpBehaviour
     public bool isShowing = false;
     void Start()
     {
-        if(TextObject){
+        if(TextObject!=null){
             TextObject.text = "";
             CharacterNameTextObject.text="";
         }
