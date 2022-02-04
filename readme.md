@@ -7,6 +7,9 @@ This project is merely for fun, a hobby and a learning path. VRC Worlds Project 
 Main Code is based on Sacc Flight and Vehicles.
 Thirdperson Camera code is based on Vowgan's VRC Thirdperson Script.
 
+Based on SaccFlightAndVehicles version 1.35/1.4.
+(1.5 not available yet.)
+
 Project Fairy System is basically an Arcade Flight System that's based on Sacchan's SaccFlightandVehicles (https://github.com/Sacchan-VRC/SaccFlightAndVehicles), expanded and implemented with these:
 - Custom HUD
 - Arcade Flight Missile System with multiple Weapon types
