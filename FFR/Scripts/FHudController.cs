@@ -7,56 +7,26 @@ using VRC.Udon;
 public class FHudController : UdonSharpBehaviour
 {
     public EngineController EngineController;
-    // public EffectsController EController;
     public GameObject PlaneBody;
     public Transform HeadingTool;
-    // public Transform Altimeter;
-    // public Transform Speedometer;
     public Transform GunHud;
-    // public Transform HorizonTool;
-    // public Transform LevelTool;
-    // public GameObject FlapsUI;
-    // public GameObject GearUpUI;
-    // public GameObject GearDownUI;
-    // public GameObject OverGUI;
-    // public GameObject DangerUI;
-    // public GameObject ChangeTargetUI;
-    // public GameObject NoTargetUI;
     public GameObject PullupUI;
-    // public GameObject LimiterUI;
-    // public GameObject AirBrakeUI;
-    // public AudioSource AB;
-    // public AudioSource MissileAlertSound;
-    // public GameObject ABUI;
     public AudioSource Pullupaudio;
     public Text AltimeterText;
     public Text SpeedometerText;
     public Text GsText;
     public Text SpeedMachText;
-    // public Text HealthText;
     public Text AngleOfAttack;
-    // public GameObject MaveFlipMode;
-    // public float divisibleValue = 5;
-    // private bool isPlayedAB = false;
     private bool isPlayedPullup = false;
 
     public bool isHeadTracked = true;
     public float distance_from_head = 1.333f;
 
-    // public float SeaLevel = -200000;
-    // private Vector3 altimeterLerp = new Vector3(0, 0, 0);
-    // private Vector3 speedometerLerp = new Vector3(0, 0, 0);
-    // private Vector3 headingTurn = new Vector3(0, 0, 0);
-    // private Vector3 gunhudLerp = new Vector3(0, 0, 0);
-    // public float distance_from_head = 1.333f;
     public Transform parentTransform;
-    // public bool isVR;
     public bool onTesting = false;
     public PlayerUIScript UIScript;
     private VRCPlayerApi localPlayer;
     private Vector3 startSize;
-
-    // private int HealthTemp = 0;
     private int altimetertemp = 0;
     private int speedometerTextTemp = 0;
     private float machTemp = 0f;
@@ -74,8 +44,6 @@ public class FHudController : UdonSharpBehaviour
 
     //Animator centre
     public Animator HUDAnimator;
-    // public float altitudeMultiplier;
-    // public float speedMultiplier;
     public bool isHeadingConstrainted = false;
     public bool isHeadingLocalRotation = true;
 
@@ -88,6 +56,18 @@ public class FHudController : UdonSharpBehaviour
     public float LiftDivisor;
     public float SpeedDivisor1;
     public Vector3 offsets = new Vector3(0.5f, 0, 0.5f);
+
+    public Text[] speedTexts;
+    public Text[] altitudeTexts;
+
+    public float[] vals;
+
+    public float speedDividerTexts;
+    public float altitudeDividerTexts;
+
+    public bool doUpperLowerLimits;
+    private float[] altitudeLimit;
+    private float[] speedLimits;
 
     public Transform VelocityIndicator;
 
@@ -107,6 +87,10 @@ public class FHudController : UdonSharpBehaviour
         if (HitObject != null) { HitObject.SetActive(false); }
         if (MissileAlertObject != null) { MissileAlertObject.SetActive(false); }
         if (CautionObject != null) { CautionObject.SetActive(false); }
+
+        vals = new float[speedTexts.Length];
+        calculateAndSet(0, true);
+        calculateAndSetSpeedometer(0, true);
     }
 
     void LateUpdate()//???????????????????????????
@@ -138,6 +122,55 @@ public class FHudController : UdonSharpBehaviour
         }
     }
 
+    void calculateAndSet(float value, bool onStart)
+    {
+        
+        if (!onStart && (altitudeLimit!=null && altitudeLimit.Length>0 && (!(value < altitudeLimit[0] || value > altitudeLimit[1]))))
+        {
+            return;
+        }
+        
+        float[] newaltitudeLimit = new float[2];
+        for (int x = 0; x < altitudeTexts.Length; x++)
+        {
+            float vv = Mathf.Floor(value / altitudeDividerTexts);
+            float bb = x + 1;
+            float cc = bb / altitudeTexts.Length;
+            float dd = altitudeDividerTexts * cc;
+            float vaaal = (altitudeDividerTexts*vv) + dd;
+            if(x==0) newaltitudeLimit[0] = vaaal;
+            if(x+1==altitudeTexts.Length) newaltitudeLimit[1] = vaaal;
+            altitudeTexts[x].text = vaaal + "";
+            // vals[x] = (vaaal);
+        }
+
+        altitudeLimit = newaltitudeLimit;
+    }
+    
+    void calculateAndSetSpeedometer(float value, bool onStart)
+    {
+        
+        if (!onStart && (speedLimits!=null && speedLimits.Length>0 && (!(value < speedLimits[0] || value > speedLimits[1]))))
+        {
+            return;
+        }
+        
+        float[] newspeedLimits = new float[2];
+        for (int x = 0; x < speedTexts.Length; x++)
+        {
+            float vv = Mathf.Floor(value / speedDividerTexts);
+            float bb = x + 1;
+            float cc = bb / speedTexts.Length;
+            float dd = speedDividerTexts * cc;
+            float vaaal = ((speedDividerTexts * vv) + dd);
+            if(x==0) newspeedLimits[0] = vaaal;
+            if(x+1==speedTexts.Length) newspeedLimits[1] = vaaal;
+            speedTexts[x].text = vaaal + "";
+            vals[x] = (vaaal);
+        }
+
+        speedLimits = newspeedLimits;
+    }
 
     void doAnimator()
     {
@@ -147,12 +180,23 @@ public class FHudController : UdonSharpBehaviour
                           (EngineController.OWML.AnchorCoordsPosition.y - EngineController.OWML.Map.position.y) + EngineController.SeaLevel * 3.28084f
                           : (position.y + EngineController.SeaLevel * 3.28084f));
 
+        float speedValue = (EngineController.CurrentVel.magnitude) * 1.9438445f;
         //Uncomment this line when not using OWML.
         // float value = EngineController.VehicleMainObj.transform.position.y + EngineController.SeaLevel * 3.28084f;
 
         HUDAnimator.SetFloat("altimeter1", (value / AltDivisor1));
         HUDAnimator.SetFloat("altimeter2", (value / AltDivisor2));
         HUDAnimator.SetFloat("liftneedle", (EngineController.CurrentVel.y * 60 * 3.28084f) / LiftDivisor + .5f); // Note: Lift on every 60 seconds / Total value  ?. 
+
+        if (altitudeTexts != null && altitudeTexts.Length > 0)
+        {
+            calculateAndSet(value, false);
+        }
+        
+        if (speedTexts != null && speedTexts.Length > 0)
+        {
+            calculateAndSetSpeedometer(speedValue, false);
+        }
 
         //Level
         var rotation = EngineController.VehicleMainObj.transform.rotation;
@@ -176,7 +220,7 @@ public class FHudController : UdonSharpBehaviour
         HUDAnimator.SetFloat("heading", (angle / 360) + offsets.y);
 
         //Speedometer
-        HUDAnimator.SetFloat("speed", ((EngineController.CurrentVel.magnitude) * 1.9438445f) / SpeedDivisor1);
+        HUDAnimator.SetFloat("speed", (speedValue / SpeedDivisor1));
 
     }
 
